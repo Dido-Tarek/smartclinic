@@ -39,6 +39,7 @@ The mobile application follows **Clean Architecture** principles to ensure the c
 
 ### 🎨 Design & Prototyping
 * **Figma File**: `https://www.figma.com/design/NlZxFsIXZm5DJ2SKJxewDG/SmartClinic-?node-id=0-1&t=PeenC87Vkhwyzbwm-1`
+* **Color Palette**: `https://docs.google.com/spreadsheets/d/1ywAS-PmSQjxSdUCJvEzg9oAVZz9MwD4_52b1iUuq75k/edit?gid=883073812#gid=883073812`
 * **UI Style Guide**: Comprehensive guide for colors, typography, and reusable components.
 
 ### 🖥️ Admin & Backend
