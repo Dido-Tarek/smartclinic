@@ -1,0 +1,106 @@
+name: smartclinic
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations: 
+    sdk: flutter
+
+  flutter_bloc: ^9.1.1
+  bloc: ^9.2.0
+
+  dio: ^5.9.2
+  pretty_dio_logger: ^1.4.0
+
+  get_it: ^9.2.1
+
+  shared_preferences: ^2.5.4
+
+  flutter_svg: ^2.2.4
+  dartz: ^0.10.1
+  equatable: ^2.0.8
+  google_fonts: ^8.0.2
+  cupertino_icons: ^1.0.8
+  video_player: ^2.10.1
+  flutter_native_splash: ^2.4.7
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.11.0
+  retrofit: ^4.9.2
+  file_picker: ^8.1.2
+  dotted_border: ^3.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^5.0.0
+  build_runner: ^2.13.1
+  freezed: ^3.2.5
+  json_serializable: ^6.13.1
+  retrofit_generator: ^10.2.5
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/images/doctor/
+    - assets/images/icons/
+    - assets/images/speciality/
+    - assets/images/logo/
+    - assets/lang/
+    - assets/videos/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter_Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter_Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter_SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter_Bold.ttf
+          weight: 700
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Cairo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+
+# تم نقل هذه الأقسام لخارج قسم الـ flutter لتبدأ من أول السطر
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo/logo.png"
+  adaptive_icon_background: "#1A2D42" # يفضل استخدام لون للخلفية في الـ Adaptive
+  adaptive_icon_foreground: "assets/images/logo/logo.png"
+
+flutter_native_splash:
+  color: "#1A2D42"
+  image: assets/images/logo/Logo.svg
+  android_12:
+    image: assets/images/logo/Logo.svg
+    color: "#1A2D42"
+  fullscreen: true
+
+# قسم إضافي لو كنت تستخدم مكتبة توليد مسارات الصور
+flutter_assets:
+  assets_path: assets/images
+  output_path: lib/core/constants/
+  file_name: app_images.dart
+  field_prefix: null
+  ignore_comments: true
+  classname: AppImages

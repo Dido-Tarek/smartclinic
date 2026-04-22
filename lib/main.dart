@@ -1,0 +1,70 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smartclinic/core/helper/shared_preds_helper.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/app_router.dart';
+import 'core/constants/config.dart';
+import 'core/theme/app_theme.dart';
+import 'core/localization/app_localization.dart';
+import 'injection_dependency.dart';
+
+final GlobalKey<MyAppState> appKey = GlobalKey<MyAppState>();
+
+void main() async {
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  await SharedPrefsHelper.init();
+  await setupGetIt();
+  runApp(MyApp(key: appKey));
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  MyAppState createState() => MyAppState();
+}
+
+class MyAppState extends State<MyApp> {
+  Locale _locale = const Locale('en');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLanguage();
+  }
+
+  Future<void> _loadSavedLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final languageCode = prefs.getString('language_code') ?? 'en';
+    setState(() {
+      _locale = Locale(languageCode);
+    });
+    FlutterNativeSplash.remove();
+  }
+
+  void setLocale(Locale locale) {
+    setState(() => _locale = locale);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: AppConfig.appName,
+      theme: AppTheme.lightTheme,
+      locale: _locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: AppRouter.generateRoute,
+    );
+  }
+}
