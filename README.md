@@ -65,3 +65,12 @@ The mobile application follows **Clean Architecture** principles to ensure the c
 1. **Clone the repository**:
    ```bash
    git clone [https://github.com/Dido-Tarek/smart-clinic.git](https://github.com/Dido-Tarek/smart-clinic.git)
+2. **Install Dependecies**:
+   ```bash
+   flutter pub get
+3. **Generate necessary code (Retrofit/JsonSerializable)**:
+   ```bash
+   flutter pub run build-runner build --delete-conflicting-outputs
+4. **Run The App**:
+   ```bash
+   flutter run
