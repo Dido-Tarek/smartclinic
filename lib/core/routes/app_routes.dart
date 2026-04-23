@@ -16,5 +16,8 @@ class AppRoutes {
   static const String addHealthIssue = '/addHealthIssue';
   static const String familyMember = '/familyMember';
   static const String addFamilyMember = '/addFamilyMember';
-  static const String home = '/home';
+  static const String patienthome = '/patienthome';
+  static const String doctorhome = '/doctorhome';
+  static const String hospitalhome = '/hospitalhome';
+  static const String verifyDoctor = '/verifyDoctor';
 }

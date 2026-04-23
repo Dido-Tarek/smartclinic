@@ -25,13 +25,13 @@ class _AddFamilyMember extends State<AddFamilyMember> {
   final _relationController = TextEditingController();
   final _bloodTypeController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
-  String? _patientId;
+  String? _userId;
   String? _selectedGender;
 
   @override
   void initState() {
     super.initState();
-    _loadPatientId();
+    _loadUserId();
   }
 
   @override
@@ -180,13 +180,13 @@ class _AddFamilyMember extends State<AddFamilyMember> {
     );
   }
 
-  Future<void> _loadPatientId() async {
-    final patientId = _userSession.patientId;
+  Future<void> _loadUserId() async {
+    final userId = _userSession.userId;
     if (!mounted) {
       return;
     }
     setState(() {
-      _patientId = patientId;
+      _userId = userId;
     });
   }
 
@@ -239,10 +239,10 @@ class _AddFamilyMember extends State<AddFamilyMember> {
   void _onSavePressed() {
     final localizations = AppLocalizations.of(context)!;
 
-    if ((_patientId ?? '').trim().isEmpty) {
+    if ((_userId ?? '').trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(localizations.translate('patient_id_required')),
+          content: Text(localizations.translate('user_id_required')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -264,7 +264,7 @@ class _AddFamilyMember extends State<AddFamilyMember> {
     }
 
     final member = FamilyMemberModel(
-      patientId: _patientId!.trim(),
+      patientId: _userId!.trim(),
       name: _nameController.text.trim(),
       relation: _relationController.text.trim(),
       gender: _selectedGender!,

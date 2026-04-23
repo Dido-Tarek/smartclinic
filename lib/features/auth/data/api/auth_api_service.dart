@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:smartclinic/features/auth/data/models/login_request_model.dart';
-import 'package:smartclinic/features/registeration/data/model/medical_facility_register_model.dart';
-import 'package:smartclinic/features/registeration/data/model/patient_register_model.dart';
 
 part 'auth_api_service.g.dart';
 
@@ -30,10 +28,22 @@ abstract class AuthApiService {
   });
 
   // تسجيل منشأة طبية
-  // @POST("api/Auth/RegisterFacility")
-  // Future<dynamic> registerFacility(
-  //   @Body() MedicalFacilityRegisterModel facilityRequestBody,
-  // );
+  @POST("{url}")
+  @MultiPart()
+  Future<dynamic> registerFacility({
+    @Path("url") required String url,
+    @Part(name: "FullName") required String name,
+    @Part(name: "Email") required String email,
+    @Part(name: "Password") required String password,
+    @Part(name: "ConfirmPassword") String confirmPassword,
+    @Part(name: "Gender") required gender,
+    @Part(name: "BirthDate") required birthDate,
+    @Part(name: "PhoneNumber") required String phoneNumber,
+    @Part(name: "Address") required String address,
+    @Part(name: "Specialization") required String specialization,
+    @Part(name: "NationalidFront") required File nationalIdFront,
+    @Part(name: "NationalidBack") required File nationalIdBack,
+  });
 
   // تسجيل الدخول (Login)
   @POST("api/Auth/Login")

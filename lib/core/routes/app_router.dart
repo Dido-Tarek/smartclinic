@@ -8,6 +8,7 @@ import 'package:smartclinic/features/health_issues/presentation/screens/add_heal
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
+import 'package:smartclinic/features/registeration/presentation/screens/facility/follow_up_registeration_medical_facility.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -64,9 +65,14 @@ class AppRouter {
             child: const FollowUpRegisterScreen(),
           ),
         );
-      // case AppRoutes.followUpRegisterDoctor:
-      //   return MaterialPageRoute(
-      //     builder: (_) => const FollowUpRegisterDoctorScreen(),
+      case AppRoutes.followUpRegisterDoctor:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<RegisterCubit>(),
+            child: const FollowUpRegisterDoctorScreen(),
+          ),
+        );
       case AppRoutes.uploadMedicalRecords:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
@@ -102,10 +108,23 @@ class AppRouter {
             child: const AddFamilyMember(),
           ),
         );
-      case AppRoutes.home:
+      case AppRoutes.patienthome:
         return MaterialPageRoute(
-          builder: (_) =>
-              Scaffold(body: Center(child: Text('Home Screen Placeholder'))),
+          builder: (_) => Scaffold(
+            body: Center(child: Text('Home Screen Placeholder for Patient')),
+          ),
+        );
+      case AppRoutes.doctorhome:
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: Center(child: Text('Home Screen Placeholder for Doctor')),
+          ),
+        );
+      case AppRoutes.hospitalhome:
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: Center(child: Text('Home Screen Placeholder for Hospital')),
+          ),
         );
       default:
         return MaterialPageRoute(

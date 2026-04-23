@@ -87,6 +87,72 @@ class _AuthApiService implements AuthApiService {
   }
 
   @override
+  Future<dynamic> registerFacility({
+    required String name,
+    required String email,
+    required String password,
+    String confirmPassword = '',
+    required dynamic gender,
+    required dynamic birthDate,
+    required String phoneNumber,
+    required String address,
+    required String specialization,
+    required File nationalIdFront,
+    required File nationalIdBack,
+    String url = '',
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.fields.add(MapEntry('FullName', name));
+    _data.fields.add(MapEntry('Email', email));
+    _data.fields.add(MapEntry('Password', password));
+    _data.fields.add(MapEntry('ConfirmPassword', confirmPassword));
+    _data.fields.add(MapEntry('Gender', gender.toString()));
+    _data.fields.add(MapEntry('BirthDate', birthDate.toString()));
+    _data.fields.add(MapEntry('PhoneNumber', phoneNumber));
+    _data.fields.add(MapEntry('Address', address));
+    _data.fields.add(MapEntry('Specialization', specialization));
+    _data.files.add(
+      MapEntry(
+        'NationalidFront',
+        MultipartFile.fromFileSync(
+          nationalIdFront.path,
+          filename: nationalIdFront.path.split(Platform.pathSeparator).last,
+        ),
+      ),
+    );
+    _data.files.add(
+      MapEntry(
+        'NationalidBack',
+        MultipartFile.fromFileSync(
+          nationalIdBack.path,
+          filename: nationalIdBack.path.split(Platform.pathSeparator).last,
+        ),
+      ),
+    );
+    final _options = _setStreamType<dynamic>(
+      Options(
+            method: 'POST',
+            headers: _headers,
+            extra: _extra,
+            contentType: 'multipart/form-data',
+          )
+          .compose(
+            _dio.options,
+            url,
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch(_options);
+    final _value = _result.data;
+    return _value;
+  }
+
+  @override
   Future<dynamic> login(LoginRequestModel loginRequestBody) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

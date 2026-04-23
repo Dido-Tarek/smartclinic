@@ -8,8 +8,16 @@ import 'register_state.dart';
 
 class RegisterCubit extends Cubit<RegisterState> {
   final AuthRepo _authRepo;
+  String _selectedRole = 'Patient';
 
   RegisterCubit(this._authRepo) : super(const RegisterState.initial());
+
+  String get selectedRole => _selectedRole;
+
+  void setSelectedRole(String role) {
+    final normalized = role.trim();
+    _selectedRole = normalized.isEmpty ? 'Patient' : normalized;
+  }
 
   // دالة تسجيل المريض
   Future<void> emitRegisterPatient(
@@ -30,20 +38,20 @@ class RegisterCubit extends Cubit<RegisterState> {
   }
 
   // دالة تسجيل المنشأة الطبية
-  // Future<void> emitRegisterFacility(
-  //   MedicalFacilityRegisterModel facilityModel,
-  // ) async {
-  //   emit(const RegisterState.loading());
+  Future<void> emitRegisterFacility(
+    MedicalFacilityRequestModel facilityModel,
+  ) async {
+    emit(const RegisterState.loading());
 
-  //   final response = await _authRepo.registerFacility(facilityModel);
+    final response = await _authRepo.registerFacility(facilityModel);
 
-  //   response.when(
-  //     success: (data) {
-  //       emit(RegisterState.success(data));
-  //     },
-  //     failure: (message) {
-  //       emit(RegisterState.error(message: message));
-  //     },
-  //   );
-  // }
+    response.when(
+      success: (data) {
+        emit(RegisterState.success(data));
+      },
+      failure: (message) {
+        emit(RegisterState.error(message: message));
+      },
+    );
+  }
 }
