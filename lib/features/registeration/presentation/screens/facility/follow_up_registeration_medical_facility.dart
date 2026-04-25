@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
@@ -13,24 +14,49 @@ import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/core/widgets/custom_small_text_field.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_state.dart';
-import 'package:smartclinic/features/registeration/data/model/patient_register_model.dart';
+import 'package:smartclinic/features/registeration/data/model/medical_facility_register_model.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
-class FollowUpRegisterScreen extends StatefulWidget {
-  const FollowUpRegisterScreen({super.key});
+class FollowUpRegisterDoctorScreen extends StatefulWidget {
+  const FollowUpRegisterDoctorScreen({super.key});
 
   @override
-  State<FollowUpRegisterScreen> createState() => _FollowUpRegisterScreenState();
+  State<FollowUpRegisterDoctorScreen> createState() =>
+      _FollowUpRegisterScreenDoctorState();
 }
 
-class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
+class _FollowUpRegisterScreenDoctorState
+    extends State<FollowUpRegisterDoctorScreen> {
+  static const List<String> _commonSpecializations = <String>[
+    'Cardiology',
+    'Dermatology',
+    'Endocrinology',
+    'Family Medicine',
+    'Gastroenterology',
+    'General Surgery',
+    'Gynecology',
+    'Internal Medicine',
+    'Neurology',
+    'Oncology',
+    'Ophthalmology',
+    'Orthopedics',
+    'Otolaryngology (ENT)',
+    'Pediatrics',
+    'Psychiatry',
+    'Pulmonology',
+    'Radiology',
+    'Urology',
+  ];
+
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();
-  final _nationalIdController = TextEditingController();
-  final _bloodTypeController = TextEditingController();
+  final _specializationController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
   String? _selectedGender;
   final List<PlatformFile> _nationalIdFiles = [];
+  bool _isSpecializationPickerOpen = false;
+  bool _isApplyingSpecializationSelection = false;
+  Timer? _specializationTypingDebounce;
   bool _argsLoaded = false;
   Map<String, dynamic> _registrationArgs = {};
 
@@ -50,10 +76,10 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
 
   @override
   void dispose() {
+    _specializationTypingDebounce?.cancel();
     _dobController.dispose();
     _addressController.dispose();
-    _nationalIdController.dispose();
-    _bloodTypeController.dispose();
+    _specializationController.dispose();
     super.dispose();
   }
 
@@ -67,13 +93,15 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
           initial: () {},
           loading: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registering patient...')),
+              const SnackBar(content: Text('Registering Medical Facility...')),
             );
           },
           success: (data) async {
             final messenger = ScaffoldMessenger.of(context);
             final navigator = Navigator.of(context);
-            final selectedRole = context.read<RegisterCubit>().selectedRole;
+            final selectedRole = _normalizeFacilityRole(
+              context.read<RegisterCubit>().selectedRole,
+            );
             final userId = _extractUserId(data);
             if (userId == null || userId.trim().isEmpty) {
               messenger.showSnackBar(
@@ -98,7 +126,8 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
                 content: Text('Registration completed successfully'),
               ),
             );
-            if (getRoleEnum(selectedRole).isPatient) {
+            if (getRoleEnum(selectedRole).isDoctor ||
+                getRoleEnum(selectedRole).isHospital) {
               navigator.pushReplacementNamed(AppRoutes.uploadMedicalRecords);
             } else {
               navigator.pushReplacementNamed(_resolveHomeRoute(selectedRole));
@@ -147,73 +176,29 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
                   type: TextFormFieldType.text,
                 ),
                 const SizedBox(height: 18),
-
-                _buildLabel(localizations.translate("National_ID_title")),
+                _buildLabel(localizations.translate("Specialization_title")),
                 AppTextFormField(
-                  hintText: localizations.translate("National_ID_hint"),
-                  controller: _nationalIdController,
-                  type: TextFormFieldType.fileUpload,
-                  onSuffixTap: _pickNationalIdFile,
+                  hintText: localizations.translate("Specialization_hint"),
+                  controller: _specializationController,
+                  type: TextFormFieldType.speciality,
+                  onSuffixTap: _showSpecializationPicker,
+                  onChanged: _onSpecializationChanged,
+                  keyboardType: TextInputType.name,
                 ),
-                if (_nationalIdFiles.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(_nationalIdFiles.length, (index) {
-                      final file = _nationalIdFiles[index];
-                      final label = index == 0 ? 'Front' : 'Back';
-                      return InputChip(
-                        label: Text('$label: ${file.name}'),
-                        onPressed: () => _replaceNationalIdFile(index),
-                        onDeleted: () => _removeNationalIdFile(index),
-                        deleteIcon: const Icon(Icons.close, size: 18),
-                        backgroundColor: AppColors.cardBg,
-                        side: const BorderSide(color: AppColors.textPrimary),
-                        labelStyle: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 12,
-                        ),
-                      );
-                    }),
-                  ),
-                ],
                 const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel(
-                          localizations.translate("Blood_Type_title"),
-                        ),
-                        CustomSmallTextField(
-                          hintText: "e.g, AB+",
-                          controller: _bloodTypeController,
-                          iconType: SmallFieldIcon.menu,
-                          onTap: _pickBloodType,
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel(localizations.translate("Gender_title")),
-                        GenderSelectionField(
-                          onGenderChanged: (gender) {
-                            setState(() {
-                              _selectedGender = gender;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                _buildLabel(localizations.translate("National_ID_title")),
+                _buildNationalIdField(localizations),
+                const SizedBox(height: 18),
+                _buildLabel(localizations.translate("Gender_title")),
+                GenderSelectionField(
+                  onGenderChanged: (gender) {
+                    setState(() {
+                      _selectedGender = gender;
+                    });
+                  },
                 ),
 
-                const SizedBox(height: 60),
+                const SizedBox(height: 30),
 
                 BlocBuilder<RegisterCubit, RegisterState>(
                   builder: (context, state) {
@@ -264,8 +249,51 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
     _dobController.text = _formatDate(date);
   }
 
-  Future<void> _pickBloodType() async {
-    final values = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  List<String> get _filteredSpecializations {
+    final query = _specializationController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      return _commonSpecializations;
+    }
+
+    return _commonSpecializations.where((item) {
+      return item.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  void _onSpecializationChanged(String value) {
+    if (_isApplyingSpecializationSelection) {
+      return;
+    }
+
+    _specializationTypingDebounce?.cancel();
+
+    if (_isSpecializationPickerOpen || value.trim().isEmpty) {
+      return;
+    }
+
+    _specializationTypingDebounce = Timer(
+      const Duration(milliseconds: 550),
+      () {
+        if (!mounted || _isSpecializationPickerOpen) {
+          return;
+        }
+        _showSpecializationPicker();
+      },
+    );
+  }
+
+  Future<void> _showSpecializationPicker() async {
+    if (_isSpecializationPickerOpen) {
+      return;
+    }
+
+    final currentList = _filteredSpecializations;
+    if (currentList.isEmpty) {
+      return;
+    }
+
+    _isSpecializationPickerOpen = true;
+
     final selected = await showModalBottomSheet<String>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -275,10 +303,10 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
         return SafeArea(
           child: ListView.separated(
             shrinkWrap: true,
-            itemCount: values.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemCount: currentList.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final value = values[index];
+              final value = currentList[index];
               return ListTile(
                 title: Text(value),
                 onTap: () => Navigator.pop(context, value),
@@ -289,8 +317,23 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
       },
     );
 
-    if (selected != null && selected.isNotEmpty) {
-      _bloodTypeController.text = selected;
+    _isSpecializationPickerOpen = false;
+
+    if (selected == null || selected.trim().isEmpty) {
+      return;
+    }
+    _selectSpecialization(selected);
+  }
+
+  void _selectSpecialization(String specialization) {
+    _isApplyingSpecializationSelection = true;
+    _specializationController.text = specialization;
+    _specializationController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _specializationController.text.length),
+    );
+    _isApplyingSpecializationSelection = false;
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -319,7 +362,6 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
 
     setState(() {
       _nationalIdFiles.add(result.files.single);
-      _updateNationalIdControllerText();
     });
   }
 
@@ -340,7 +382,6 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
 
     setState(() {
       _nationalIdFiles[index] = result.files.single;
-      _updateNationalIdControllerText();
     });
   }
 
@@ -351,25 +392,70 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
 
     setState(() {
       _nationalIdFiles.removeAt(index);
-      _updateNationalIdControllerText();
     });
   }
 
-  void _updateNationalIdControllerText() {
-    if (_nationalIdFiles.isEmpty) {
-      _nationalIdController.clear();
-      return;
-    }
-
-    final labels = <String>[];
-    if (_nationalIdFiles.isNotEmpty) {
-      labels.add('Front: ${_nationalIdFiles[0].name}');
-    }
-    if (_nationalIdFiles.length > 1) {
-      labels.add('Back: ${_nationalIdFiles[1].name}');
-    }
-
-    _nationalIdController.text = labels.join(' | ');
+  Widget _buildNationalIdField(AppLocalizations localizations) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: _pickNationalIdFile,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.textPrimary),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _nationalIdFiles.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        localizations.translate("National_ID_hint"),
+                        style: TextStyle(
+                          color: AppColors.textSecondary.withOpacity(0.5),
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 2,
+                      runSpacing: 2,
+                      children: List.generate(_nationalIdFiles.length, (index) {
+                        final file = _nationalIdFiles[index];
+                        final label = index == 0 ? 'Front' : 'Back';
+                        return InputChip(
+                          label: Text('$label: ${file.name}'),
+                          onPressed: () => _replaceNationalIdFile(index),
+                          onDeleted: () => _removeNationalIdFile(index),
+                          deleteIcon: const Icon(Icons.close, size: 18),
+                          backgroundColor: AppColors.cardBg,
+                          side: const BorderSide(color: AppColors.textPrimary),
+                          labelStyle: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                          ),
+                        );
+                      }),
+                    ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _pickNationalIdFile,
+              icon: const Icon(
+                Icons.cloud_upload_outlined,
+                color: AppColors.textPrimary,
+              ),
+              tooltip: localizations.translate("National_ID_title"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -385,8 +471,9 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
     final phone = _readRegistrationValue('phone');
     final password = _readRegistrationValue('password');
     final confirmPassword = _readRegistrationValue('confirmPassword');
-    final selectedRole =
-      _readRegistrationValue('role') ?? _userSession.roleString ?? 'Patient';
+    final selectedRole = _normalizeFacilityRole(
+      _readRegistrationValue('role') ?? _userSession.roleString ?? 'Patient',
+    );
 
     if (name == null ||
         email == null ||
@@ -416,6 +503,16 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter your birth date'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_specializationController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter or choose a specialization'),
           backgroundColor: Colors.red,
         ),
       );
@@ -464,15 +561,15 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
       return;
     }
 
-    final patientModel = PatientRegisterRequestModel(
-      fullName: name,
+    final facilityModel = MedicalFacilityRequestModel(
+      fullname: name,
       email: email,
       phone: phone,
       password: password,
       confirmPassword: confirmPassword,
       birthDate: birthDateForApi,
       gender: _selectedGender!,
-      bloodGroup: _bloodTypeController.text,
+      specialization: _specializationController.text,
       address: _addressController.text,
       nationalIdFront: nationalIdFront,
       nationalIdBack: nationalIdBack,
@@ -485,7 +582,7 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
       return;
     }
 
-    context.read<RegisterCubit>().emitRegisterPatient(patientModel);
+    context.read<RegisterCubit>().emitRegisterFacility(facilityModel);
   }
 
   String? _extractUserId(dynamic data) {
@@ -577,5 +674,23 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
       return AppRoutes.hospitalhome;
     }
     return AppRoutes.patienthome;
+  }
+
+  String _normalizeFacilityRole(String role) {
+    final normalized = role.trim();
+    if (normalized.isEmpty) {
+      return 'Hospital';
+    }
+
+    switch (normalized) {
+      case 'MedicalFacility':
+      case 'ClinicAdmin':
+      case 'Hospital':
+        return 'Hospital';
+      case 'Doctor':
+        return 'Doctor';
+      default:
+        return normalized;
+    }
   }
 }

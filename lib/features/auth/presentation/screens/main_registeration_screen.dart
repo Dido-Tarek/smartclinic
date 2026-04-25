@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/login_redirect.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
 class MainRegisterScreen extends StatefulWidget {
   const MainRegisterScreen({super.key});
@@ -183,8 +184,7 @@ class _MainRegisterScreenState extends State<MainRegisterScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final selectedRole = prefs.getString('selected_role') ?? 'Patient';
+    final selectedRole = getIt<UserSession>().roleString ?? 'Patient';
 
     Navigator.pushNamed(
       context,

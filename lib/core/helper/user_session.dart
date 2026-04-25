@@ -1,43 +1,65 @@
 import 'package:smartclinic/core/helper/shared_preds_helper.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 
 class UserSession {
-  final SharedPrefsHelper _prefs;
-  UserSession(this._prefs);
+  // مفاتيح التخزين الثابتة
+  static const String _tokenKey = SharedPrefsHelper.tokenKey;
+  static const String _userIdKey = SharedPrefsHelper.userIdKey;
+  static const String _roleKey = SharedPrefsHelper.userRoleKey;
 
-  // حفظ بيانات المستخدم عند النجاح في الـ Login أو الـ Register
+  /// حفظ بيانات الجلسة بالكامل (تستخدم بعد Login أو Register ناجح)
   Future<void> saveUserSession({
     required String token,
-    required String patientId,
+    required String userId,
+    required String role,
   }) async {
-    await _prefs.setData(SharedPrefsHelper.tokenKey, token);
-    await savePatientId(patientId);
+    await SharedPrefsHelper.setData(_tokenKey, token);
+    await SharedPrefsHelper.setData(_userIdKey, userId);
+    await SharedPrefsHelper.setData(_roleKey, role);
   }
 
-  Future<void> savePatientId(String patientId) async {
-    await _prefs.setData(SharedPrefsHelper.patientIdKey, patientId);
-    // Backward compatibility for older keys used previously.
-    await _prefs.setData('patientId', patientId);
+  /// حفظ الـ ID فقط (تستخدم بعد Register عندما لا يوجد Token)
+  Future<void> saveUserId(String userId) async {
+    await SharedPrefsHelper.setData(_userIdKey, userId);
   }
 
-  // الحصول على الـ Token (مفيد للـ Interceptors)
-  String? get token => _prefs.getString(SharedPrefsHelper.tokenKey);
-
-  // الحصول على الـ Patient ID (مفيد للـ Features اللي بتحتاجه في الـ Body)
-  String? get patientId =>
-      _prefs.getString(SharedPrefsHelper.patientIdKey) ??
-      _prefs.getString('patientId');
-
-  // التأكد من أن المستخدم مسجل دخول (للـ Routing)
-  bool get isLoggedIn => token != null && patientId != null;
-
-  Future<void> clearPatientId() async {
-    await _prefs.removeData(SharedPrefsHelper.patientIdKey);
-    await _prefs.removeData('patientId');
+  /// حفظ الدور فقط (تستخدم من شاشة اختيار الحساب أو كـ fallback)
+  Future<void> saveRole(String role) async {
+    await SharedPrefsHelper.setData(_roleKey, role);
   }
 
-  // مسح الجلسة (Logout)
+  // --- Getters ---
+
+  String? get token => SharedPrefsHelper.getString(_tokenKey);
+
+  /// استرجاع الـ ID (سواء كان لمريض، دكتور، أو مستشفى)
+  String? get userId => SharedPrefsHelper.getString(_userIdKey);
+
+  /// استرجاع الـ Role كـ String
+  String? get roleString => SharedPrefsHelper.getString(_roleKey);
+
+  /// استرجاع الـ Role كـ Enum لسهولة التعامل في الـ Logic
+  UserRole get userRole => getRoleEnum(roleString);
+
+  /// التحقق هل المستخدم مسجل دخول أم لا
+  bool get isLoggedIn => token != null && userId != null;
+
+  // --- Methods ---
+
+  /// مسح بيانات الـ ID فقط
+  Future<void> clearUserId() async {
+    await SharedPrefsHelper.removeData(_userIdKey);
+  }
+
+  /// مسح الدور فقط
+  Future<void> clearRole() async {
+    await SharedPrefsHelper.removeData(_roleKey);
+  }
+
+  /// تسجيل الخروج (مسح كل بيانات الجلسة)
   Future<void> clearSession() async {
-    await _prefs.removeData(SharedPrefsHelper.tokenKey);
-    await clearPatientId();
+    await SharedPrefsHelper.removeData(_tokenKey);
+    await SharedPrefsHelper.removeData(_userIdKey);
+    await SharedPrefsHelper.removeData(_roleKey);
   }
 }

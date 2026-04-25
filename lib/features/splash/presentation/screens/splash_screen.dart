@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/injection_dependency.dart';
@@ -22,9 +23,14 @@ class _SplashScreenState extends State<SplashScreen> {
   void _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 5));
     final userSession = getIt<UserSession>();
+    final userRole = getRoleEnum(userSession.roleString);
     if (!mounted) return;
-    if (userSession.isLoggedIn) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    if (userSession.isLoggedIn && userRole.isPatient) {
+      Navigator.pushReplacementNamed(context, AppRoutes.patienthome);
+    } else if (userSession.isLoggedIn && userRole.isDoctor) {
+      Navigator.pushReplacementNamed(context, AppRoutes.doctorhome);
+    } else if (userSession.isLoggedIn && userRole.isHospital) {
+      Navigator.pushReplacementNamed(context, AppRoutes.hospitalhome);
     } else {
       Navigator.pushReplacementNamed(context, AppRoutes.lngSelect);
     }

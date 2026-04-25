@@ -9,9 +9,9 @@ abstract class AuthRepo {
   );
 
   // تسجيل منشأة طبية
-  // Future<ApiResult<dynamic>> registerFacility(
-  //   MedicalFacilityRegisterModel facilityModel,
-  // );
+  Future<ApiResult<dynamic>> registerFacility(
+    MedicalFacilityRequestModel facilityModel,
+  );
 
   // تسجيل دخول
   Future<ApiResult<dynamic>> login(String email, String password);

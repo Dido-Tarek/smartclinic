@@ -62,8 +62,12 @@
   "Address_hint": "Enter your National ID address",
   "National_ID_title": "National ID",
   "National_ID_hint": "Clear photo or PDF, max 5MB",
+  "Specialization_title": "Specialization",
+  "Specialization_hint": "e.g., Cardiology",
   "Blood_Type_title": "Blood Type",
   "Gender_title":"Gender",
+  "male": "Male",
+  "female": "Female",
   "relation_title": "Relation",
   "relation_hint": "e.g., Father, Mother, Spouse",
 
@@ -90,7 +94,7 @@
   "status_inactive": "Inactive",
   "recovery_date_title": "Recovery Date",
   "fill_required_fields": "Please fill all required fields",
-  "patient_id_required": "Patient ID is required",
+  "user_id_required": "User ID is required",
   "recovery_date_required": "Recovery date is required when status is inactive",
 
   "family_member_title": "Manage Your Family",

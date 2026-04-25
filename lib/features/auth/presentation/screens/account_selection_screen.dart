@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/features/auth/data/models/account_selection_model.dart';
 import 'package:smartclinic/core/widgets/login_redirect.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
 class AccountSelectionScreen extends StatefulWidget {
   final bool canNavigateToLogin;
@@ -127,9 +128,8 @@ class _AccountSelectionScreenState extends State<AccountSelectionScreen> {
           return;
         }
 
-        // Store the selected role
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('selected_role', option.role);
+        // Store selected role for Login/Register/Splash routing.
+        await getIt<UserSession>().saveRole(option.role);
         if (mounted) {
           Navigator.pushNamed(context, option.routeName);
         }

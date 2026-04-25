@@ -28,13 +28,13 @@ class _AddHealthIssue extends State<AddHealthIssue> {
   final _statusController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
 
-  String? _patientId;
+  String? _userId;
   String? _selectedStatus;
 
   @override
   void initState() {
     super.initState();
-    _loadPatientId();
+    _loadUserId();
   }
 
   @override
@@ -256,12 +256,12 @@ class _AddHealthIssue extends State<AddHealthIssue> {
 
   void _submit() {
     final localizations = AppLocalizations.of(context)!;
-    final patientId = _patientId?.trim() ?? '';
+    final userId = _userId?.trim() ?? '';
 
-    if (patientId.isEmpty) {
+    if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(localizations.translate('patient_id_required')),
+          content: Text(localizations.translate('user_id_required')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -303,16 +303,16 @@ class _AddHealthIssue extends State<AddHealthIssue> {
           : _notesController.text.trim(),
     );
 
-    context.read<HealthIssuesCubit>().emitAddHealthIssue(patientId, issue);
+    context.read<HealthIssuesCubit>().emitAddHealthIssue(userId, issue);
   }
 
-  Future<void> _loadPatientId() async {
-    final patientId = _userSession.patientId;
+  Future<void> _loadUserId() async {
+    final userId = _userSession.userId;
     if (!mounted) {
       return;
     }
     setState(() {
-      _patientId = patientId;
+      _userId = userId;
     });
   }
 

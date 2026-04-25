@@ -37,14 +37,14 @@ class _UploadMedicalRecordsScreenState
   final _appointmentIdController = TextEditingController();
   final _doctorIdController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
-  String? _patientId;
+  String? _userId;
 
   final List<PlatformFile> _selectedFiles = <PlatformFile>[];
 
   @override
   void initState() {
     super.initState();
-    _loadPatientId();
+    _loadUserId();
   }
 
   @override
@@ -252,12 +252,12 @@ class _UploadMedicalRecordsScreenState
 
   void _submit() {
     final localizations = AppLocalizations.of(context)!;
-    final patientId = _patientId?.trim() ?? '';
+    final userId = _userId?.trim() ?? '';
 
-    if (patientId.isEmpty) {
+    if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(localizations.translate('patient_id_required')),
+          content: Text(localizations.translate('user_id_required')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -299,7 +299,7 @@ class _UploadMedicalRecordsScreenState
       file: File(selectedFile.path!),
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
-      patientId: patientId,
+      patientId: userId,
       appointmentId: appointmentId,
       doctorId: _doctorIdController.text.trim().isEmpty
           ? null
@@ -317,13 +317,13 @@ class _UploadMedicalRecordsScreenState
     });
   }
 
-  Future<void> _loadPatientId() async {
-    final patientId = _userSession.patientId;
+  Future<void> _loadUserId() async {
+    final userId = _userSession.userId;
     if (!mounted) {
       return;
     }
     setState(() {
-      _patientId = patientId;
+      _userId = userId;
     });
   }
 

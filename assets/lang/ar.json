@@ -62,8 +62,12 @@
   "Address_hint": "أدخل عنوانك المسجل في البطاقة الشخصية",
   "National_ID_title": "بطاقة الرقم القومي",
   "National_ID_hint": "صورة واضحة أو ملف PDF، بحد أقصى 5 ميجا",
+  "Specialization_title": "التخصص",
+  "Specialization_hint": "مثال: أمراض القلب",
   "Blood_Type_title": "فصيلة الدم",
   "Gender_title": "النوع",
+  "male": "ذكر",
+  "female": "أنثى",
   "relation_title": "صلة القرابة",
   "relation_hint": "مثال: أب، أم، زوج/زوجة",
 
@@ -90,7 +94,7 @@
   "status_inactive": "غير نشطة",
   "recovery_date_title": "تاريخ التعافي",
   "fill_required_fields": "يرجى ملء جميع الحقول المطلوبة",
-  "patient_id_required": "معرف المريض مطلوب",
+  "user_id_required": "معرف المستخدم مطلوب",
   "recovery_date_required": "تاريخ التعافي مطلوب عندما تكون الحالة غير نشطة",
 
   "family_member_title": "إدارة شؤون عائلتك",

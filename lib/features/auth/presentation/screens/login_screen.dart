@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
@@ -40,24 +41,28 @@ class _LoginScreenState extends State<LoginScreen> {
           state.whenOrNull(
             success: (data) async {
               final userSession = getIt<UserSession>();
-              final patientId = _extractPatientId(data);
+              final userId = _extractUserId(data);
               final token = _extractToken(data);
+              final selectedRole = userSession.roleString ?? 'Patient';
+              final role = _extractRole(data) ?? selectedRole;
 
-              if (patientId != null) {
-                if (token != null) {
-                  await userSession.saveUserSession(
-                    token: token,
-                    patientId: patientId,
-                  );
-                } else {
-                  await userSession.savePatientId(patientId);
+              if (token != null && userId != null) {
+                await userSession.saveUserSession(
+                  token: token,
+                  userId: userId,
+                  role: role,
+                );
+              } else {
+                if (userId != null) {
+                  await userSession.saveUserId(userId);
                 }
+                await userSession.saveRole(role);
               }
 
               if (!context.mounted) {
                 return;
               }
-              Navigator.pushReplacementNamed(context, AppRoutes.home);
+              Navigator.pushReplacementNamed(context, _resolveHomeRoute(role));
             },
             error: (message) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -275,24 +280,24 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  String? _extractPatientId(dynamic data) {
+  String? _extractUserId(dynamic data) {
     if (data == null) {
       return null;
     }
 
     if (data is Map) {
       final direct =
-          data['patientId'] ??
-          data['patient_id'] ??
           data['userId'] ??
           data['user_id'] ??
+          data['patientId'] ??
+          data['patient_id'] ??
           data['id'];
       if (direct != null && direct.toString().trim().isNotEmpty) {
         return direct.toString().trim();
       }
 
       for (final value in data.values) {
-        final nested = _extractPatientId(value);
+        final nested = _extractUserId(value);
         if (nested != null && nested.isNotEmpty) {
           return nested;
         }
@@ -301,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (data is List) {
       for (final value in data) {
-        final nested = _extractPatientId(value);
+        final nested = _extractUserId(value);
         if (nested != null && nested.isNotEmpty) {
           return nested;
         }
@@ -345,6 +350,52 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return null;
+  }
+
+  String? _extractRole(dynamic data) {
+    if (data == null) {
+      return null;
+    }
+
+    if (data is Map) {
+      final direct =
+          data['role'] ??
+          data['userRole'] ??
+          data['user_role'] ??
+          data['accountType'];
+      if (direct != null && direct.toString().trim().isNotEmpty) {
+        return direct.toString().trim();
+      }
+
+      for (final value in data.values) {
+        final nested = _extractRole(value);
+        if (nested != null && nested.isNotEmpty) {
+          return nested;
+        }
+      }
+    }
+
+    if (data is List) {
+      for (final value in data) {
+        final nested = _extractRole(value);
+        if (nested != null && nested.isNotEmpty) {
+          return nested;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String _resolveHomeRoute(String role) {
+    final roleEnum = getRoleEnum(role);
+    if (roleEnum.isDoctor) {
+      return AppRoutes.doctorhome;
+    }
+    if (roleEnum.isHospital) {
+      return AppRoutes.hospitalhome;
+    }
+    return AppRoutes.patienthome;
   }
 }
 

@@ -29,9 +29,7 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<SharedPrefsHelper>(() => SharedPrefsHelper());
 
   // UserSession يعتمد على الـ Helper لإدارة الجلسة
-  getIt.registerLazySingleton<UserSession>(
-    () => UserSession(getIt<SharedPrefsHelper>()),
-  );
+  getIt.registerLazySingleton<UserSession>(() => UserSession());
 
   // 2. Network (Dio & DioClient)
   // بنسجل الـ Dio اللي جواه الـ Interceptors (الـ AuthInterceptor)

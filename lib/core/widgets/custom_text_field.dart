@@ -17,6 +17,7 @@ class AppTextFormField extends StatefulWidget {
   final String? Function(String?)? validator;
   final VoidCallback? onTap;
   final VoidCallback? onSuffixTap;
+  final ValueChanged<String>? onChanged;
   final TextInputType keyboardType;
 
   const AppTextFormField({
@@ -27,6 +28,7 @@ class AppTextFormField extends StatefulWidget {
     this.validator,
     this.onTap,
     this.onSuffixTap,
+    this.onChanged,
     this.keyboardType = TextInputType.text,
   });
 
@@ -48,7 +50,7 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
       case TextFormFieldType.location:
         return Icons.location_on_outlined;
       case TextFormFieldType.speciality:
-        return Icons.arrow_drop_down_circle_outlined;
+        return Icons.menu_rounded;
       case TextFormFieldType.fileUpload:
         return Icons.cloud_upload_outlined;
       default:
@@ -65,11 +67,11 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
           ? _obscureText
           : false,
       validator: widget.validator,
+        onChanged: widget.onChanged,
       // جعل الحقل للقراءة فقط في حالة التاريخ أو الرفع أو القائمة المنسدلة
       readOnly:
           widget.type == TextFormFieldType.date ||
-          widget.type == TextFormFieldType.fileUpload ||
-          widget.type == TextFormFieldType.speciality,
+          widget.type == TextFormFieldType.fileUpload,
       onTap: widget.type == TextFormFieldType.fileUpload ? null : widget.onTap,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
       decoration: InputDecoration(
@@ -101,8 +103,12 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
         );
       case TextFormFieldType.date:
       case TextFormFieldType.location:
-      case TextFormFieldType.speciality:
         return Icon(_getSuffixIcon(), color: AppColors.textSecondary);
+      case TextFormFieldType.speciality:
+        return IconButton(
+          icon: Icon(_getSuffixIcon(), color: AppColors.textSecondary),
+          onPressed: widget.onSuffixTap,
+        );
       case TextFormFieldType.fileUpload:
         return IconButton(
           icon: Icon(_getSuffixIcon(), color: AppColors.textPrimary),

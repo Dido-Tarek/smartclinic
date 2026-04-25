@@ -1,31 +1,29 @@
-// import 'package:json_annotation/json_annotation.dart';
-// import 'package:smartclinic/features/auth/data/models/registeration_request_model.dart';
+import 'dart:io';
 
-// part 'medical_facility_register_model.g.dart';
+class MedicalFacilityRequestModel {
+  final String fullname;
+  final String email;
+  final String password;
+  final String confirmPassword;
+  final String phone;
+  final String address;
+  final String birthDate;
+  final String gender;
+  final String specialization;
+  final File nationalIdFront;
+  final File nationalIdBack;
 
-// @JsonSerializable()
-// class MedicalFacilityRegisterModel extends RegisterRequestModel {
-//   final String? licenseNumber;
-//   final String? facilityType; // Clinic, Hospital, Lab
-//   final String? specialization;
-//   final String? locationUrl;
-
-//   MedicalFacilityRegisterModel({
-//     required super.name,
-//     required super.email,
-//     required super.phone,
-//     required super.password,
-//     required super.confirmPassword,
-//     required super.role,
-//     this.licenseNumber,
-//     this.facilityType,
-//     this.specialization,
-//     this.locationUrl,
-//   });
-
-//   factory MedicalFacilityRegisterModel.fromJson(Map<String, dynamic> json) =>
-//       _$MedicalFacilityRegisterModelFromJson(json);
-
-//   @override
-//   Map<String, dynamic> toJson() => _$MedicalFacilityRegisterModelToJson(this);
-// }
+  MedicalFacilityRequestModel({
+    required this.fullname,
+    required this.email,
+    required this.password,
+    required this.confirmPassword,
+    required this.phone,
+    required this.address,
+    required this.birthDate,
+    required this.gender,
+    required this.specialization,
+    required this.nationalIdFront,
+    required this.nationalIdBack,
+  });
+}
