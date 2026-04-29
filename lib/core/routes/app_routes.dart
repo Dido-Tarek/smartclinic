@@ -20,4 +20,8 @@ class AppRoutes {
   static const String doctorhome = '/doctorhome';
   static const String hospitalhome = '/hospitalhome';
   static const String verifyDoctor = '/verifyDoctor';
+  static const String clinicDetails = '/clinicDetails';
+  static const String appointmentDetails = '/appointmentDetails';
+  static const String clinicManagement = '/clinicManagement';
+  static const String medicalFacilityManagement = '/medicalFacilityManagement';
 }

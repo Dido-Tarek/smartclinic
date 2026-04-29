@@ -8,6 +8,11 @@ import 'package:smartclinic/features/auth/domain/auth_repo.dart';
 import 'package:smartclinic/features/auth/domain/auth_repo_impl.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
+import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
+import 'package:smartclinic/features/clinic/data/api/clinic_api_service.dart';
+import 'package:smartclinic/features/clinic/domain/facility_repo.dart';
+import 'package:smartclinic/features/clinic/domain/facility_repo_impl.dart';
+import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/family_members/data/api/family_member_api_service.dart';
 import 'package:smartclinic/features/family_members/data/repo/family_member_repo_impl.dart';
 import 'package:smartclinic/features/family_members/domain/repo/family_member_repo.dart';
@@ -49,6 +54,9 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<MedicalRecordsApiService>(
     () => MedicalRecordsApiService(getIt<Dio>()),
   );
+  getIt.registerLazySingleton<ClinicApiService>(
+    () => ClinicApiService(getIt<Dio>()),
+  );
 
   // 4. Repositories (Domain & Data)
   getIt.registerLazySingleton<AuthRepo>(
@@ -63,6 +71,9 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<MedicalRecordsRepo>(
     () => MedicalRecordsRepoImpl(getIt<MedicalRecordsApiService>()),
   );
+  getIt.registerLazySingleton<FacilityRepo>(
+    () => FacilityRepoImpl(getIt<ClinicApiService>()),
+  );
 
   // 5. Cubits (Factory لضمان حالة جديدة مع كل شاشة)
   getIt.registerFactory<RegisterCubit>(() => RegisterCubit(getIt<AuthRepo>()));
@@ -73,5 +84,11 @@ Future<void> setupGetIt() async {
   );
   getIt.registerFactory<MedicalRecordsCubit>(
     () => MedicalRecordsCubit(getIt<MedicalRecordsRepo>()),
+  );
+  getIt.registerFactory<UploadCredentialsCubit>(
+    () => UploadCredentialsCubit(getIt()),
+  );
+  getIt.registerFactory<AddClinicCubit>(
+    () => AddClinicCubit(getIt<FacilityRepo>()),
   );
 }

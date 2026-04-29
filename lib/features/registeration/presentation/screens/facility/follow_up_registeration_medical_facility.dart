@@ -93,7 +93,11 @@ class _FollowUpRegisterScreenDoctorState
           initial: () {},
           loading: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registering Medical Facility...')),
+              SnackBar(
+                content: Text(
+                  localizations.translate("register_facility_loading"),
+                ),
+              ),
             );
           },
           success: (data) async {
@@ -105,9 +109,11 @@ class _FollowUpRegisterScreenDoctorState
             final userId = _extractUserId(data);
             if (userId == null || userId.trim().isEmpty) {
               messenger.showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text(
-                    'Registration succeeded, but user id was not returned. Please try again.',
+                    localizations.translate(
+                      "register_facility_user_id_missing",
+                    ),
                   ),
                   backgroundColor: Colors.red,
                 ),
@@ -122,13 +128,23 @@ class _FollowUpRegisterScreenDoctorState
             }
 
             messenger.showSnackBar(
-              const SnackBar(
-                content: Text('Registration completed successfully'),
+              SnackBar(
+                content: Text(
+                  localizations.translate("register_facility_success"),
+                ),
               ),
             );
             if (getRoleEnum(selectedRole).isDoctor ||
                 getRoleEnum(selectedRole).isHospital) {
-              navigator.pushReplacementNamed(AppRoutes.uploadMedicalRecords);
+              navigator.pushReplacementNamed(
+                AppRoutes.verifyDoctor,
+                arguments: {
+                  'registrationData': data,
+                  'userId': userId.trim(),
+                  'role': selectedRole,
+                  'selectedRole': selectedRole,
+                },
+              );
             } else {
               navigator.pushReplacementNamed(_resolveHomeRoute(selectedRole));
             }
@@ -136,7 +152,9 @@ class _FollowUpRegisterScreenDoctorState
           error: (message) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Registration failed: $message'),
+                content: Text(
+                  '${localizations.translate("register_facility_failed")}$message',
+                ),
                 backgroundColor: Colors.red,
               ),
             );
@@ -339,10 +357,11 @@ class _FollowUpRegisterScreenDoctorState
 
   Future<void> _pickNationalIdFile() async {
     if (_nationalIdFiles.length >= 2) {
+      final localizations = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Maximum 2 files reached. Remove or tap a file to replace it.',
+            localizations.translate("register_facility_max_files_reached"),
           ),
           backgroundColor: Colors.red,
         ),
@@ -466,6 +485,7 @@ class _FollowUpRegisterScreenDoctorState
   }
 
   Future<void> _onRegisterPressed() async {
+    final localizations = AppLocalizations.of(context)!;
     final name = _readRegistrationValue('name');
     final email = _readRegistrationValue('email');
     final phone = _readRegistrationValue('phone');
@@ -481,8 +501,10 @@ class _FollowUpRegisterScreenDoctorState
         password == null ||
         confirmPassword == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Missing registration information'),
+        SnackBar(
+          content: Text(
+            localizations.translate("register_facility_missing_info"),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -491,8 +513,10 @@ class _FollowUpRegisterScreenDoctorState
 
     if (_selectedGender == null || _selectedGender!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please choose a gender'),
+        SnackBar(
+          content: Text(
+            localizations.translate("register_facility_choose_gender"),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -501,8 +525,10 @@ class _FollowUpRegisterScreenDoctorState
 
     if (_dobController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your birth date'),
+        SnackBar(
+          content: Text(
+            localizations.translate("register_facility_enter_birth_date"),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -511,8 +537,10 @@ class _FollowUpRegisterScreenDoctorState
 
     if (_specializationController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter or choose a specialization'),
+        SnackBar(
+          content: Text(
+            localizations.translate("register_facility_choose_specialization"),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -522,9 +550,9 @@ class _FollowUpRegisterScreenDoctorState
     final birthDateForApi = _formatBirthDateForApi(_dobController.text);
     if (birthDateForApi == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Birth date format is invalid. Please pick the date again.',
+            localizations.translate("register_facility_birth_date_invalid"),
           ),
           backgroundColor: Colors.red,
         ),
@@ -534,9 +562,11 @@ class _FollowUpRegisterScreenDoctorState
 
     if (_nationalIdFiles.length != 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Please upload exactly 2 files for National ID (front and back).',
+            localizations.translate(
+              "register_facility_national_id_files_required",
+            ),
           ),
           backgroundColor: Colors.red,
         ),
@@ -551,9 +581,11 @@ class _FollowUpRegisterScreenDoctorState
 
     if (nationalIdFront == null || nationalIdBack == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Selected National ID files must have valid file paths.',
+            localizations.translate(
+              "register_facility_national_id_invalid_paths",
+            ),
           ),
           backgroundColor: Colors.red,
         ),
