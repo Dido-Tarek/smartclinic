@@ -62,4 +62,21 @@ class UserSession {
     await SharedPrefsHelper.removeData(_userIdKey);
     await SharedPrefsHelper.removeData(_roleKey);
   }
+
+  Future<void> initMockSession({
+    required UserRole role,
+    required String userId,
+  }) async {
+    const String mockToken = "debug_token_abc_123";
+
+    await saveUserSession(
+      token: mockToken,
+      userId: userId,
+      role: role
+          .name, // بيستخدم الـ name من الـ Enum اللي عملناه (Doctor, Patient, Hospital)
+    );
+
+    print("🚀 [DEBUG MODE]: Session Initialized as ${role.name}");
+    print("🆔 User ID: $userId");
+  }
 }

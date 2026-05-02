@@ -9,10 +9,13 @@ import 'register_state.dart';
 class RegisterCubit extends Cubit<RegisterState> {
   final AuthRepo _authRepo;
   String _selectedRole = 'Patient';
+  dynamic _lastRegistrationData;
 
   RegisterCubit(this._authRepo) : super(const RegisterState.initial());
 
   String get selectedRole => _selectedRole;
+
+  dynamic get lastRegistrationData => _lastRegistrationData;
 
   void setSelectedRole(String role) {
     final normalized = role.trim();
@@ -29,6 +32,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     response.when(
       success: (data) {
+        _lastRegistrationData = data;
         emit(RegisterState.success(data));
       },
       failure: (message) {
@@ -47,6 +51,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     response.when(
       success: (data) {
+        _lastRegistrationData = data;
         emit(RegisterState.success(data));
       },
       failure: (message) {

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
+import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
+import 'package:smartclinic/features/clinic/presentation/screens/appointment_details.dart';
+import 'package:smartclinic/features/clinic/presentation/screens/clinic_details.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/family_member.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/add_family_member.dart';
@@ -9,6 +13,8 @@ import 'package:smartclinic/features/auth/presentation/manager/register_cubit.da
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/follow_up_registeration_medical_facility.dart';
+import 'package:smartclinic/features/registeration/presentation/screens/facility/license_verification.dart';
+import 'package:smartclinic/features/registeration/presentation/screens/facility/medical_facility_management.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -124,6 +130,46 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             body: Center(child: Text('Home Screen Placeholder for Hospital')),
+          ),
+        );
+      case AppRoutes.verifyDoctor:
+        final arguments = settings.arguments;
+        final registrationArgs = arguments is Map
+            ? arguments.map((key, value) => MapEntry(key.toString(), value))
+            : null;
+        return MaterialPageRoute(
+          builder: (_) =>
+              LicenseVerificationPage(registrationArgs: registrationArgs),
+        );
+      case AppRoutes.clinicDetails:
+        return MaterialPageRoute(builder: (_) => const ClinicDetailsPage());
+      case AppRoutes.appointmentDetails:
+        final args = settings.arguments;
+        final hasTypeFlags = args is Map &&
+            (args['clinic'] is bool ||
+                args['online'] is bool ||
+                args['homeVisit'] is bool);
+        final appointmentTypes = hasTypeFlags
+            ? {
+                if (args['clinic'] == true) 'clinic',
+                if (args['online'] == true) 'online',
+                if (args['homeVisit'] == true) 'homeVisit',
+              }
+            : <String>{'clinic', 'online', 'homeVisit'};
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<AddClinicCubit>(),
+            child: AppointmentDetailsPage(
+              enabledAppointmentTypes: appointmentTypes,
+            ),
+          ),
+        );
+      case AppRoutes.medicalFacilityManagement:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<UploadCredentialsCubit>(),
+            child: const MedicalFacilityManagementPage(),
           ),
         );
       default:

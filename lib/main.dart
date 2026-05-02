@@ -9,6 +9,8 @@ import 'core/constants/config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localization.dart';
 import 'injection_dependency.dart';
+import 'core/helper/user_session.dart';
+import 'core/helper/user_roles.dart';
 
 final GlobalKey<MyAppState> appKey = GlobalKey<MyAppState>();
 
@@ -17,6 +19,24 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await SharedPrefsHelper.init();
   await setupGetIt();
+
+  // ---------------------------------------------------------
+  await getIt<UserSession>().initMockSession(
+    role: UserRole.doctor,
+    userId: "5fe5c967-3797-4dac-a1a8-3faba1265e32",
+  );
+
+  // await getIt<UserSession>().initMockSession(
+  //   role: UserRole.patient,
+  //   userId: "cbdb804d-1092-4d98-9d86-a9b028a46903",
+  // );
+
+  // await getIt<UserSession>().initMockSession(
+  //   role: UserRole.hospital,
+  //   userId: "YOUR_HOSPITAL_ID_HERE",
+  // );
+
+  // ---------------------------------------------------------
   runApp(MyApp(key: appKey));
 }
 
@@ -63,7 +83,7 @@ class MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      initialRoute: AppRoutes.splash,
+      initialRoute: AppRoutes.appointmentDetails,
       onGenerateRoute: AppRouter.generateRoute,
     );
   }

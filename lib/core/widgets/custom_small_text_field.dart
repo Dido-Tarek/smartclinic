@@ -8,18 +8,26 @@ enum SmallFieldIcon { upload, menu, clock }
 class CustomSmallTextField extends StatelessWidget {
   final String? hintText;
   final TextEditingController controller;
-  final SmallFieldIcon iconType;
+  final SmallFieldIcon? iconType;
+  final String? suffixText;
   final VoidCallback? onTap;
+  final TextInputType keyboardType;
+  final bool readOnly;
+  final double widthFactor;
 
   const CustomSmallTextField({
     super.key,
     this.hintText,
     required this.controller,
-    required this.iconType,
+    this.iconType,
+    this.suffixText,
     this.onTap,
+    this.keyboardType = TextInputType.text,
+    this.readOnly = false,
+    this.widthFactor = 0.40,
   });
 
-  IconData _getIcon() {
+  IconData _getIcon(SmallFieldIcon iconType) {
     switch (iconType) {
       case SmallFieldIcon.upload:
         return Icons.upload_file_outlined;
@@ -35,10 +43,11 @@ class CustomSmallTextField extends StatelessWidget {
     final size = MediaQuery.of(context).size;
 
     return SizedBox(
-      width: size.width * 0.40, // جعلته 40% ليناسب الـ Padding والوضوح
+      width: size.width * widthFactor,
       child: TextFormField(
         controller: controller,
-        readOnly: onTap != null,
+        keyboardType: keyboardType,
+        readOnly: readOnly || onTap != null,
         onTap: onTap,
         decoration: InputDecoration(
           hintText: hintText,
@@ -46,7 +55,19 @@ class CustomSmallTextField extends StatelessWidget {
             color: AppColors.textSecondary,
             fontSize: 14,
           ),
-          suffixIcon: Icon(_getIcon(), color: AppColors.textPrimary, size: 22),
+          suffixText: suffixText,
+          suffixStyle: const TextStyle(
+            color: AppColors.skyBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+          suffixIcon: suffixText == null && iconType != null
+              ? Icon(
+                  _getIcon(iconType!),
+                  color: AppColors.textPrimary,
+                  size: 22,
+                )
+              : null,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 18,
