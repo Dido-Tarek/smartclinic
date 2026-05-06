@@ -9,6 +9,9 @@ import 'package:smartclinic/features/auth/domain/auth_repo_impl.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
+import 'package:smartclinic/features/chat/data/api/chat_api_service.dart';
+import 'package:smartclinic/features/chat/data/repo/chat_repo.dart';
+import 'package:smartclinic/features/chat/presentation/manager/chat_cubit.dart';
 import 'package:smartclinic/features/clinic/data/api/clinic_api_service.dart';
 import 'package:smartclinic/features/clinic/domain/facility_repo.dart';
 import 'package:smartclinic/features/clinic/domain/facility_repo_impl.dart';
@@ -25,6 +28,14 @@ import 'package:smartclinic/features/medical_records/data/api/medical_records_ap
 import 'package:smartclinic/features/medical_records/data/repos/medical_records_repo_impl.dart';
 import 'package:smartclinic/features/medical_records/domain/repos/medical_records_repo.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
+import 'package:smartclinic/features/notification/data/api/notifications_api_service.dart';
+import 'package:smartclinic/features/notification/domain/repo/notifications_repo.dart';
+import 'package:smartclinic/features/notification/domain/repo/notifications_repo_impl.dart';
+import 'package:smartclinic/features/notification/presentation/manager/notifications_cubit.dart';
+import 'package:smartclinic/features/nouga/data/api/nouga_ai_api_service.dart';
+import 'package:smartclinic/features/nouga/data/local/nouga_conversation_store.dart';
+import 'package:smartclinic/features/nouga/data/repo/nouga_ai_repo.dart';
+import 'package:smartclinic/features/nouga/presentation/manager/nouga_ai_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -57,6 +68,15 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<ClinicApiService>(
     () => ClinicApiService(getIt<Dio>()),
   );
+  getIt.registerLazySingleton<NotificationsApiService>(
+    () => NotificationsApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<MedicalChatApiService>(
+    () => MedicalChatApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<ChatApiService>(
+    () => ChatApiService(getIt<Dio>()),
+  );
 
   // 4. Repositories (Domain & Data)
   getIt.registerLazySingleton<AuthRepo>(
@@ -73,6 +93,18 @@ Future<void> setupGetIt() async {
   );
   getIt.registerLazySingleton<FacilityRepo>(
     () => FacilityRepoImpl(getIt<ClinicApiService>()),
+  );
+  getIt.registerLazySingleton<NotificationsRepo>(
+    () => NotificationsRepoImpl(getIt<NotificationsApiService>()),
+  );
+  getIt.registerLazySingleton<MedicalChatRepo>(
+    () => MedicalChatRepoImpl(getIt<MedicalChatApiService>()),
+  );
+  getIt.registerLazySingleton<NougaConversationStore>(
+    () => NougaConversationStore(),
+  );
+  getIt.registerLazySingleton<ChatRepo>(
+    () => ChatRepo(getIt<ChatApiService>()),
   );
 
   // 5. Cubits (Factory لضمان حالة جديدة مع كل شاشة)
@@ -91,4 +123,11 @@ Future<void> setupGetIt() async {
   getIt.registerFactory<AddClinicCubit>(
     () => AddClinicCubit(getIt<FacilityRepo>()),
   );
+  getIt.registerFactory<NotificationsCubit>(
+    () => NotificationsCubit(getIt<NotificationsRepo>()),
+  );
+  getIt.registerFactory<SendMessageCubit>(
+    () => SendMessageCubit(getIt<MedicalChatRepo>()),
+  );
+  getIt.registerFactory<ChatCubit>(() => ChatCubit(getIt<ChatRepo>()));
 }

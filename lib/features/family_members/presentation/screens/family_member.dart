@@ -134,7 +134,7 @@ class _FamilyMemberState extends State<FamilyMember> {
                       onPressed: () {
                         Navigator.pushNamedAndRemoveUntil(
                           context,
-                          AppRoutes.patienthome,
+                          AppRoutes.home,
                           (route) => false,
                         );
                       },

@@ -128,10 +128,10 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
             Navigator.pushReplacementNamed(
               context,
               role.isDoctor
-                  ? AppRoutes.doctorhome
+                  ? AppRoutes.home
                   : role.isHospital
                   ? AppRoutes.hospitalhome
-                  : AppRoutes.patienthome,
+                  : AppRoutes.home,
             );
           },
           error: (error) {

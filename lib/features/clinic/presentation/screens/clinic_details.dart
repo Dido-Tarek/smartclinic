@@ -9,8 +9,8 @@ import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:smartclinic/core/widgets/map_location_picker.dart';
+// import 'package:google_maps_flutter/google_maps_flutter.dart';
+// import 'package:smartclinic/core/widgets/map_location_picker.dart';
 
 class ClinicDetailsPage extends StatefulWidget {
   const ClinicDetailsPage({super.key});
@@ -185,7 +185,7 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
                         'facility_location_subtitle',
                       ),
                       type: TextFormFieldType.location,
-                      onTap: _onOpenMap,
+                      // onTap: _onOpenMap,
                     ),
                     const SizedBox(height: 14),
                     _buildLabel(
@@ -341,28 +341,28 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     });
   }
 
-  Future<void> _onOpenMap() async {
-    final initialLocation = _latitude != null && _longitude != null
-        ? LatLng(_latitude!, _longitude!)
-        : const LatLng(30.0444, 31.2357);
+  // Future<void> _onOpenMap() async {
+  //   final initialLocation = _latitude != null && _longitude != null
+  //       ? LatLng(_latitude!, _longitude!)
+  //       : const LatLng(30.0444, 31.2357);
 
-    final result = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            MapLocationPickerScreen(initialLocation: initialLocation),
-      ),
-    );
+  //   final result = await Navigator.push<Map<String, dynamic>>(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (_) =>
+  //           MapLocationPickerScreen(initialLocation: initialLocation),
+  //     ),
+  //   );
 
-    if (result != null && mounted) {
-      setState(() {
-        _latitude = result['latitude'] as double?;
-        _longitude = result['longitude'] as double?;
-        _locationController.text =
-            '${_latitude?.toStringAsFixed(6)}, ${_longitude?.toStringAsFixed(6)}';
-      });
-    }
-  }
+  //   if (result != null && mounted) {
+  //     setState(() {
+  //       _latitude = result['latitude'] as double?;
+  //       _longitude = result['longitude'] as double?;
+  //       _locationController.text =
+  //           '${_latitude?.toStringAsFixed(6)}, ${_longitude?.toStringAsFixed(6)}';
+  //     });
+  //   }
+  // }
 
   void _onSavePressed() {
     Navigator.pushNamed(

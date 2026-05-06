@@ -39,4 +39,13 @@ class AppColors {
   static const Color textPrimary = Color(0xFF1A2D42);
   static const Color textSecondary = Color(0xFF64748B);
   static const Color textLight = Colors.white70;
+
+  //
+  static const Color yellowRating = Color(0xFFFFB300); // للنجوم والتقييم
+  static const Color darkSlate = Color(0xFF1E293B); // للنصوص العريضة
+  static const Color blueAction = Color(
+    0xFF247CFF,
+  ); // للأزرار والـ Active States
+  static const Color grayText = Color(0xFF64748B); // للنصوص الفرعية
+  static const Color lightGrayBg = Color(0xFFF1F5F9); // خلفيات الأيقونات
 }

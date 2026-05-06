@@ -436,7 +436,7 @@ class _FollowUpRegisterScreenDoctorState
                       child: Text(
                         localizations.translate("National_ID_hint"),
                         style: TextStyle(
-                          color: AppColors.textSecondary.withOpacity(0.5),
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
                           fontSize: 14,
                         ),
                       ),
@@ -700,12 +700,12 @@ class _FollowUpRegisterScreenDoctorState
   String _resolveHomeRoute(String role) {
     final roleEnum = getRoleEnum(role);
     if (roleEnum.isDoctor) {
-      return AppRoutes.doctorhome;
+      return AppRoutes.home;
     }
     if (roleEnum.isHospital) {
       return AppRoutes.hospitalhome;
     }
-    return AppRoutes.patienthome;
+    return AppRoutes.home;
   }
 
   String _normalizeFacilityRole(String role) {

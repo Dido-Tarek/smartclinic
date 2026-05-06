@@ -20,6 +20,9 @@ class AppImages {
   static const String imagesDoctorDRRazanHany =
       "assets/images/doctor/DR.Razan_Hany.png";
 
+  static const String imagesDoctorDRSaraHassan =
+      "assets/images/doctor/DR.Sara_Hassan.png";
+
   static const String imagesIconsAssistant =
       "assets/images/icons/assistant.png";
 
@@ -91,4 +94,12 @@ class AppImages {
 
   static const String imagesSpecialityTooth =
       "assets/images/speciality/tooth.png";
+
+  static const String emptyNotifications =
+      "assets/videos/Empty Notifications.gif";
+
+  static const String emptyInbox = "assets/videos/emptyInbox.gif";
+
+  static const String iconssthethoscope =
+      "assets/images/icons/sthethoscope.png";
 }

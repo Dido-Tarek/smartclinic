@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/constants/assets.dart';
+
+class HomeHeader extends StatelessWidget {
+  const HomeHeader({
+    super.key,
+    this.avatarAssetPath = AppImages.imagesIconsMan,
+    this.title = 'Hi, Khatab !',
+    this.subtitle = 'How do you feel today?',
+    this.showNotificationDot = false,
+    this.onNotificationTap,
+  });
+
+  final String avatarAssetPath;
+  final String title;
+  final String subtitle;
+  final bool showNotificationDot;
+  final VoidCallback? onNotificationTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 30,
+          backgroundImage: AssetImage(avatarAssetPath),
+          backgroundColor: AppColors.scaffoldBg,
+        ),
+        SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onNotificationTap,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  size: 28,
+                  color: Color(0xFF1E293B),
+                ),
+                if (showNotificationDot)
+                  const Positioned(
+                    top: 10,
+                    right: 12,
+                    child: SizedBox(
+                      width: 10,
+                      height: 10,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.softLavender,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

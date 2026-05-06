@@ -205,6 +205,13 @@
   "add_family_member_title": "إضافة فرد عائلة",
   "family_member_saved": "تمت إضافة فرد العائلة بنجاح",
 
+  "inbox_icon_title": "البريد الوارد",
+  "booking_icon_title": "الحجوزات",
+  "profile_icon_title": "الملف الشخصي",
+  "home_icon_title": "الرئيسية",
+
+  "search_hint": "ابحث عن الطبيب المناسب لك",
+  
   "Save": "حفظ ومتابعة",
   "Register": "تسجيل",
   "New": "إضافة جديد +",
