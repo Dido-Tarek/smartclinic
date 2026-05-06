@@ -67,7 +67,7 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
           ? _obscureText
           : false,
       validator: widget.validator,
-        onChanged: widget.onChanged,
+      onChanged: widget.onChanged,
       // جعل الحقل للقراءة فقط في حالة التاريخ أو الرفع أو القائمة المنسدلة
       readOnly:
           widget.type == TextFormFieldType.date ||
@@ -76,7 +76,9 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
       decoration: InputDecoration(
         hintText: widget.hintText,
-        hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+        hintStyle: TextStyle(
+          color: AppColors.textSecondary.withValues(alpha: 0.5),
+        ),
         suffixIcon: _buildSuffixIcon(),
 
         filled: true,

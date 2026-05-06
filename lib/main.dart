@@ -21,15 +21,15 @@ void main() async {
   await setupGetIt();
 
   // ---------------------------------------------------------
-  await getIt<UserSession>().initMockSession(
-    role: UserRole.doctor,
-    userId: "5fe5c967-3797-4dac-a1a8-3faba1265e32",
-  );
-
   // await getIt<UserSession>().initMockSession(
-  //   role: UserRole.patient,
-  //   userId: "cbdb804d-1092-4d98-9d86-a9b028a46903",
+  //   role: UserRole.doctor,
+  //   userId: "5fe5c967-3797-4dac-a1a8-3faba1265e32",
   // );
+
+  await getIt<UserSession>().initMockSession(
+    role: UserRole.patient,
+    userId: "cbdb804d-1092-4d98-9d86-a9b028a46903",
+  );
 
   // await getIt<UserSession>().initMockSession(
   //   role: UserRole.hospital,
@@ -83,7 +83,7 @@ class MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      initialRoute: AppRoutes.appointmentDetails,
+      initialRoute: AppRoutes.home,
       onGenerateRoute: AppRouter.generateRoute,
     );
   }

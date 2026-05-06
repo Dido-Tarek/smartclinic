@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class SpecializationWidget extends StatelessWidget {
   final String specializationName;
@@ -16,40 +15,45 @@ class SpecializationWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF8EBAE3), // اللون الأزرق الفاتح من الصورة
-        borderRadius: BorderRadius.circular(50.r), // حواف دائرية بالكامل
+        borderRadius: BorderRadius.circular(50), // حواف دائرية بالكامل
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           // الدائرة البيضاء التي تحتوي على الأيقونة
           Container(
-            padding: EdgeInsets.all(8.w),
+            padding: EdgeInsets.all(8),
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
             ),
             child: iconPath != null
-                ? Image.asset(iconPath!, width: 24.w, height: 24.h)
+                ? Image.asset(
+                    iconPath!,
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                  )
                 : Icon(
                     iconData ?? Icons.psychology_outlined,
                     color: const Color(0xFF247CFF),
-                    size: 24.sp,
+                    size: 24,
                   ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 12),
           // اسم التخصص
           Text(
             specializationName,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 16.sp,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(width: 8.w), // مساحة بسيطة في النهاية
+          SizedBox(width: 8), // مساحة بسيطة في النهاية
         ],
       ),
     );

@@ -21,6 +21,7 @@ class CustomNavBar extends StatelessWidget {
     // إحنا هنا بنصمم الـ Bar فقط، والـ Scaffold هو اللي هيتحكم في الـ Location
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
+      color: Colors.white,
       notchMargin: 8.0,
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
@@ -32,15 +33,19 @@ class CustomNavBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(
-                    Icons.store_mall_directory_rounded,
-                    localizations.translate('home_icon_title'),
-                    0,
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.store_mall_directory_rounded,
+                      localizations.translate('home_icon_title'),
+                      0,
+                    ),
                   ),
-                  _buildNavItem(
-                    Icons.chat_bubble_outline_rounded,
-                    localizations.translate('inbox_icon_title'),
-                    1,
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.chat_bubble_outline_rounded,
+                      localizations.translate('inbox_icon_title'),
+                      1,
+                    ),
                   ),
                 ],
               ),
@@ -54,15 +59,19 @@ class CustomNavBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(
-                    Icons.assignment_turned_in_outlined,
-                    localizations.translate('booking_icon_title'),
-                    2,
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.assignment_turned_in_outlined,
+                      localizations.translate('booking_icon_title'),
+                      2,
+                    ),
                   ),
-                  _buildNavItem(
-                    Icons.person_outline_rounded,
-                    localizations.translate('profile_icon_title'),
-                    3,
+                  Expanded(
+                    child: _buildNavItem(
+                      Icons.person_outline_rounded,
+                      localizations.translate('profile_icon_title'),
+                      3,
+                    ),
                   ),
                 ],
               ),
@@ -78,22 +87,28 @@ class CustomNavBar extends StatelessWidget {
     bool isSelected = selectedIndex == index;
     return InkWell(
       onTap: () => onItemSelected(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? AppColors.skyBlue : AppColors.textSecondary,
-          ),
-          Text(
-            label,
-            style: TextStyle(
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
               color: isSelected ? AppColors.skyBlue : AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
-          ),
-        ],
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? AppColors.skyBlue : AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -111,7 +126,11 @@ class CustomNavBar extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         onPressed: onPressed,
-        child: Image.asset(AppImages.imagesIconsNougaAI), // تأكد من المسار
+        child: Image.asset(
+          AppImages.imagesIconsAssistant,
+          width: 45,
+          height: 45,
+        ), // تأكد من المسار
       ),
     );
   }

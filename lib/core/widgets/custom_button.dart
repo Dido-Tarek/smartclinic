@@ -29,7 +29,7 @@ class CustomButton extends StatelessWidget {
       child: PhysicalModel(
         color: Colors.transparent,
         elevation: 8,
-        shadowColor: Colors.black.withOpacity(0.3),
+        shadowColor: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(screenWidth * 0.05),
         clipBehavior: Clip.antiAlias,
         child: SizedBox(

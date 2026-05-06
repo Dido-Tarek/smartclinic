@@ -11,10 +11,14 @@ import 'package:smartclinic/features/health_issues/presentation/screens/health_i
 import 'package:smartclinic/features/health_issues/presentation/screens/add_health_issue.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
+import 'package:smartclinic/features/home/presentation/screens/home_screen.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
+import 'package:smartclinic/features/nouga/presentation/screens/nouga.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/follow_up_registeration_medical_facility.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/license_verification.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/medical_facility_management.dart';
+import 'package:smartclinic/features/notification/presentation/manager/notifications_cubit.dart';
+import 'package:smartclinic/features/notification/presentation/screens/notifications_screen.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -114,18 +118,17 @@ class AppRouter {
             child: const AddFamilyMember(),
           ),
         );
-      case AppRoutes.patienthome:
+      case AppRoutes.notifications:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('Home Screen Placeholder for Patient')),
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<NotificationsCubit>(),
+            child: const NotificationsScreen(),
           ),
         );
-      case AppRoutes.doctorhome:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('Home Screen Placeholder for Doctor')),
-          ),
-        );
+      case AppRoutes.nouga:
+        return MaterialPageRoute(builder: (_) => const NougaAiChatPage());
+      case AppRoutes.home:
+        return MaterialPageRoute(builder: (_) => const HomeScreen());
       case AppRoutes.hospitalhome:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
@@ -145,7 +148,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const ClinicDetailsPage());
       case AppRoutes.appointmentDetails:
         final args = settings.arguments;
-        final hasTypeFlags = args is Map &&
+        final hasTypeFlags =
+            args is Map &&
             (args['clinic'] is bool ||
                 args['online'] is bool ||
                 args['homeVisit'] is bool);

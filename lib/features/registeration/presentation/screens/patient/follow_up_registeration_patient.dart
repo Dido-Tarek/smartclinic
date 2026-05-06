@@ -386,7 +386,7 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
     final password = _readRegistrationValue('password');
     final confirmPassword = _readRegistrationValue('confirmPassword');
     final selectedRole =
-      _readRegistrationValue('role') ?? _userSession.roleString ?? 'Patient';
+        _readRegistrationValue('role') ?? _userSession.roleString ?? 'Patient';
 
     if (name == null ||
         email == null ||
@@ -571,11 +571,11 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
   String _resolveHomeRoute(String role) {
     final roleEnum = getRoleEnum(role);
     if (roleEnum.isDoctor) {
-      return AppRoutes.doctorhome;
+      return AppRoutes.home;
     }
     if (roleEnum.isHospital) {
       return AppRoutes.hospitalhome;
     }
-    return AppRoutes.patienthome;
+    return AppRoutes.home;
   }
 }

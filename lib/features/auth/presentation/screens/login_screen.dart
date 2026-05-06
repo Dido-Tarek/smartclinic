@@ -390,12 +390,12 @@ class _LoginScreenState extends State<LoginScreen> {
   String _resolveHomeRoute(String role) {
     final roleEnum = getRoleEnum(role);
     if (roleEnum.isDoctor) {
-      return AppRoutes.doctorhome;
+      return AppRoutes.home;
     }
     if (roleEnum.isHospital) {
       return AppRoutes.hospitalhome;
     }
-    return AppRoutes.patienthome;
+    return AppRoutes.home;
   }
 }
 

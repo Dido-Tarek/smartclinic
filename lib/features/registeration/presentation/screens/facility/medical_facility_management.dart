@@ -155,7 +155,7 @@ class _MedicalFacilityManagementPageState
         // localization helper for this build scope
         final loc = AppLocalizations.of(context);
         String t(String key, [String? fallback]) =>
-          loc?.translate(key) ?? (fallback ?? key);
+            loc?.translate(key) ?? (fallback ?? key);
 
         return Scaffold(
           backgroundColor: AppColors.scaffoldBg,
@@ -1106,13 +1106,13 @@ class _MedicalFacilityManagementPageState
 
   String _resolveHomeRoute(UserRole role) {
     if (role.isDoctor) {
-      return AppRoutes.doctorhome;
+      return AppRoutes.home;
     }
 
     if (role.isHospital) {
       return AppRoutes.hospitalhome;
     }
 
-    return AppRoutes.patienthome;
+    return AppRoutes.home;
   }
 }

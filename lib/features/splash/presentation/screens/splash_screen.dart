@@ -26,9 +26,9 @@ class _SplashScreenState extends State<SplashScreen> {
     final userRole = getRoleEnum(userSession.roleString);
     if (!mounted) return;
     if (userSession.isLoggedIn && userRole.isPatient) {
-      Navigator.pushReplacementNamed(context, AppRoutes.patienthome);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else if (userSession.isLoggedIn && userRole.isDoctor) {
-      Navigator.pushReplacementNamed(context, AppRoutes.doctorhome);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else if (userSession.isLoggedIn && userRole.isHospital) {
       Navigator.pushReplacementNamed(context, AppRoutes.hospitalhome);
     } else {

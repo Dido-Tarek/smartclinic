@@ -206,6 +206,13 @@
   "add_family_member_title": "Add Family Member",
   "family_member_saved": "Family member saved successfully",
 
+  "inbox_icon_title": "Inbox",
+  "booking_icon_title": "Bookings",
+  "profile_icon_title": "Profile",
+  "home_icon_title": "Home",
+
+  "search_hint": "Find the right doctor for you",
+
   "Save": "Save & Continue",
   "Register": "Register",
   "New": "Add New +",

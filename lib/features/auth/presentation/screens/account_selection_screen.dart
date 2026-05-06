@@ -145,7 +145,7 @@ class _AccountSelectionScreenState extends State<AccountSelectionScreen> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: AppColors.skyBlue.withOpacity(0.18),
+                color: AppColors.skyBlue.withValues(alpha: 0.18),
                 blurRadius: 18,
                 spreadRadius: 3,
                 offset: const Offset(0, 10),

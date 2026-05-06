@@ -130,7 +130,7 @@ class _GenderSelectionFieldState extends State<GenderSelectionField> {
                 onTap: () => _handleGenderSelection('male'),
                 child: Container(
                   color: selectedGender == 'male'
-                      ? Colors.blue.withOpacity(0.2)
+                      ? Colors.blue.withValues(alpha: 0.2)
                       : Colors.transparent,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -157,7 +157,7 @@ class _GenderSelectionFieldState extends State<GenderSelectionField> {
                 onTap: () => _handleGenderSelection('female'),
                 child: Container(
                   color: selectedGender == 'female'
-                      ? Colors.pink.withOpacity(0.2)
+                      ? Colors.pink.withValues(alpha: 0.2)
                       : Colors.transparent,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
