@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
-import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
@@ -10,10 +9,7 @@ import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/home_header.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
-import 'package:smartclinic/core/widgets/specialization_widget.dart';
 import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
-import 'package:smartclinic/features/notification/domain/repo/notifications_repo.dart';
-import 'package:smartclinic/injection_dependency.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,16 +18,17 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
-  int _unreadNotificationsCount = 0;
   late final PageController _appointmentsController;
   Timer? _autoSwipeTimer;
+  late final AnimationController _shineController;
+  late final Animation<double> _shadowAnim;
 
   @override
   void initState() {
     super.initState();
-    _refreshUnreadNotificationsCount();
     _appointmentsController = PageController(viewportFraction: 0.96);
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
@@ -47,45 +44,39 @@ class _HomeScreenState extends State<HomeScreen> {
         curve: Curves.easeInOut,
       );
     });
+    _shineController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _shadowAnim = Tween<double>(begin: 4.0, end: 14.0).animate(
+      CurvedAnimation(parent: _shineController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _autoSwipeTimer?.cancel();
     _appointmentsController.dispose();
+    _shineController.dispose();
     super.dispose();
-  }
-
-  Future<void> _refreshUnreadNotificationsCount() async {
-    final result = await getIt<NotificationsRepo>().getUnreadCount();
-    if (!mounted) {
-      return;
-    }
-
-    result.when(
-      success: (data) {
-        setState(() {
-          _unreadNotificationsCount = data.count;
-        });
-      },
-      failure: (_) {
-        setState(() {
-          _unreadNotificationsCount = 0;
-        });
-      },
-    );
   }
 
   Future<void> _openNotifications() async {
     await Navigator.pushNamed(context, AppRoutes.notifications);
-    if (!mounted) {
-      return;
-    }
-    await _refreshUnreadNotificationsCount();
   }
 
   Future<void> _openChatbot() async {
     await Navigator.pushNamed(context, AppRoutes.nouga);
+  }
+
+  Future<void> _handleNavSelection(int index) async {
+    if (index == 3) {
+      await Navigator.pushNamed(context, AppRoutes.userManagement);
+      return;
+    }
+
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -102,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : null,
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _currentIndex,
-        onItemSelected: (index) => setState(() => _currentIndex = index),
+        onItemSelected: _handleNavSelection,
         onChatbotPressed: _openChatbot,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -128,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 avatarAssetPath: AppImages.imagesIconsPatient,
                 title: 'Hi, Khatab !',
                 subtitle: 'How do you feel today?',
-                showNotificationDot: _unreadNotificationsCount > 0,
                 onNotificationTap: _openNotifications,
               ),
               SizedBox(height: 16),
@@ -175,26 +165,97 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SizedBox(height: 20),
-              _buildSectionTitle('Doctor Specialty'),
+              _buildSectionTitle('Emergency', showSeeAll: false),
               SizedBox(height: 12),
-              SizedBox(
-                height: 46,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _specialties.length,
-                  separatorBuilder: (_, __) => SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final item = _specialties[index];
-                    return SpecializationWidget(
-                      specializationName: item.title,
-                      iconPath: item.iconPath,
-                      iconData: item.iconData,
-                    );
-                  },
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Immediate Care Appointment',
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Book the next available ER doctor now',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    SizedBox(
+                      width: 120,
+                      child: AnimatedBuilder(
+                        animation: _shineController,
+                        builder: (context, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.error.withValues(
+                                    alpha: 0.28,
+                                  ),
+                                  blurRadius: _shadowAnim.value,
+                                  spreadRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.error,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: const Text(
+                                'BOOK NOW',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: 20),
-              _buildSectionTitle('Popular Doctors'),
+              _buildSectionTitle(
+                'Popular Doctors',
+                onSeeAllTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.search),
+              ),
               SizedBox(height: 12),
               SizedBox(
                 height: 290,
@@ -205,13 +266,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   separatorBuilder: (_, __) => SizedBox(width: 18),
                   itemBuilder: (context, index) {
                     final item = _doctors[index];
-                    return DoctorCardWidget(
-                      doctorName: item.name,
-                      specialization: item.specialization,
-                      rating: item.rating,
-                      imagePath: item.imagePath,
-                      onTap: () {},
-                      onFavoriteChanged: (value) {},
+                    return SizedBox(
+                      width: 180,
+                      child: DoctorCardWidget(
+                        doctorName: item.name,
+                        specialization: item.specialization,
+                        rating: item.rating,
+                        imagePath: item.imagePath,
+                        onTap: () {},
+                        onFavoriteChanged: (value) {},
+                      ),
                     );
                   },
                 ),
@@ -223,7 +287,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(
+    String title, {
+    VoidCallback? onSeeAllTap,
+    bool showSeeAll = true,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -235,33 +303,26 @@ class _HomeScreenState extends State<HomeScreen> {
             color: AppColors.deepNavy,
           ),
         ),
-        TextButton(
-          onPressed: () {},
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: Text(
-            'see all',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.skyBlue,
+        if (showSeeAll)
+          TextButton(
+            onPressed: onSeeAllTap,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'see all',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.skyBlue,
+              ),
             ),
           ),
-        ),
       ],
     );
   }
-}
-
-class _SpecialtyItem {
-  const _SpecialtyItem({required this.title, this.iconPath, this.iconData});
-
-  final String title;
-  final String? iconPath;
-  final IconData? iconData;
 }
 
 class _DoctorItem {
@@ -277,18 +338,6 @@ class _DoctorItem {
   final double rating;
   final String imagePath;
 }
-
-const List<_SpecialtyItem> _specialties = <_SpecialtyItem>[
-  _SpecialtyItem(
-    title: 'Neurologist',
-    iconPath: AppImages.imagesSpecialityNeurologist,
-  ),
-  _SpecialtyItem(title: 'Dentistry', iconPath: AppImages.imagesSpecialityTooth),
-  _SpecialtyItem(
-    title: 'Cardiology',
-    iconPath: AppImages.imagesSpecialityPhysician,
-  ),
-];
 
 const List<_DoctorItem> _doctors = <_DoctorItem>[
   _DoctorItem(

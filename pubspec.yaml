@@ -35,6 +35,8 @@ dependencies:
   file_picker: ^8.1.2
   dotted_border: ^3.1.0
   flutter_screenutil: ^5.9.3
+  # flutter_stripe: ^12.6.0
+  cherry_toast: ^1.13.0
   # google_maps_flutter: ^2.11.0
   # geolocator: ^14.0.2
 

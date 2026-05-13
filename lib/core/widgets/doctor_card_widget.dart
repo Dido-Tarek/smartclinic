@@ -18,7 +18,7 @@ class DoctorCardWidget extends StatefulWidget {
     required this.imagePath,
     required this.onTap,
     required this.onFavoriteChanged,
-    this.isInitialFavorite = false, // افتراضياً غير مفضلة
+    this.isInitialFavorite = false,
   });
 
   @override
@@ -37,17 +37,15 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 170, // عرض ثابت للكارت زي الصورة تقريباً
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: widget.onTap, // تنفيذ ميثود التنقل عند الضغط
-        borderRadius: BorderRadius.circular(16), // مهم عشان الـ Splash effect
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // صورة الدكتور المقصوصة بشكل مخصص
             Container(
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.only(
@@ -68,26 +66,23 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                   bottomRight: Radius.circular(12),
                   topLeft: Radius.circular(12),
                 ),
-                child: Image.asset(
-                  widget.imagePath,
+                child: SizedBox(
+                  height: 160, // fixed image area height
                   width: double.infinity,
-                  height: 180,
-                  fit: BoxFit.cover,
+                  child: Image.asset(widget.imagePath, fit: BoxFit.cover),
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-            // بيانات الدكتور (التقييم والاسم في Row)
             Row(
               children: [
-                // أيقونة النجمة والتقييم
                 Icon(
                   Icons.star_rounded,
-                  color: AppColors.yellowRating, // لون التقييم
+                  color: AppColors.yellowRating,
                   size: 20,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   widget.rating.toString(),
                   style: TextStyle(
@@ -96,8 +91,7 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(width: 8),
-                // اسم الدكتور (مقسم عشان يأخذ باقي المساحة)
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.doctorName,
@@ -112,12 +106,10 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-            // بيانات التخصص وزرار المفضلة في Row
             Row(
               children: [
-                // أيقونة القلب التفاعلية
                 InkWell(
                   onTap: () {
                     setState(() {
@@ -129,13 +121,10 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                     isFavorite
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    color: isFavorite
-                        ? AppColors.error
-                        : AppColors.darkSlate, // استخدمت Error للقلب الأحمر
+                    color: isFavorite ? AppColors.error : AppColors.darkSlate,
                   ),
                 ),
-                SizedBox(width: 8),
-                // التخصص
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.specialization,

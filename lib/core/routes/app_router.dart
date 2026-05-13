@@ -19,6 +19,12 @@ import 'package:smartclinic/features/registeration/presentation/screens/facility
 import 'package:smartclinic/features/registeration/presentation/screens/facility/medical_facility_management.dart';
 import 'package:smartclinic/features/notification/presentation/manager/notifications_cubit.dart';
 import 'package:smartclinic/features/notification/presentation/screens/notifications_screen.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
+import 'package:smartclinic/features/search/presentation/screens/search_page.dart';
+import 'package:smartclinic/features/search/presentation/screens/search_filter.dart';
+import 'package:smartclinic/features/user_management/presentation/screens/user_management.dart';
+import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
+import 'package:smartclinic/features/wallet/presentation/screens/wallet_screen.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -176,6 +182,43 @@ class AppRouter {
             child: const MedicalFacilityManagementPage(),
           ),
         );
+      case AppRoutes.search:
+        return MaterialPageRoute(builder: (_) => const SearchPage());
+      case AppRoutes.searchFilter:
+        return PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 280),
+          reverseTransitionDuration: const Duration(milliseconds: 220),
+          pageBuilder: (_, animation, secondaryAnimation) => BlocProvider(
+            create: (context) => getIt<DoctorsCubit>(),
+            child: const SearchFilterScreen(),
+          ),
+          transitionsBuilder: (_, animation, secondaryAnimation, child) {
+            final offset =
+                Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
+
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(position: offset, child: child),
+            );
+          },
+        );
+      case AppRoutes.wallet:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<WalletCubit>(),
+            child: const WalletScreen(),
+          ),
+        );
+      case AppRoutes.userManagement:
+        return MaterialPageRoute(builder: (_) => const UserManagementPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

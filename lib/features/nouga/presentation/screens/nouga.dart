@@ -379,15 +379,15 @@ class _NougaAiChatScreenState extends State<NougaAiChatScreen> {
                       color: AppColors.skyBlue.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      Icons.smart_toy_outlined,
-                      color: AppColors.skyBlue,
-                      size: 22,
+                    child: Image.asset(
+                      AppImages.imagesIconsAssistant,
+                      width: 24,
+                      height: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Chat History',
+                    'Nouga Memory',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,

@@ -24,6 +24,10 @@ class AppRoutes {
   static const String appointmentDetails = '/appointmentDetails';
   static const String clinicManagement = '/clinicManagement';
   static const String medicalFacilityManagement = '/medicalFacilityManagement';
+  static const String search = '/search';
+  static const String searchFilter = '/searchFilter';
+  static const String wallet = '/wallet';
   static const String nouga = '/chatbot';
   static const String inbox = '/inbox';
+  static const String userManagement = '/userManagement';
 }
