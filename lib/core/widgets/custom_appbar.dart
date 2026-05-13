@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/network/api_result.dart';
+import 'package:smartclinic/features/notification/data/model/notifications_model.dart';
+import 'package:smartclinic/features/notification/domain/repo/notifications_repo.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
-class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
   final bool showNotification;
   final bool showBackButton;
@@ -18,6 +22,46 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
+  State<CustomAppBar> createState() => _CustomAppBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _CustomAppBarState extends State<CustomAppBar> {
+  bool _showNotificationDot = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    if (!widget.showNotification) {
+      return;
+    }
+
+    final result = await getIt<NotificationsRepo>().getUnreadCount();
+    if (!mounted) {
+      return;
+    }
+
+    if (result is Success<UnreadCountResponse>) {
+      setState(() {
+        _showNotificationDot = result.data.count > 0;
+      });
+      return;
+    }
+
+    if (result is Failure<UnreadCountResponse>) {
+      setState(() {
+        _showNotificationDot = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final width = size.width;
@@ -31,18 +75,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: AppColors.scaffoldBg,
       elevation: 0,
       centerTitle: true,
-      leading: showBackButton
+      leading: widget.showBackButton
           ? IconButton(
               icon: Icon(
                 Icons.arrow_back_rounded,
                 color: AppColors.textPrimary,
                 size: buttonSize,
               ),
-              onPressed: onBackTap ?? () => Navigator.maybePop(context),
+              onPressed: widget.onBackTap ?? () => Navigator.maybePop(context),
             )
           : null,
       title: Text(
-        title,
+        widget.title,
         style: TextStyle(
           color: AppColors.textPrimary,
           fontSize: (width * 0.055).clamp(18.0, 24.0),
@@ -50,7 +94,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        if (showNotification)
+        if (widget.showNotification)
           Padding(
             padding: EdgeInsets.only(right: width * 0.02),
             child: Stack(
@@ -62,31 +106,29 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     color: AppColors.textPrimary,
                     size: buttonSize,
                   ),
-                  onPressed: onNotificationTap,
+                  onPressed: widget.onNotificationTap,
                 ),
-                Positioned(
-                  top: badgeSize * 0.35,
-                  right: badgeSize * 0.35,
-                  child: Container(
-                    height: badgeSize,
-                    width: badgeSize,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: badgeSize * 0.18,
+                if (_showNotificationDot)
+                  Positioned(
+                    top: badgeSize * 0.35,
+                    right: badgeSize * 0.35,
+                    child: Container(
+                      height: badgeSize,
+                      width: badgeSize,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: badgeSize * 0.18,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
       ],
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

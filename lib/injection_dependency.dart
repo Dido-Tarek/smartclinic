@@ -36,6 +36,15 @@ import 'package:smartclinic/features/nouga/data/api/nouga_ai_api_service.dart';
 import 'package:smartclinic/features/nouga/data/local/nouga_conversation_store.dart';
 import 'package:smartclinic/features/nouga/data/repo/nouga_ai_repo.dart';
 import 'package:smartclinic/features/nouga/presentation/manager/nouga_ai_cubit.dart';
+import 'package:smartclinic/features/search/data/api/doctors_api_service.dart';
+import 'package:smartclinic/features/search/data/repo/search_doctors_repo.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
+import 'package:smartclinic/features/user_management/data/api/user_management_api_service.dart';
+import 'package:smartclinic/features/user_management/data/repo/user_management_repo.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
+import 'package:smartclinic/features/wallet/data/api/wallet_api_service.dart';
+import 'package:smartclinic/features/wallet/data/repo/wallet_repo.dart';
+import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -106,6 +115,24 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<ChatRepo>(
     () => ChatRepo(getIt<ChatApiService>()),
   );
+  getIt.registerLazySingleton<DoctorsApiService>(
+    () => DoctorsApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<DoctorsRepo>(
+    () => DoctorsRepoImpl(getIt<DoctorsApiService>()),
+  );
+  getIt.registerLazySingleton<UserManagementApiService>(
+    () => UserManagementApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<WalletApiService>(
+    () => WalletApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<UserManagementRepo>(
+    () => UserManagementRepo(getIt<UserManagementApiService>()),
+  );
+  getIt.registerLazySingleton<WalletRepo>(
+    () => WalletRepoImpl(getIt<WalletApiService>()),
+  );
 
   // 5. Cubits (Factory لضمان حالة جديدة مع كل شاشة)
   getIt.registerFactory<RegisterCubit>(() => RegisterCubit(getIt<AuthRepo>()));
@@ -130,4 +157,9 @@ Future<void> setupGetIt() async {
     () => SendMessageCubit(getIt<MedicalChatRepo>()),
   );
   getIt.registerFactory<ChatCubit>(() => ChatCubit(getIt<ChatRepo>()));
+  getIt.registerFactory<DoctorsCubit>(() => DoctorsCubit(getIt<DoctorsRepo>()));
+  getIt.registerFactory<UserManagementCubit>(
+    () => UserManagementCubit(getIt<UserManagementRepo>()),
+  );
+  getIt.registerFactory<WalletCubit>(() => WalletCubit(getIt<WalletRepo>()));
 }

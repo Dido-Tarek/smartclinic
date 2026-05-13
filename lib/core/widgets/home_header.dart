@@ -1,22 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/network/api_result.dart';
+import 'package:smartclinic/features/notification/data/model/notifications_model.dart';
+import 'package:smartclinic/features/notification/domain/repo/notifications_repo.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
-class HomeHeader extends StatelessWidget {
+class HomeHeader extends StatefulWidget {
   const HomeHeader({
     super.key,
     this.avatarAssetPath = AppImages.imagesIconsMan,
     this.title = 'Hi, Khatab !',
     this.subtitle = 'How do you feel today?',
-    this.showNotificationDot = false,
     this.onNotificationTap,
   });
 
   final String avatarAssetPath;
   final String title;
   final String subtitle;
-  final bool showNotificationDot;
   final VoidCallback? onNotificationTap;
+
+  @override
+  State<HomeHeader> createState() => _HomeHeaderState();
+}
+
+class _HomeHeaderState extends State<HomeHeader> {
+  bool _showNotificationDot = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final result = await getIt<NotificationsRepo>().getUnreadCount();
+    if (!mounted) {
+      return;
+    }
+
+    if (result is Success<UnreadCountResponse>) {
+      setState(() {
+        _showNotificationDot = result.data.count > 0;
+      });
+      return;
+    }
+
+    if (result is Failure<UnreadCountResponse>) {
+      setState(() {
+        _showNotificationDot = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +59,7 @@ class HomeHeader extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundImage: AssetImage(avatarAssetPath),
+          backgroundImage: AssetImage(widget.avatarAssetPath),
           backgroundColor: AppColors.scaffoldBg,
         ),
         SizedBox(width: 16),
@@ -33,7 +68,7 @@ class HomeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                widget.title,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -42,7 +77,7 @@ class HomeHeader extends StatelessWidget {
               ),
               SizedBox(height: 4),
               Text(
-                subtitle,
+                widget.subtitle,
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textSecondary,
@@ -54,7 +89,7 @@ class HomeHeader extends StatelessWidget {
         ),
         InkWell(
           borderRadius: BorderRadius.circular(24),
-          onTap: onNotificationTap,
+          onTap: widget.onNotificationTap,
           child: Container(
             width: 48,
             height: 48,
@@ -70,7 +105,7 @@ class HomeHeader extends StatelessWidget {
                   size: 28,
                   color: Color(0xFF1E293B),
                 ),
-                if (showNotificationDot)
+                if (_showNotificationDot)
                   const Positioned(
                     top: 10,
                     right: 12,
