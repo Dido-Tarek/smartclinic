@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:smartclinic/core/constants/app_color.dart';
@@ -66,24 +67,22 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
         state.when(
           initial: () {},
           loading: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registering patient...')),
-            );
+            CherryToast.info(
+              title: const Text('Please wait'),
+              description: const Text('Registering patient...'),
+            ).show(context);
           },
           success: (data) async {
-            final messenger = ScaffoldMessenger.of(context);
             final navigator = Navigator.of(context);
             final selectedRole = context.read<RegisterCubit>().selectedRole;
             final userId = _extractUserId(data);
             if (userId == null || userId.trim().isEmpty) {
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Registration succeeded, but user id was not returned. Please try again.',
-                  ),
-                  backgroundColor: Colors.red,
+              CherryToast.error(
+                title: const Text('Registration'),
+                description: const Text(
+                  'Registration succeeded, but user id was not returned. Please try again.',
                 ),
-              );
+              ).show(context);
               return;
             }
 
@@ -93,11 +92,10 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
               return;
             }
 
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text('Registration completed successfully'),
-              ),
-            );
+            CherryToast.success(
+              title: const Text('Success'),
+              description: const Text('Registration completed successfully'),
+            ).show(context);
             if (getRoleEnum(selectedRole).isPatient) {
               navigator.pushReplacementNamed(AppRoutes.uploadMedicalRecords);
             } else {
@@ -105,12 +103,10 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
             }
           },
           error: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Registration failed: $message'),
-                backgroundColor: Colors.red,
-              ),
-            );
+            CherryToast.error(
+              title: const Text('Registration failed'),
+              description: Text(message),
+            ).show(context);
           },
         );
       },
@@ -296,14 +292,12 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
 
   Future<void> _pickNationalIdFile() async {
     if (_nationalIdFiles.length >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Maximum 2 files reached. Remove or tap a file to replace it.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Files limit'),
+        description: const Text(
+          'Maximum 2 files reached. Remove or tap a file to replace it.',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -393,57 +387,47 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
         phone == null ||
         password == null ||
         confirmPassword == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Missing registration information'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Missing information'),
+        description: const Text('Missing registration information'),
+      ).show(context);
       return;
     }
 
     if (_selectedGender == null || _selectedGender!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please choose a gender'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: const Text('Please choose a gender'),
+      ).show(context);
       return;
     }
 
     if (_dobController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your birth date'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: const Text('Please enter your birth date'),
+      ).show(context);
       return;
     }
 
     final birthDateForApi = _formatBirthDateForApi(_dobController.text);
     if (birthDateForApi == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Birth date format is invalid. Please pick the date again.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: const Text(
+          'Birth date format is invalid. Please pick the date again.',
         ),
-      );
+      ).show(context);
       return;
     }
 
     if (_nationalIdFiles.length != 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please upload exactly 2 files for National ID (front and back).',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Files required'),
+        description: const Text(
+          'Please upload exactly 2 files for National ID (front and back).',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -453,14 +437,12 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
     final nationalIdBack = _nationalIdFileFromPlatformFile(_nationalIdFiles[1]);
 
     if (nationalIdFront == null || nationalIdBack == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Selected National ID files must have valid file paths.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Files invalid'),
+        description: const Text(
+          'Selected National ID files must have valid file paths.',
         ),
-      );
+      ).show(context);
       return;
     }
 

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/appointment_details.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/appointments.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/clinic_details.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/family_member.dart';
@@ -12,6 +13,7 @@ import 'package:smartclinic/features/health_issues/presentation/screens/add_heal
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
 import 'package:smartclinic/features/home/presentation/screens/home_screen.dart';
+import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
 import 'package:smartclinic/features/nouga/presentation/screens/nouga.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/follow_up_registeration_medical_facility.dart';
@@ -22,7 +24,15 @@ import 'package:smartclinic/features/notification/presentation/screens/notificat
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
 import 'package:smartclinic/features/search/presentation/screens/search_page.dart';
 import 'package:smartclinic/features/search/presentation/screens/search_filter.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
 import 'package:smartclinic/features/user_management/presentation/screens/user_management.dart';
+import 'package:smartclinic/features/user_management/presentation/screens/doctor_profile_settings.dart';
+import 'package:smartclinic/features/doctor_profile/presentation/screens/doctor_profile_view.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/booking_details.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/booking_information.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/booking_summary.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/booking_confirmation.dart';
+import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/screens/wallet_screen.dart';
 import 'package:smartclinic/injection_dependency.dart';
@@ -131,8 +141,21 @@ class AppRouter {
             child: const NotificationsScreen(),
           ),
         );
+      case AppRoutes.appointments:
+        final args = settings.arguments;
+        final initialIndex = args is Map && args['initialIndex'] is int
+            ? (args['initialIndex'] as int)
+            : 0;
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<AppointmentsCubit>(),
+            child: AppointmentsScreen(initialIndex: initialIndex),
+          ),
+        );
       case AppRoutes.nouga:
         return MaterialPageRoute(builder: (_) => const NougaAiChatPage());
+      case AppRoutes.inbox:
+        return MaterialPageRoute(builder: (_) => const InboxChatRoomsScreen());
       case AppRoutes.home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
       case AppRoutes.hospitalhome:
@@ -152,20 +175,44 @@ class AppRouter {
         );
       case AppRoutes.clinicDetails:
         return MaterialPageRoute(builder: (_) => const ClinicDetailsPage());
+      case AppRoutes.doctorProfileSettings:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<UserManagementCubit>(),
+            child: const DoctorProfileSettingsPage(),
+          ),
+        );
+      case AppRoutes.doctorProfileView:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        final enabledTypes = data is Map && data['enabledConsultationTypes'] is Iterable
+            ? (data['enabledConsultationTypes'] as Iterable)
+                .map((item) => item.toString())
+                .where((item) => item.isNotEmpty)
+                .toSet()
+          : const {'clinic', 'online', 'homeVisit', 'emergency'};
+        return MaterialPageRoute(
+          builder: (_) => DoctorProfileView(
+            doctorName: data is Map && data['name'] != null ? data['name'] as String : null,
+            enabledConsultationTypes: enabledTypes,
+          ),
+        );
       case AppRoutes.appointmentDetails:
         final args = settings.arguments;
         final hasTypeFlags =
             args is Map &&
             (args['clinic'] is bool ||
                 args['online'] is bool ||
-                args['homeVisit'] is bool);
+            args['homeVisit'] is bool ||
+            args['emergency'] is bool);
         final appointmentTypes = hasTypeFlags
             ? {
                 if (args['clinic'] == true) 'clinic',
                 if (args['online'] == true) 'online',
                 if (args['homeVisit'] == true) 'homeVisit',
+            if (args['emergency'] == true) 'emergency',
               }
-            : <String>{'clinic', 'online', 'homeVisit'};
+          : <String>{'clinic', 'online', 'homeVisit', 'emergency'};
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => BlocProvider(
@@ -173,6 +220,87 @@ class AppRouter {
             child: AppointmentDetailsPage(
               enabledAppointmentTypes: appointmentTypes,
             ),
+          ),
+        );
+      case AppRoutes.bookingDetails:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        final enabledTypes = data is Map && data['enabledAppointmentTypes'] is Iterable
+            ? (data['enabledAppointmentTypes'] as Iterable)
+                .map((item) => item.toString())
+                .where((item) => item.isNotEmpty)
+                .toSet()
+          : const {'clinic', 'online', 'homeVisit', 'emergency'};
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<AppointmentsCubit>(),
+            child: BookingDetailsPage(
+              doctorId: data is Map && data['doctorId'] != null ? data['doctorId'] as String : null,
+              clinicId: data is Map && data['clinicId'] != null ? data['clinicId'] as int : null,
+              doctorName: data is Map && data['name'] != null ? data['name'] as String : null,
+              doctorImage: data is Map && data['image'] != null ? data['image'] as String : null,
+              enabledAppointmentTypes: enabledTypes,
+            ),
+          ),
+        );
+      case AppRoutes.bookingInformation:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<FamilyCubit>(),
+            child: BookingInformationPage(
+              doctorId: data is Map && data['doctorId'] != null ? data['doctorId'] as String : null,
+              clinicId: data is Map && data['clinicId'] != null ? data['clinicId'] as int : null,
+              doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
+              consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
+              selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
+              selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
+            ),
+          ),
+        );
+      case AppRoutes.bookingSummary:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BookingSummaryPage(
+            doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
+            specialization: data is Map && data['specialization'] != null ? data['specialization'] as String : null,
+            clinicName: data is Map && data['clinicName'] != null ? data['clinicName'] as String : null,
+            rating: data is Map && data['rating'] != null ? data['rating'] as double : null,
+            doctorImage: data is Map && data['doctorImage'] != null ? data['doctorImage'] as String : null,
+            yearsOfExperience: data is Map && data['yearsOfExperience'] != null ? data['yearsOfExperience'] as int : null,
+            patientsCount: data is Map && data['patientsCount'] != null ? data['patientsCount'] as int : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null ? data['reviewsCount'] as int : null,
+            consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
+            selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
+            selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
+            patientName: data is Map && data['patientName'] != null ? data['patientName'] as String : null,
+            paymentMethod: data is Map && data['paymentMethod'] != null ? data['paymentMethod'] as String : null,
+          ),
+        );
+      case AppRoutes.bookingConfirmation:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BookingConfirmationPage(
+            doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
+            specialization: data is Map && data['specialization'] != null ? data['specialization'] as String : null,
+            clinicName: data is Map && data['clinicName'] != null ? data['clinicName'] as String : null,
+            rating: data is Map && data['rating'] != null ? data['rating'] as double : null,
+            doctorImage: data is Map && data['doctorImage'] != null ? data['doctorImage'] as String : null,
+            yearsOfExperience: data is Map && data['yearsOfExperience'] != null ? data['yearsOfExperience'] as int : null,
+            patientsCount: data is Map && data['patientsCount'] != null ? data['patientsCount'] as int : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null ? data['reviewsCount'] as int : null,
+            consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
+            selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
+            selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
+            patientName: data is Map && data['patientName'] != null ? data['patientName'] as String : null,
+            paymentMethod: data is Map && data['paymentMethod'] != null ? data['paymentMethod'] as String : null,
           ),
         );
       case AppRoutes.medicalFacilityManagement:

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
+import 'package:smartclinic/core/routes/app_routes.dart';
+import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
 class InboxChatRoomsScreen extends StatelessWidget {
   const InboxChatRoomsScreen({super.key, this.rooms = const []});
@@ -9,35 +13,46 @@ class InboxChatRoomsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (rooms.isEmpty) {
-      return const _InboxEmptyState();
-    }
+    final userSession = getIt<UserSession>();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 110),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Messages',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: rooms.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 25),
-              itemBuilder: (context, index) {
-                final room = rooms[index];
-                return _ChatRoomTile(room: room);
-              },
-            ),
-          ),
-        ],
+    return Scaffold(
+      backgroundColor: AppColors.scaffoldBg,
+      extendBody: true,
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: 1,
+        userRole: userSession.userRole,
+        onChatbotPressed: () => Navigator.pushNamed(context, AppRoutes.nouga),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          child: rooms.isEmpty
+              ? const _InboxEmptyState()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Messages',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: rooms.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 25),
+                        itemBuilder: (context, index) {
+                          final room = rooms[index];
+                          return _ChatRoomTile(room: room);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -158,6 +173,7 @@ class _InboxEmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(

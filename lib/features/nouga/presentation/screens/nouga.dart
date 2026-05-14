@@ -7,6 +7,7 @@ import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/features/nouga/data/local/nouga_conversation_store.dart';
 import 'package:smartclinic/features/nouga/presentation/manager/nouga_ai_cubit.dart';
 import 'package:smartclinic/features/nouga/presentation/manager/nouga_ai_state.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class NougaAiChatPage extends StatelessWidget {
@@ -287,17 +288,10 @@ class _NougaAiChatScreenState extends State<NougaAiChatScreen> {
         }
 
         if (state is SendMessageFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
+          CherryToast.error(
+            title: const Text('Error'),
+            description: Text(state.errorMessage),
+          ).show(context);
         }
       },
       builder: (context, state) {

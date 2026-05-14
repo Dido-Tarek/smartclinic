@@ -13,6 +13,7 @@ import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 
 class UploadMedicalRecordsScreen extends StatefulWidget {
   const UploadMedicalRecordsScreen({super.key});
@@ -64,22 +65,18 @@ class _UploadMedicalRecordsScreenState
       listener: (context, state) {
         state.whenOrNull(
           success: (data) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(data.message ?? 'Medical record uploaded'),
-                backgroundColor: AppColors.success,
-              ),
-            );
+            CherryToast.success(
+              title: const Text('Uploaded'),
+              description: Text(data.message ?? 'Medical record uploaded'),
+            ).show(context);
             _clearForm();
             Navigator.pushReplacementNamed(context, AppRoutes.healthIssues);
           },
           error: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: AppColors.error,
-              ),
-            );
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(message),
+            ).show(context);
           },
         );
       },
@@ -231,12 +228,12 @@ class _UploadMedicalRecordsScreenState
     final selectedPath = selectedFile.path;
 
     if (!_isAllowedExtension(selectedFile)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only PNG, JPG, JPEG, and PDF files are allowed.'),
-          backgroundColor: AppColors.error,
+      CherryToast.error(
+        title: const Text('Invalid file'),
+        description: const Text(
+          'Only PNG, JPG, JPEG, and PDF files are allowed.',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -255,22 +252,18 @@ class _UploadMedicalRecordsScreenState
     final userId = _userId?.trim() ?? '';
 
     if (userId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('user_id_required')),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Missing user'),
+        description: Text(localizations.translate('user_id_required')),
+      ).show(context);
       return;
     }
 
     if (_selectedFiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Choose a file before uploading.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('No file'),
+        description: const Text('Choose a file before uploading.'),
+      ).show(context);
       return;
     }
 
@@ -286,12 +279,10 @@ class _UploadMedicalRecordsScreenState
         : int.tryParse(appointmentIdText);
 
     if (appointmentIdText.isNotEmpty && appointmentId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Appointment ID must be a valid number.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Invalid ID'),
+        description: const Text('Appointment ID must be a valid number.'),
+      ).show(context);
       return;
     }
 

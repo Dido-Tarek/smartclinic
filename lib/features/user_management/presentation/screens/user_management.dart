@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/bottom_nav_route_helper.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
@@ -59,9 +61,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
           }
 
           if (state is UserManagementError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(state.message),
+            ).show(context);
           }
         },
         builder: (context, state) {
@@ -72,25 +75,9 @@ class _UserManagementPageState extends State<UserManagementPage> {
             extendBody: true,
             bottomNavigationBar: CustomNavBar(
               selectedIndex: 3,
-              onItemSelected: (index) async {
-                if (index == 3) {
-                  return;
-                }
-
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                  return;
-                }
-
-                await Navigator.pushReplacementNamed(context, AppRoutes.home);
-              },
+              userRole: _userSession.userRole,
               onChatbotPressed: () =>
                   Navigator.pushNamed(context, AppRoutes.nouga),
-            ),
-            floatingActionButtonLocation:
-                FloatingActionButtonLocation.centerDocked,
-            floatingActionButton: CustomNavBar.buildChatbotButton(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.nouga),
             ),
             body: SafeArea(
               child: SingleChildScrollView(
@@ -119,7 +106,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                             label: item.label,
                             icon: item.icon,
                             onTap: () => _navigateTo(switch (item.label) {
-                              // 'Profile Settings' => AppRoutes.clinicDetails,
+                              'Profile Settings' =>
+                                AppRoutes.doctorProfileSettings,
                               'Notifications' => AppRoutes.notifications,
                               // 'Reset Password' => AppRoutes.verifyDoctor,
                               'Payment Settings' => AppRoutes.wallet,

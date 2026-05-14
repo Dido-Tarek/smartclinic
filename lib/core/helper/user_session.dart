@@ -66,11 +66,10 @@ class UserSession {
   Future<void> initMockSession({
     required UserRole role,
     required String userId,
+    required String token,
   }) async {
-    const String mockToken = "debug_token_abc_123";
-
     await saveUserSession(
-      token: mockToken,
+      token: token,
       userId: userId,
       role: role
           .name, // بيستخدم الـ name من الـ Enum اللي عملناه (Doctor, Patient, Hospital)

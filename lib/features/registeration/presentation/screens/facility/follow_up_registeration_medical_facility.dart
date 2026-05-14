@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 import 'dart:io';
@@ -92,32 +93,26 @@ class _FollowUpRegisterScreenDoctorState
         state.when(
           initial: () {},
           loading: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  localizations.translate("register_facility_loading"),
-                ),
+            CherryToast.info(
+              title: const Text('Please wait'),
+              description: Text(
+                localizations.translate("register_facility_loading"),
               ),
-            );
+            ).show(context);
           },
           success: (data) async {
-            final messenger = ScaffoldMessenger.of(context);
             final navigator = Navigator.of(context);
             final selectedRole = _normalizeFacilityRole(
               context.read<RegisterCubit>().selectedRole,
             );
             final userId = _extractUserId(data);
             if (userId == null || userId.trim().isEmpty) {
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localizations.translate(
-                      "register_facility_user_id_missing",
-                    ),
-                  ),
-                  backgroundColor: Colors.red,
+              CherryToast.error(
+                title: const Text('Registration'),
+                description: Text(
+                  localizations.translate("register_facility_user_id_missing"),
                 ),
-              );
+              ).show(context);
               return;
             }
 
@@ -127,13 +122,12 @@ class _FollowUpRegisterScreenDoctorState
               return;
             }
 
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(
-                  localizations.translate("register_facility_success"),
-                ),
+            CherryToast.success(
+              title: const Text('Success'),
+              description: Text(
+                localizations.translate("register_facility_success"),
               ),
-            );
+            ).show(context);
             if (getRoleEnum(selectedRole).isDoctor ||
                 getRoleEnum(selectedRole).isHospital) {
               navigator.pushReplacementNamed(
@@ -150,14 +144,12 @@ class _FollowUpRegisterScreenDoctorState
             }
           },
           error: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '${localizations.translate("register_facility_failed")}$message',
-                ),
-                backgroundColor: Colors.red,
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(
+                '${localizations.translate("register_facility_failed")}$message',
               ),
-            );
+            ).show(context);
           },
         );
       },
@@ -358,14 +350,12 @@ class _FollowUpRegisterScreenDoctorState
   Future<void> _pickNationalIdFile() async {
     if (_nationalIdFiles.length >= 2) {
       final localizations = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_max_files_reached"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Files limit'),
+        description: Text(
+          localizations.translate("register_facility_max_files_reached"),
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -500,77 +490,65 @@ class _FollowUpRegisterScreenDoctorState
         phone == null ||
         password == null ||
         confirmPassword == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_missing_info"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Missing info'),
+        description: Text(
+          localizations.translate("register_facility_missing_info"),
         ),
-      );
+      ).show(context);
       return;
     }
 
     if (_selectedGender == null || _selectedGender!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_choose_gender"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: Text(
+          localizations.translate("register_facility_choose_gender"),
         ),
-      );
+      ).show(context);
       return;
     }
 
     if (_dobController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_enter_birth_date"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: Text(
+          localizations.translate("register_facility_enter_birth_date"),
         ),
-      );
+      ).show(context);
       return;
     }
 
     if (_specializationController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_choose_specialization"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: Text(
+          localizations.translate("register_facility_choose_specialization"),
         ),
-      );
+      ).show(context);
       return;
     }
 
     final birthDateForApi = _formatBirthDateForApi(_dobController.text);
     if (birthDateForApi == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate("register_facility_birth_date_invalid"),
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Invalid date'),
+        description: Text(
+          localizations.translate("register_facility_birth_date_invalid"),
         ),
-      );
+      ).show(context);
       return;
     }
 
     if (_nationalIdFiles.length != 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate(
-              "register_facility_national_id_files_required",
-            ),
+      CherryToast.error(
+        title: const Text('Missing files'),
+        description: Text(
+          localizations.translate(
+            "register_facility_national_id_files_required",
           ),
-          backgroundColor: Colors.red,
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -580,16 +558,14 @@ class _FollowUpRegisterScreenDoctorState
     final nationalIdBack = _nationalIdFileFromPlatformFile(_nationalIdFiles[1]);
 
     if (nationalIdFront == null || nationalIdBack == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            localizations.translate(
-              "register_facility_national_id_invalid_paths",
-            ),
+      CherryToast.error(
+        title: const Text('Invalid files'),
+        description: Text(
+          localizations.translate(
+            "register_facility_national_id_invalid_paths",
           ),
-          backgroundColor: Colors.red,
         ),
-      );
+      ).show(context);
       return;
     }
 

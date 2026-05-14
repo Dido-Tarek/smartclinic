@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
@@ -38,12 +39,10 @@ class _FamilyMemberState extends State<FamilyMember> {
       listener: (context, state) {
         state.whenOrNull(
           error: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: AppColors.error,
-              ),
-            );
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(message),
+            ).show(context);
           },
         );
       },

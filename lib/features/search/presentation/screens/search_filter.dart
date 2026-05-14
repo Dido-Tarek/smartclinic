@@ -7,7 +7,6 @@ import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
-import 'package:smartclinic/features/search/data/model/search_doctors_request_model.dart';
 import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_state.dart';
@@ -255,7 +254,11 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                           specialization: doctor.specialization ?? 'Doctor',
                           rating: doctor.rating ?? 0,
                           imagePath: _resolveDoctorImage(doctor),
-                          onTap: () {},
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.doctorProfileView,
+                            arguments: {'name': doctor.name},
+                          ),
                           onFavoriteChanged: (_) {},
                         );
                       },
@@ -378,7 +381,7 @@ class _FilterDropdown extends StatelessWidget {
             ),
           ),
           child: DropdownButtonFormField<String>(
-            value: value,
+            initialValue: value,
             items: items
                 .map(
                   (item) =>

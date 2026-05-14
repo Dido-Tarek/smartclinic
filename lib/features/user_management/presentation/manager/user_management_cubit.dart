@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/features/user_management/data/model/reset_password_request_model.dart';
@@ -29,6 +31,18 @@ class UserManagementCubit extends Cubit<UserManagementState> {
   Future<void> resetPassword(ResetPasswordRequest request) async {
     emit(UserManagementLoading());
     final result = await _repo.resetPassword(request);
+    result.when(
+      success: (_) => emit(UserManagementSuccess()),
+      failure: (message) => emit(UserManagementError(message)),
+    );
+  }
+
+  Future<void> updateDoctorProfile(
+    Map<String, dynamic> data,
+    File? image,
+  ) async {
+    emit(UserManagementLoading());
+    final result = await _repo.updateDoctorProfile(data, image);
     result.when(
       success: (_) => emit(UserManagementSuccess()),
       failure: (message) => emit(UserManagementError(message)),

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/network/api_error_handler.dart';
 import 'package:smartclinic/features/user_management/data/api/user_management_api_service.dart';
@@ -30,6 +32,18 @@ class UserManagementRepo {
     try {
       final response = await _apiService.resetPassword(request);
       return ApiResult.success(response.data);
+    } catch (error) {
+      return ApiResult.failure(ApiErrorHandler.handle(error));
+    }
+  }
+
+  Future<ApiResult<void>> updateDoctorProfile(
+    Map<String, dynamic> data,
+    File? image,
+  ) async {
+    try {
+      await _apiService.updateDoctorProfile(data, image);
+      return const ApiResult.success(null);
     } catch (error) {
       return ApiResult.failure(ApiErrorHandler.handle(error));
     }

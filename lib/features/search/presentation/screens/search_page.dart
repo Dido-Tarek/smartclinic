@@ -73,7 +73,11 @@ class SearchPage extends StatelessWidget {
                     specialization: doctor.specialization,
                     rating: doctor.rating,
                     imagePath: doctor.imagePath,
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.doctorProfileView,
+                      arguments: {'name': doctor.name},
+                    ),
                     onFavoriteChanged: (_) {},
                   );
                 },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/features/auth/data/models/account_selection_model.dart';
 import 'package:smartclinic/core/widgets/login_redirect.dart';
@@ -117,14 +118,12 @@ class _AccountSelectionScreenState extends State<AccountSelectionScreen> {
     return GestureDetector(
       onTap: () async {
         if (!_model.agreeToTerms) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Please agree to the Terms and Privacy Policy to continue.',
-              ),
-              backgroundColor: Colors.red,
+          CherryToast.error(
+            title: const Text('Terms required'),
+            description: const Text(
+              'Please agree to the Terms and Privacy Policy to continue.',
             ),
-          );
+          ).show(context);
           return;
         }
 
