@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
@@ -19,7 +20,12 @@ import 'package:smartclinic/injection_dependency.dart';
 class AppointmentDetailsPage extends StatefulWidget {
   const AppointmentDetailsPage({
     super.key,
-    this.enabledAppointmentTypes = const {'clinic', 'online', 'homeVisit'},
+    this.enabledAppointmentTypes = const {
+      'clinic',
+      'online',
+      'homeVisit',
+      'emergency',
+    },
   });
 
   final Set<String> enabledAppointmentTypes;
@@ -38,6 +44,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
   late bool _clinicSelected;
   late bool _onlineSelected;
   late bool _homeVisitSelected;
+  late bool _emergencySelected;
   bool _argsLoaded = false;
   bool _isOwner = true;
   String _name = '';
@@ -71,6 +78,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     _clinicSelected = types.contains('clinic');
     _onlineSelected = types.contains('online');
     _homeVisitSelected = types.contains('homeVisit');
+    _emergencySelected = types.contains('emergency');
   }
 
   @override
@@ -101,10 +109,12 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
 
       if (normalized['clinic'] is bool ||
           normalized['online'] is bool ||
-          normalized['homeVisit'] is bool) {
+          normalized['homeVisit'] is bool ||
+          normalized['emergency'] is bool) {
         _clinicSelected = normalized['clinic'] == true;
         _onlineSelected = normalized['online'] == true;
         _homeVisitSelected = normalized['homeVisit'] == true;
+        _emergencySelected = normalized['emergency'] == true;
       }
     }
 
@@ -118,11 +128,9 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
       listener: (context, state) async {
         state.whenOrNull(
           success: (_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(localizations.translate('clinic_added_success')),
-              ),
-            );
+            CherryToast.success(
+              title: Text(localizations.translate('clinic_added_success')),
+            ).show(context);
 
             final role = getRoleEnum(getIt<UserSession>().roleString);
             Navigator.pushReplacementNamed(
@@ -135,9 +143,10 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
             );
           },
           error: (error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error), backgroundColor: Colors.red),
-            );
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(error),
+            ).show(context);
           },
         );
       },
@@ -167,48 +176,68 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TypeCard(
-                                title: localizations.translate(
-                                  "clinic_appointment_title",
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final cardWidth = (constraints.maxWidth - 10) / 2;
+                            return Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: TypeCard(
+                                    title: localizations.translate(
+                                      'clinic_appointment_title',
+                                    ),
+                                    icon: Icons.local_hospital_outlined,
+                                    isSelected: _clinicSelected,
+                                    onTap: () => setState(
+                                      () => _clinicSelected = !_clinicSelected,
+                                    ),
+                                  ),
                                 ),
-                                icon: Icons.local_hospital_outlined,
-                                isSelected: _clinicSelected,
-                                onTap: () => setState(
-                                  () => _clinicSelected = !_clinicSelected,
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: TypeCard(
+                                    title: localizations.translate(
+                                      'online_appointment_title',
+                                    ),
+                                    icon: Icons.videocam_outlined,
+                                    isSelected: _onlineSelected,
+                                    onTap: () => setState(
+                                      () => _onlineSelected = !_onlineSelected,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TypeCard(
-                                title: localizations.translate(
-                                  'online_appointment_title',
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: TypeCard(
+                                    title: localizations.translate(
+                                      'home_visit_title',
+                                    ),
+                                    icon: Icons.home_outlined,
+                                    isSelected: _homeVisitSelected,
+                                    onTap: () => setState(
+                                      () => _homeVisitSelected =
+                                          !_homeVisitSelected,
+                                    ),
+                                  ),
                                 ),
-                                icon: Icons.videocam_outlined,
-                                isSelected: _onlineSelected,
-                                onTap: () => setState(
-                                  () => _onlineSelected = !_onlineSelected,
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: TypeCard(
+                                    title: 'Emergency Case',
+                                    icon: Icons.emergency_outlined,
+                                    isSelected: _emergencySelected,
+                                    onTap: () => setState(
+                                      () => _emergencySelected =
+                                          !_emergencySelected,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TypeCard(
-                                title: localizations.translate(
-                                  'home_visit_title',
-                                ),
-                                icon: Icons.home_outlined,
-                                isSelected: _homeVisitSelected,
-                                onTap: () => setState(
-                                  () =>
-                                      _homeVisitSelected = !_homeVisitSelected,
-                                ),
-                              ),
-                            ),
-                          ],
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 18),
                         _buildFeeCard(
@@ -248,7 +277,12 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                         _buildFeeCard(
                           title: localizations.translate('emergency_fee_title'),
                           controller: _emergencyFeeController,
-                          enabled: _isEnabled(['clinic', 'online']),
+                          enabled: _isEnabled([
+                            'clinic',
+                            'online',
+                            'homeVisit',
+                            'emergency',
+                          ]),
                           helperText: localizations.translate('fee_help_text'),
                         ),
                       ],
@@ -292,6 +326,8 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
           ? _onlineSelected
           : (t == 'homeVisit')
           ? _homeVisitSelected
+          : (t == 'emergency')
+          ? _emergencySelected
           : false;
       return allowed && selected;
     });

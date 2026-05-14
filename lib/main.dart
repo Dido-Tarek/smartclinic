@@ -24,16 +24,20 @@ void main() async {
   // await getIt<UserSession>().initMockSession(
   //   role: UserRole.doctor,
   //   userId: "5fe5c967-3797-4dac-a1a8-3faba1265e32",
+  //   token: ""
   // );
 
   await getIt<UserSession>().initMockSession(
     role: UserRole.patient,
     userId: "cbdb804d-1092-4d98-9d86-a9b028a46903",
+    token:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiQWhtZWQgQWJvIFRlc2h0IiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZWlkZW50aWZpZXIiOiJjYmRiODA0ZC0xMDkyLTRkOTgtOWQ4Ni1hOWIwMjhhNDY5MDMiLCJqdGkiOiIwNDE4YzM3Mi00MjczLTQzNDMtYTQzYi1lMWNjMmUxOGU5NDUiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJQYXRpZW50IiwiZXhwIjoxNzc4ODAxMzAyLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjUwMDAiLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjQyMDAifQ.qHTEFlfCtLruAdbZX8nvql-3CklhICF3Rvu1FcEaBN0",
   );
 
   // await getIt<UserSession>().initMockSession(
   //   role: UserRole.hospital,
   //   userId: "YOUR_HOSPITAL_ID_HERE",
+  //   token: ""
   // );
 
   // ---------------------------------------------------------

@@ -45,6 +45,9 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/wallet/data/api/wallet_api_service.dart';
 import 'package:smartclinic/features/wallet/data/repo/wallet_repo.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
+import 'package:smartclinic/features/appointments/data/api/appointment_api_service.dart';
+import 'package:smartclinic/features/appointments/data/repo/appointment_repo.dart';
+import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -162,4 +165,12 @@ Future<void> setupGetIt() async {
     () => UserManagementCubit(getIt<UserManagementRepo>()),
   );
   getIt.registerFactory<WalletCubit>(() => WalletCubit(getIt<WalletRepo>()));
+  // Appointments
+  getIt.registerLazySingleton<AppointmentsApiService>(
+    () => AppointmentsApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<AppointmentsRepo>(
+    () => AppointmentsRepoImpl(getIt<AppointmentsApiService>()),
+  );
+  getIt.registerFactory<AppointmentsCubit>(() => AppointmentsCubit(getIt<AppointmentsRepo>()));
 }

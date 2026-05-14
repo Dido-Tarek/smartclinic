@@ -6,6 +6,7 @@ import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/features/auth/data/models/login_request_model.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_state.dart';
@@ -65,12 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pushReplacementNamed(context, _resolveHomeRoute(role));
             },
             error: (message) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(message),
-                  backgroundColor: AppColors.error,
-                ),
-              );
+              CherryToast.error(
+                title: const Text('Error'),
+                description: Text(message),
+              ).show(context);
             },
           );
         },
@@ -275,9 +274,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showComingSoon(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(localizations.translate('login_coming_soon'))),
-    );
+    CherryToast.info(
+      title: const Text('Coming Soon'),
+      description: Text(localizations.translate('login_coming_soon')),
+    ).show(context);
   }
 
   String? _extractUserId(dynamic data) {

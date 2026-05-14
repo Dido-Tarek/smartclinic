@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
@@ -51,21 +52,17 @@ class _AddFamilyMember extends State<AddFamilyMember> {
       listener: (context, state) {
         state.whenOrNull(
           success: (_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(localizations.translate('family_member_saved')),
-                backgroundColor: AppColors.success,
-              ),
-            );
+            CherryToast.success(
+              title: const Text('Saved'),
+              description: Text(localizations.translate('family_member_saved')),
+            ).show(context);
             Navigator.pop(context, true);
           },
           error: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: AppColors.error,
-              ),
-            );
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(message),
+            ).show(context);
           },
         );
       },
@@ -240,12 +237,10 @@ class _AddFamilyMember extends State<AddFamilyMember> {
     final localizations = AppLocalizations.of(context)!;
 
     if ((_userId ?? '').trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('user_id_required')),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Missing user'),
+        description: Text(localizations.translate('user_id_required')),
+      ).show(context);
       return;
     }
 
@@ -254,12 +249,10 @@ class _AddFamilyMember extends State<AddFamilyMember> {
         _dobController.text.trim().isEmpty ||
         _bloodTypeController.text.trim().isEmpty ||
         (_selectedGender ?? '').isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.translate('fill_required_fields')),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: Text(localizations.translate('fill_required_fields')),
+      ).show(context);
       return;
     }
 

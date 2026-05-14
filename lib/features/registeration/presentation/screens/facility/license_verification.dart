@@ -13,6 +13,7 @@ import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'package:smartclinic/features/auth/data/models/verification_file_model.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 
 enum LicenseReviewStatus { done, pending, rejected }
 
@@ -280,12 +281,10 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
         _syndicateCardFile == null ||
         _professionalPhotoFile == null ||
         _specializationCertificateFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please upload all required documents first.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Missing files'),
+        description: const Text('Please upload all required documents first.'),
+      ).show(context);
       return;
     }
 
@@ -312,14 +311,16 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
     });
 
     if (response is Success<dynamic>) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification data submitted')),
-      );
+      CherryToast.success(
+        title: const Text('Submitted'),
+        description: const Text('Verification data submitted'),
+      ).show(context);
       await _waitForApprovalAndNavigate();
     } else if (response is Failure<dynamic>) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response.message), backgroundColor: Colors.red),
-      );
+      CherryToast.error(
+        title: const Text('Error'),
+        description: Text(response.message),
+      ).show(context);
     }
   }
 
@@ -406,12 +407,10 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
           setState(() {
             _currentReviewStatus = LicenseReviewStatus.rejected;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Verification was rejected.'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CherryToast.error(
+            title: const Text('Rejected'),
+            description: const Text('Verification was rejected.'),
+          ).show(context);
           return;
         }
 
@@ -429,12 +428,12 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Verification is still pending. Try again later.'),
-        backgroundColor: Colors.orange,
+    CherryToast.info(
+      title: const Text('Pending'),
+      description: const Text(
+        'Verification is still pending. Try again later.',
       ),
-    );
+    ).show(context);
   }
 
   LicenseReviewStatus? _mapStatus(dynamic statusValue) {

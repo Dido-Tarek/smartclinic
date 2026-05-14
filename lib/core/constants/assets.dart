@@ -98,6 +98,10 @@ class AppImages {
   static const String emptyNotifications =
       "assets/videos/Empty Notifications.gif";
 
+    static const String emptyAppointments = "assets/videos/emptyAppointment.gif";
+
+  static const String emptyPrescriptions = "assets/videos/Prescription.gif";
+
   static const String emptyInbox = "assets/videos/emptyInbox.gif";
 
   static const String iconssthethoscope =

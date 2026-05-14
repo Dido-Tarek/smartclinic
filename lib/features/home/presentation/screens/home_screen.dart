@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
-import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/home_header.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
-import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,7 +20,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
+  late final int _currentIndex = 0;
+  late final UserSession _userSession;
   late final PageController _appointmentsController;
   Timer? _autoSwipeTimer;
   late final AnimationController _shineController;
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _userSession = getIt<UserSession>();
     _appointmentsController = PageController(viewportFraction: 0.96);
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
@@ -70,39 +72,17 @@ class _HomeScreenState extends State<HomeScreen>
     await Navigator.pushNamed(context, AppRoutes.nouga);
   }
 
-  Future<void> _handleNavSelection(int index) async {
-    if (index == 3) {
-      await Navigator.pushNamed(context, AppRoutes.userManagement);
-      return;
-    }
-
-    setState(() => _currentIndex = index);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       extendBody: true,
-      appBar: _currentIndex == 1
-          ? CustomAppBar(
-              title: 'Inbox',
-              showBackButton: false,
-              onNotificationTap: _openNotifications,
-            )
-          : null,
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _currentIndex,
-        onItemSelected: _handleNavSelection,
+        userRole: _userSession.userRole,
         onChatbotPressed: _openChatbot,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: CustomNavBar.buildChatbotButton(
-        onPressed: _openChatbot,
-      ),
-      body: _currentIndex == 1
-          ? const InboxChatRoomsScreen()
-          : _buildHomeBody(),
+      body: _buildHomeBody(),
     );
   }
 
@@ -124,7 +104,11 @@ class _HomeScreenState extends State<HomeScreen>
               SizedBox(height: 16),
               const SearchEngineBar(),
               SizedBox(height: 16),
-              _buildSectionTitle('My Appointments'),
+              _buildSectionTitle(
+                'My Appointments',
+                onSeeAllTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.appointments),
+              ),
               SizedBox(height: 10),
               SizedBox(
                 height: 130,
@@ -158,7 +142,13 @@ class _HomeScreenState extends State<HomeScreen>
                         appointmentDate: data['appointmentDate']!,
                         appointmentTime: data['appointmentTime']!,
                         imagePath: data['imagePath']!,
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.doctorProfileView,
+                            arguments: {'name': data['doctorName']},
+                          );
+                        },
                       ),
                     );
                   },
@@ -273,7 +263,11 @@ class _HomeScreenState extends State<HomeScreen>
                         specialization: item.specialization,
                         rating: item.rating,
                         imagePath: item.imagePath,
-                        onTap: () {},
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.doctorProfileView,
+                          arguments: {'name': item.name},
+                        ),
                         onFavoriteChanged: (value) {},
                       ),
                     );

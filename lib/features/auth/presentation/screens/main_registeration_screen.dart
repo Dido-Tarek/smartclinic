@@ -8,6 +8,7 @@ import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/login_redirect.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 
 class MainRegisterScreen extends StatefulWidget {
   const MainRegisterScreen({super.key});
@@ -158,29 +159,26 @@ class _MainRegisterScreenState extends State<MainRegisterScreen> {
         emailController.text.isEmpty ||
         passwordController.text.isEmpty ||
         confirmPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Missing fields'),
+        description: const Text('Please fill all fields'),
+      ).show(context);
       return;
     }
 
     if (passwordError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(passwordError), backgroundColor: Colors.red),
-      );
+      CherryToast.error(
+        title: const Text('Invalid password'),
+        description: Text(passwordError),
+      ).show(context);
       return;
     }
 
     if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      CherryToast.error(
+        title: const Text('Mismatch'),
+        description: const Text('Passwords do not match'),
+      ).show(context);
       return;
     }
 

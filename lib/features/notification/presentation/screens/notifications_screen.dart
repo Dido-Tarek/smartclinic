@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/features/notification/data/model/notifications_model.dart';
@@ -30,12 +31,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return BlocConsumer<NotificationsCubit, NotificationsState>(
       listener: (context, state) {
         if (state is NotificationsError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
+          CherryToast.error(
+            title: const Text('Error'),
+            description: Text(state.message),
+          ).show(context);
         }
       },
       builder: (context, state) {

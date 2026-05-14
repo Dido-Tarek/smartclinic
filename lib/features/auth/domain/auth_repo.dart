@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/features/auth/data/models/facility_claim_ownership_request.dart.dart';
 import 'package:smartclinic/features/registeration/data/model/medical_facility_register_model.dart';

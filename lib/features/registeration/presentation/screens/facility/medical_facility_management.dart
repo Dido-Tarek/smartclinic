@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
@@ -101,40 +102,36 @@ class _MedicalFacilityManagementPageState
               _credentialsUploaded = true;
             });
 
-            final messenger = ScaffoldMessenger.of(context);
             final navigator = Navigator.of(context);
             final role = getRoleEnum(_userSession.roleString);
 
             if (_claimOwnershipFlow) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localizations.translate("clinic_claim_success_message"),
-                  ),
+              CherryToast.success(
+                title: const Text('Success'),
+                description: Text(
+                  localizations.translate("clinic_claim_success_message"),
                 ),
-              );
+              ).show(context);
               navigator.pushReplacementNamed(_resolveHomeRoute(role));
               return;
             }
 
             if (_staffFlow) {
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localizations.translate("staff_request_success_message"),
-                  ),
+              CherryToast.success(
+                title: const Text('Success'),
+                description: Text(
+                  localizations.translate("staff_request_success_message"),
                 ),
-              );
+              ).show(context);
               return;
             }
 
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(
-                  localizations.translate('owner_documents_uploaded_message'),
-                ),
+            CherryToast.success(
+              title: const Text('Success'),
+              description: Text(
+                localizations.translate('owner_documents_uploaded_message'),
               ),
-            );
+            ).show(context);
           },
           error: (error) {
             if (!mounted) {
@@ -145,9 +142,10 @@ class _MedicalFacilityManagementPageState
               _isSubmitting = false;
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error), backgroundColor: Colors.red),
-            );
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(error),
+            ).show(context);
           },
         );
       },
@@ -982,17 +980,15 @@ class _MedicalFacilityManagementPageState
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(
-                  context,
-                )?.translate('please_upload_all_documents') ??
-                'Please upload all required documents first.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Missing files'),
+        description: Text(
+          AppLocalizations.of(
+                context,
+              )?.translate('please_upload_all_documents') ??
+              'Please upload all required documents first.',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -1003,15 +999,13 @@ class _MedicalFacilityManagementPageState
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)?.translate('missing_user_session') ??
-                'Missing user session. Please sign in again.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Missing session'),
+        description: Text(
+          AppLocalizations.of(context)?.translate('missing_user_session') ??
+              'Missing user session. Please sign in again.',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -1019,17 +1013,13 @@ class _MedicalFacilityManagementPageState
     if (_staffFlow && _selectedClinicId == null) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(
-                  context,
-                )?.translate('select_clinic_for_staff') ??
-                'Please select the clinic you want staff access for.',
-          ),
-          backgroundColor: Colors.red,
+      CherryToast.error(
+        title: const Text('Select clinic'),
+        description: Text(
+          AppLocalizations.of(context)?.translate('select_clinic_for_staff') ??
+              'Please select the clinic you want staff access for.',
         ),
-      );
+      ).show(context);
       return;
     }
 
@@ -1089,17 +1079,15 @@ class _MedicalFacilityManagementPageState
   }
 
   void _showUploadRequiredMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(
-                context,
-              )?.translate('upload_required_credentials') ??
-              'Upload the required credentials before continuing.',
-        ),
-        backgroundColor: Colors.red,
+    CherryToast.error(
+      title: const Text('Upload required'),
+      description: Text(
+        AppLocalizations.of(
+              context,
+            )?.translate('upload_required_credentials') ??
+            'Upload the required credentials before continuing.',
       ),
-    );
+    ).show(context);
   }
 
   bool get _canContinue => _credentialsUploaded && !_isSubmitting;
