@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
-import 'package:smartclinic/core/helper/bottom_nav_route_helper.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
+import 'package:smartclinic/features/medical_records/presentation/screens/upload_medical_records.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class UserManagementPage extends StatefulWidget {
@@ -31,15 +31,14 @@ class _UserManagementPageState extends State<UserManagementPage> {
   @override
   Widget build(BuildContext context) {
     final isDoctor = _userSession.userRole.isDoctor;
-    final profile = isDoctor
-        ? const _ProfileData(
-            name: 'Mahmoud Abo Leila',
-            email: 'ableila009k@gmail.com',
-          )
-        : const _ProfileData(
-            name: 'Ahmed Khatab',
-            email: 'ahmed90.mh@gmail.com',
-          );
+    final profile = _ProfileData(
+      name: _userSession.fullName?.trim().isNotEmpty == true
+          ? _userSession.fullName!.trim()
+          : (isDoctor ? 'Doctor' : 'Patient'),
+      email: _userSession.email?.trim().isNotEmpty == true
+          ? _userSession.email!.trim()
+          : '',
+    );
 
     final items = isDoctor ? _doctorItems : _patientItems;
 
@@ -111,6 +110,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                               'Notifications' => AppRoutes.notifications,
                               // 'Reset Password' => AppRoutes.verifyDoctor,
                               'Payment Settings' => AppRoutes.wallet,
+                              'Clinic Settings' => AppRoutes.clinicManagement,
                               'Family Members' => AppRoutes.familyMember,
                               'Medical Records' =>
                                 AppRoutes.uploadMedicalRecords,
@@ -149,6 +149,15 @@ class _UserManagementPageState extends State<UserManagementPage> {
   }
 
   void _navigateTo(String route) {
+    if (route == AppRoutes.uploadMedicalRecords) {
+      Navigator.pushNamed(
+        context,
+        route,
+        arguments: MedicalRecordsSource.profile,
+      );
+      return;
+    }
+
     Navigator.pushNamed(context, route);
   }
 }

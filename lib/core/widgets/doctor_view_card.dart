@@ -43,13 +43,20 @@ class DoctorViewCard extends StatelessWidget {
         children: [
           // ── Half-circle doctor image ──
           ClipOval(
-            child: Align(
-              alignment: Alignment.centerRight,
-              widthFactor: 0.70,
-              child: SizedBox(
-                width: 150,
-                height: 150,
-                child: Image.asset(doctorImagePath, fit: BoxFit.cover),
+            child: ColoredBox(
+              color: Colors.transparent,
+              child: Align(
+                alignment: Alignment.centerRight,
+                widthFactor: 0.70,
+                child: SizedBox(
+                  width: 150,
+                  height: 150,
+                  child: Image.asset(
+                    doctorImagePath,
+                    fit: BoxFit.cover,
+                    colorBlendMode: BlendMode.srcOver,
+                  ),
+                ),
               ),
             ),
           ),

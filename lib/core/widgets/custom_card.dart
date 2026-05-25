@@ -6,6 +6,9 @@ class MedicalRecordCard extends StatelessWidget {
   final String description;
   final bool isActive;
   final String? relation;
+  final String? badgeLabel;
+  final bool showEditButton;
+  final bool showDeleteButton;
   final VoidCallback onEditPressed;
   final VoidCallback onDeletePressed;
 
@@ -15,6 +18,9 @@ class MedicalRecordCard extends StatelessWidget {
     required this.description,
     this.isActive = false,
     this.relation,
+    this.badgeLabel,
+    this.showEditButton = true,
+    this.showDeleteButton = true,
     required this.onEditPressed,
     required this.onDeletePressed,
   });
@@ -49,80 +55,100 @@ class MedicalRecordCard extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 18,
+                        fontSize: 22,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       description,
                       style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
+                        color: Color(0xFF6D7A90),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (relation != null && relation!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        relation!,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: isActive ? AppColors.deepNavy : Colors.transparent,
-                  borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: isActive
-                        ? AppColors.deepNavy
-                        : AppColors.textSecondary,
-                    width: 2,
+              if ((badgeLabel ?? relation)?.isNotEmpty == true)
+                Container(
+                  constraints: const BoxConstraints(minWidth: 132),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepNavy,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    badgeLabel ?? relation!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
-                child: Text(
-                  isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              IconButton(
-                onPressed: onEditPressed,
-                icon: const Icon(
-                  Icons.edit_outlined,
-                  color: AppColors.deepNavy,
-                  size: 22,
+              if (showEditButton) ...[
+                _ActionButton(
+                  onTap: onEditPressed,
+                  borderColor: const Color(0xFFA6C8ED),
+                  iconColor: const Color(0xFFA6C8ED),
+                  icon: Icons.edit_outlined,
                 ),
-              ),
-              IconButton(
-                onPressed: onDeletePressed,
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                  size: 22,
+                const SizedBox(width: 20),
+              ],
+              if (showDeleteButton)
+                _ActionButton(
+                  onTap: onDeletePressed,
+                  borderColor: const Color(0xFFFF5A5A),
+                  iconColor: const Color(0xFFE10000),
+                  icon: Icons.close,
                 ),
-              ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final Color borderColor;
+  final Color iconColor;
+  final IconData icon;
+
+  const _ActionButton({
+    required this.onTap,
+    required this.borderColor,
+    required this.iconColor,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: borderColor, width: 2),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
     );
   }

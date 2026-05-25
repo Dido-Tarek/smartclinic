@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:file_picker/file_picker.dart';
@@ -47,29 +48,64 @@ class BookingConfirmationPage extends StatefulWidget {
 class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   bool _isExporting = false;
 
+  // ── shared resolved values ───────────────────────────────────────────────
+  String get _consultationType =>
+      widget.consultationType ?? 'Online Consultation';
+  String get _selectedDate => widget.selectedDate ?? '2026-05-14';
+  String get _selectedTime => widget.selectedTime ?? '10:00 AM';
+  String get _paymentMethodRaw =>
+      (widget.paymentMethod ?? 'wallet').toLowerCase();
+  String get _paymentMethodLabel =>
+      _paymentMethodRaw == 'cash' ? 'Cash' : 'Wallet';
+  String get _paymentStatus => _paymentMethodRaw == 'cash' ? 'Unpaid' : 'Paid';
+  bool get _isPaid => _paymentStatus == 'Paid';
+
+  // ── PDF colours ──────────────────────────────────────────────────────────
+  static final _pdfDeepNavy = PdfColor.fromInt(AppColors.deepNavy.value);
+  static final _pdfSkyBlue = PdfColor.fromInt(AppColors.skyBlue.value);
+  static final _pdfSecondary = PdfColor.fromInt(AppColors.textSecondary.value);
+  static final _pdfBorder = PdfColor.fromInt(const Color(0xFFE6EAF0).value);
+  static final _pdfBgLight = PdfColor.fromInt(const Color(0xFFE5F0FF).value);
+  static final _pdfScaffoldBg = PdfColor.fromInt(const Color(0xFFEFF3F8).value);
+  static final _pdfGreenText = PdfColor.fromInt(const Color(0xFF62C47E).value);
+  static final _pdfGreenBg = PdfColor.fromInt(const Color(0xFFE8F7EA).value);
+  static final _pdfOrangeText = PdfColor.fromInt(const Color(0xFFE67E22).value);
+  static final _pdfOrangeBg = PdfColor.fromInt(const Color(0xFFFDEBD8).value);
+
+  Future<pw.ThemeData> _buildPdfTheme() async {
+    final regularFont = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Cairo-Regular.ttf'),
+    );
+    final boldFont = pw.Font.ttf(
+      await rootBundle.load('assets/fonts/Cairo-Bold.ttf'),
+    );
+
+    return pw.ThemeData.withFont(base: regularFont, bold: boldFont);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Download
+  // ────────────────────────────────────────────────────────────────────────
   Future<void> _downloadReceipt() async {
     if (_isExporting) return;
-
     setState(() => _isExporting = true);
-
     try {
-      final pdf = _buildReceiptPdf();
+      final pdf = await _buildReceiptPdf();
       final bytes = await pdf.save();
-      final savedPath = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.platform.saveFile(
         dialogTitle: 'Save receipt as',
         fileName: _buildReceiptFileName(),
         type: FileType.custom,
         allowedExtensions: const ['pdf'],
         bytes: bytes,
       );
-
       if (!mounted) return;
-      final message = savedPath == null
+      final msg = saved == null
           ? 'Receipt download canceled.'
-          : 'Receipt PDF saved to $savedPath';
+          : 'Receipt PDF saved to $saved';
       CherryToast.info(
         title: const Text('Receipt'),
-        description: Text(message),
+        description: Text(msg),
       ).show(context);
     } catch (error) {
       if (!mounted) return;
@@ -78,270 +114,354 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
         description: Text('Failed to export receipt PDF: $error'),
       ).show(context);
     } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 
   String _buildReceiptFileName() {
     final now = DateTime.now();
-    final datePart =
-        '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final timePart =
-        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
-    return 'booking_receipt_${datePart}_$timePart.pdf';
+    final d =
+        '${now.year.toString().padLeft(4, '0')}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}';
+    final t =
+        '${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
+    return 'booking_receipt_${d}_$t.pdf';
   }
 
-  pw.Document _buildReceiptPdf() {
-    final doctorNameValue = widget.doctorName ?? 'Dr. Mai El Kady';
-    final specializationValue = widget.specialization ?? 'Physician';
-    final clinicNameValue = widget.clinicName ?? 'Good Health Care';
-    final ratingValue = widget.rating ?? 4.8;
-    final selectedDateValue = widget.selectedDate ?? '2026-05-14';
-    final selectedTimeValue = widget.selectedTime ?? '10:00 AM';
-    final consultationTypeValue =
-        widget.consultationType ?? 'Online Consultation';
-    final patientNameValue = widget.patientName ?? 'Patient';
-    final paymentMethodValue = (widget.paymentMethod ?? 'wallet').toLowerCase();
-    final paymentStatusValue = paymentMethodValue == 'cash' ? 'Unpaid' : 'Paid';
-
+  // ────────────────────────────────────────────────────────────────────────
+  // PDF builder — mirrors the screen 1-to-1
+  // ────────────────────────────────────────────────────────────────────────
+  Future<pw.Document> _buildReceiptPdf() async {
     final pdf = pw.Document();
-    final deepNavy = PdfColor.fromInt(AppColors.deepNavy.value);
-    final skyBlue = PdfColor.fromInt(AppColors.skyBlue.value);
-    final textSecondary = PdfColor.fromInt(AppColors.textSecondary.value);
-    final successGreen = PdfColor.fromInt(const Color(0xFF62C47E).value);
+    final pdfTheme = await _buildPdfTheme();
 
     pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
-        build: (context) {
-          return pw.Column(
+      pw.MultiPage(
+        pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          theme: pdfTheme,
+          buildBackground: (_) => pw.FullPage(
+            ignoreMargins: true,
+            child: pw.Container(color: _pdfScaffoldBg),
+          ),
+        ),
+        build: (_) => [
+          pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
+              // ── success badge ──────────────────────────────────────────
               pw.Center(
                 child: pw.Container(
-                  width: 70,
-                  height: 70,
+                  width: 80,
+                  height: 80,
                   decoration: pw.BoxDecoration(
-                    color: PdfColor.fromInt(const Color(0xFFE5F0FF).value),
+                    color: _pdfBgLight,
                     shape: pw.BoxShape.circle,
                   ),
                   child: pw.Center(
                     child: pw.Container(
-                      width: 38,
-                      height: 38,
+                      width: 46,
+                      height: 46,
                       decoration: pw.BoxDecoration(
-                        color: skyBlue,
+                        color: _pdfSkyBlue,
                         shape: pw.BoxShape.circle,
                       ),
-                      child: pw.Center(
-                        child: pw.Text(
-                          '✓',
-                          style: pw.TextStyle(
-                            color: PdfColors.white,
-                            fontSize: 20,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      child: pw.Center(child: _pdfCheckMark()),
                     ),
                   ),
                 ),
               ),
-              pw.SizedBox(height: 16),
+
+              _gap(18),
+
+              // ── title ──────────────────────────────────────────────────
               pw.Center(
                 child: pw.Text(
                   'Booking Successful',
                   style: pw.TextStyle(
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
-                    color: deepNavy,
+                    color: _pdfDeepNavy,
                   ),
                 ),
               ),
-              pw.SizedBox(height: 6),
+
+              _gap(8),
+
               pw.Center(
                 child: pw.Text(
                   'Your appointment has been confirmed.\nYou can find the details below.',
                   textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(fontSize: 11, color: textSecondary),
+                  style: pw.TextStyle(fontSize: 12, color: _pdfSecondary),
                 ),
               ),
-              pw.SizedBox(height: 18),
-              _pdfSectionTitle('BOOKING INFORMATION', deepNavy),
-              pw.SizedBox(height: 8),
-              _pdfCard([
-                _pdfRow('Consultation Type', consultationTypeValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Date', selectedDateValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Time', selectedTimeValue, deepNavy),
-              ]),
-              pw.SizedBox(height: 14),
-              _pdfSectionTitle('PAYMENT INFORMATION', deepNavy),
-              pw.SizedBox(height: 8),
+
+              _gap(24),
+
+              // ── BOOKING INFORMATION ────────────────────────────────────
+              _pdfSectionTitle('BOOKING INFORMATION'),
+              _gap(8),
               _pdfCard([
                 _pdfRow(
-                  'Payment Method',
-                  paymentMethodValue == 'cash' ? 'Cash' : 'Wallet',
-                  deepNavy,
+                  'Consultation Type',
+                  _consultationType,
+                  boldValue: true, // bold on screen
                 ),
                 _pdfDivider(),
-                _pdfRow(
-                  'Status',
-                  paymentStatusValue,
-                  deepNavy,
-                  valueWidget: pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColor.fromInt(
-                        (paymentStatusValue == 'Paid'
-                                ? const Color(0xFFE8F7EA)
-                                : const Color(0xFFFDEBD8))
-                            .value,
+                _pdfRow('Date', _selectedDate),
+                _pdfDivider(),
+                _pdfRow('Time', _selectedTime),
+              ]),
+
+              _gap(16),
+
+              // ── PAYMENT INFORMATION ────────────────────────────────────
+              _pdfSectionTitle('PAYMENT INFORMATION'),
+              _gap(8),
+              _pdfCard([
+                // Payment Method row — has the "G" badge prefix like the screen
+                pw.Row(
+                  children: [
+                    // G badge
+                    pw.Container(
+                      width: 18,
+                      height: 18,
+                      decoration: pw.BoxDecoration(
+                        color: PdfColor.fromInt(
+                          AppColors.skyBlue.withValues(alpha: 0.15).value,
+                        ),
+                        borderRadius: pw.BorderRadius.circular(4),
                       ),
-                      borderRadius: pw.BorderRadius.circular(999),
+                      child: pw.Center(
+                        child: pw.Text(
+                          'G',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: _pdfSkyBlue,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: pw.Text(
-                      paymentStatusValue,
+                    pw.SizedBox(width: 6),
+                    pw.Expanded(
+                      child: pw.Text(
+                        'Payment Method',
+                        style: pw.TextStyle(fontSize: 13, color: _pdfSecondary),
+                      ),
+                    ),
+                    pw.SizedBox(width: 12),
+                    pw.Text(
+                      _paymentMethodLabel,
                       style: pw.TextStyle(
-                        fontSize: 10,
-                        color: paymentStatusValue == 'Paid'
-                            ? successGreen
-                            : PdfColor.fromInt(const Color(0xFFE67E22).value),
+                        fontSize: 13,
                         fontWeight: pw.FontWeight.bold,
+                        color: _pdfDeepNavy,
                       ),
                     ),
-                  ),
+                  ],
+                ),
+
+                _pdfDivider(),
+
+                // Status row — coloured pill
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      child: pw.Text(
+                        'Status',
+                        style: pw.TextStyle(fontSize: 13, color: _pdfSecondary),
+                      ),
+                    ),
+                    pw.SizedBox(width: 12),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: pw.BoxDecoration(
+                        color: _isPaid ? _pdfGreenBg : _pdfOrangeBg,
+                        borderRadius: pw.BorderRadius.circular(999),
+                      ),
+                      child: pw.Text(
+                        _paymentStatus,
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: _isPaid ? _pdfGreenText : _pdfOrangeText,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ]),
-              pw.SizedBox(height: 14),
-              _pdfSectionTitle('PAYMENT SUMMARY', deepNavy),
-              pw.SizedBox(height: 8),
+
+              _gap(16),
+
+              // ── PAYMENT SUMMARY ────────────────────────────────────────
+              _pdfSectionTitle('PAYMENT SUMMARY'),
+              _gap(8),
               _pdfCard([
-                _pdfRow('Amount', '\$20.00', deepNavy),
+                _pdfRow('Amount', 'EGP 20.00'),
                 _pdfDivider(),
-                _pdfRow('Duration (30 mins)', '1 x \$20.00', deepNavy),
+                _pdfRow('Duration (30 mins)', r'1 x EGP 20.00'),
                 _pdfDivider(),
-                _pdfRow('Total', '\$20.00', deepNavy, boldValue: true),
+                // Total — both label AND value are bold + slightly larger
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      child: pw.Text(
+                        'Total',
+                        style: pw.TextStyle(
+                          fontSize: 15,
+                          fontWeight: pw.FontWeight.bold,
+                          color: _pdfDeepNavy,
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(width: 12),
+                    pw.Text(
+                      'EGP 20.00',
+                      style: pw.TextStyle(
+                        fontSize: 15,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _pdfDeepNavy,
+                      ),
+                    ),
+                  ],
+                ),
               ]),
-              pw.SizedBox(height: 14),
-              _pdfCard([
-                _pdfRow('Doctor', doctorNameValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Specialization', specializationValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Clinic', clinicNameValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Patient', patientNameValue, deepNavy),
-                _pdfDivider(),
-                _pdfRow('Rating', ratingValue.toStringAsFixed(1), deepNavy),
-              ]),
-              pw.Spacer(),
+
+              _gap(20),
+
+              // ── footer ─────────────────────────────────────────────────
               pw.Align(
                 alignment: pw.Alignment.centerRight,
                 child: pw.Text(
                   'Generated by SmartClinic',
-                  style: pw.TextStyle(color: textSecondary, fontSize: 9),
+                  style: pw.TextStyle(color: _pdfSecondary, fontSize: 9),
                 ),
               ),
             ],
-          );
-        },
+          ),
+        ], // MultiPage build returns List
       ),
     );
 
     return pdf;
   }
 
-  pw.Widget _pdfSectionTitle(String title, PdfColor color) {
-    return pw.Text(
-      title,
-      style: pw.TextStyle(
-        color: color,
-        fontSize: 11,
-        fontWeight: pw.FontWeight.bold,
-        letterSpacing: 0.35,
-      ),
-    );
-  }
+  // ── PDF micro helpers ────────────────────────────────────────────────────
 
-  pw.Widget _pdfCard(List<pw.Widget> children) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(16),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.white,
-        borderRadius: pw.BorderRadius.circular(12),
-        border: pw.Border.all(
-          color: PdfColor.fromInt(const Color(0xFFE6EAF0).value),
-        ),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-        children: children,
-      ),
-    );
-  }
+  pw.SizedBox _gap(double h) => pw.SizedBox(height: h);
 
-  pw.Widget _pdfDivider() {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 10),
-      child: pw.Divider(
-        height: 1,
-        thickness: 1,
-        color: PdfColor.fromInt(const Color(0xFFE6EAF0).value),
-      ),
-    );
-  }
+  pw.Widget _pdfSectionTitle(String title) => pw.Text(
+    title,
+    style: pw.TextStyle(
+      color: PdfColor.fromInt(AppColors.deepNavy.withValues(alpha: 0.75).value),
+      fontSize: 11,
+      fontWeight: pw.FontWeight.bold,
+      letterSpacing: 0.35,
+    ),
+  );
 
-  pw.Widget _pdfRow(
-    String label,
-    String value,
-    PdfColor textColor, {
-    pw.Widget? valueWidget,
-    bool boldValue = false,
-  }) {
-    final labelStyle = pw.TextStyle(
-      color: PdfColor.fromInt(AppColors.textSecondary.value),
-      fontSize: 13,
-      fontWeight: pw.FontWeight.normal,
-    );
+  pw.Widget _pdfCard(List<pw.Widget> children) => pw.Container(
+    padding: const pw.EdgeInsets.all(16),
+    decoration: pw.BoxDecoration(
+      color: PdfColors.white,
+      borderRadius: pw.BorderRadius.circular(12),
+      border: pw.Border.all(color: _pdfBorder, width: 0.8),
+    ),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: children,
+    ),
+  );
 
-    final valueFontSize = boldValue ? 14.0 : 13.0;
-    final valueStyle = pw.TextStyle(
-      color: textColor,
-      fontSize: valueFontSize,
-      fontWeight: boldValue ? pw.FontWeight.bold : pw.FontWeight.normal,
-    );
+  pw.Widget _pdfDivider() => pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(vertical: 10),
+    child: pw.Divider(height: 1, thickness: 0.8, color: _pdfBorder),
+  );
 
-    return pw.Row(
+  pw.Widget _pdfCheckMark() => pw.SizedBox(
+    width: 18,
+    height: 18,
+    child: pw.Stack(
       children: [
-        pw.Expanded(child: pw.Text(label, style: labelStyle)),
-        pw.SizedBox(width: 12),
-        valueWidget ??
-            pw.Text(value, textAlign: pw.TextAlign.right, style: valueStyle),
+        pw.Positioned(
+          left: 2.5,
+          top: 9.0,
+          child: pw.Transform.rotateBox(
+            angle: -0.72,
+            child: pw.Container(
+              width: 6.5,
+              height: 2.4,
+              decoration: pw.BoxDecoration(
+                color: PdfColors.white,
+                borderRadius: pw.BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+        pw.Positioned(
+          left: 6.0,
+          top: 6.0,
+          child: pw.Transform.rotateBox(
+            angle: 0.72,
+            child: pw.Container(
+              width: 10.5,
+              height: 2.4,
+              decoration: pw.BoxDecoration(
+                color: PdfColors.white,
+                borderRadius: pw.BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
       ],
-    );
-  }
+    ),
+  );
 
+  pw.Widget _pdfRow(String label, String value, {bool boldValue = false}) =>
+      pw.Row(
+        children: [
+          pw.Expanded(
+            child: pw.Text(
+              label,
+              style: pw.TextStyle(fontSize: 13, color: _pdfSecondary),
+            ),
+          ),
+          pw.SizedBox(width: 12),
+          pw.Text(
+            value,
+            textAlign: pw.TextAlign.right,
+            style: pw.TextStyle(
+              fontSize: 13,
+              color: _pdfDeepNavy,
+              fontWeight: boldValue ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+        ],
+      );
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Screen build — unchanged
+  // ────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final consultationTypeValue =
+        widget.consultationType ?? 'Online Consultation';
+    final selectedDateValue = widget.selectedDate ?? '2026-05-14';
+    final selectedTimeValue = widget.selectedTime ?? '10:00 AM';
+    final patientNameValue = widget.patientName ?? 'Patient';
     final doctorNameValue = widget.doctorName ?? 'Dr. Mai El Kady';
     final specializationValue = widget.specialization ?? 'Physician';
     final clinicNameValue = widget.clinicName ?? 'Good Health Care';
     final ratingValue = widget.rating ?? 4.8;
-    final selectedDateValue = widget.selectedDate ?? '2026-05-14';
-    final selectedTimeValue = widget.selectedTime ?? '10:00 AM';
-    final consultationTypeValue =
-        widget.consultationType ?? 'Online Consultation';
-    final patientNameValue = widget.patientName ?? 'Patient';
-    final paymentMethodValue = (widget.paymentMethod ?? 'wallet').toLowerCase();
-    final paymentStatusValue = paymentMethodValue == 'cash' ? 'Unpaid' : 'Paid';
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -411,9 +531,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                       children: [
                         _InfoRow(
                           label: 'Payment Method',
-                          value: paymentMethodValue == 'cash'
-                              ? 'Cash'
-                              : 'Wallet',
+                          value: _paymentMethodLabel,
                           leading: const _PaymentMethodMark(),
                           valueStyle: TextStyle(
                             fontSize: 13,
@@ -424,24 +542,24 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                         const Divider(height: 20),
                         _InfoRow(
                           label: 'Status',
-                          value: paymentStatusValue,
+                          value: _paymentStatus,
                           valueChip: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: paymentStatusValue == 'Paid'
+                              color: _isPaid
                                   ? const Color(0xFFE8F7EA)
                                   : const Color(0xFFFDEBD8),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              paymentStatusValue,
+                              _paymentStatus,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: paymentStatusValue == 'Paid'
+                                color: _isPaid
                                     ? const Color(0xFF62C47E)
                                     : const Color(0xFFE67E22),
                               ),
@@ -455,16 +573,16 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     const SizedBox(height: 8),
                     _InfoCard(
                       children: [
-                        _InfoRow(label: 'Amount', value: '\$20.00'),
+                        _InfoRow(label: 'Amount', value: r'$20.00'),
                         const Divider(height: 20),
                         _InfoRow(
                           label: 'Duration (30 mins)',
-                          value: '1 x \$20.00',
+                          value: r'1 x $20.00',
                         ),
                         const Divider(height: 20),
                         _InfoRow(
                           label: 'Total',
-                          value: '\$20.00',
+                          value: 'EGP 20.00',
                           labelStyle: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -499,7 +617,7 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                         const Divider(height: 20),
                         _InfoRow(
                           label: 'Payment Status',
-                          value: paymentStatusValue,
+                          value: _paymentStatus,
                         ),
                       ],
                     ),
@@ -538,13 +656,11 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     width: double.infinity,
                     height: 44,
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          AppRoutes.home,
-                          (route) => false,
-                        );
-                      },
+                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (r) => false,
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.deepNavy,
                         side: BorderSide(
@@ -573,9 +689,12 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-widgets (screen only — unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _SuccessBadge extends StatelessWidget {
   const _SuccessBadge();
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -602,9 +721,7 @@ class _SuccessBadge extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   final String text;
-
   const _SectionTitle(this.text);
-
   @override
   Widget build(BuildContext context) {
     return Text(
@@ -621,9 +738,7 @@ class _SectionTitle extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;
-
   const _InfoCard({required this.children});
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -698,7 +813,6 @@ class _InfoRow extends StatelessWidget {
 
 class _PaymentMethodMark extends StatelessWidget {
   const _PaymentMethodMark();
-
   @override
   Widget build(BuildContext context) {
     return Container(

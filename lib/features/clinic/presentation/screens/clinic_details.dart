@@ -2,10 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
+import 'package:smartclinic/features/clinic_management/data/model/clinic_request_model.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_state.dart';
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
-import 'package:smartclinic/core/routes/app_routes.dart';
+// routes import removed (unused)
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
@@ -83,10 +87,7 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
       TextEditingController();
 
   bool _argsLoaded = false;
-  bool _isOwner = true;
-  File? _legalDocument1;
-  File? _legalDocument2;
-  File? _legalDocument3;
+  int? _clinicId;
   File? _clinicImage;
   double? _latitude;
   double? _longitude;
@@ -103,16 +104,31 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     if (_argsLoaded) {
       return;
     }
-
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map) {
       final normalized = args.map(
         (key, value) => MapEntry(key.toString(), value),
       );
-      _isOwner = normalized['isOwner'] as bool? ?? true;
-      _legalDocument1 = normalized['legalDocument1'] as File?;
-      _legalDocument2 = normalized['legalDocument2'] as File?;
-      _legalDocument3 = normalized['legalDocument3'] as File?;
+      _clinicId = normalized['clinicId'] as int?;
+      _facilityNameController.text = normalized['name'] as String? ?? '';
+      _contactController.text = normalized['phoneNumber'] as String? ?? '';
+      _addressController.text = normalized['address'] as String? ?? '';
+      _cityController.text = normalized['city'] as String? ?? '';
+      _areaController.text = normalized['area'] as String? ?? '';
+      _specializationController.text =
+          normalized['specialization'] as String? ?? '';
+      final clinicImageText = normalized['clinicImageUrl'] as String?;
+      if (clinicImageText != null && clinicImageText.trim().isNotEmpty) {
+        _facilityImageController.text = clinicImageText.trim();
+      }
+      final lat = normalized['latitude'] as double?;
+      final lng = normalized['longitude'] as double?;
+      _latitude = lat;
+      _longitude = lng;
+      _locationController.text = normalized['location'] as String? ??
+          (_latitude != null && _longitude != null
+              ? '${_latitude?.toStringAsFixed(6)}, ${_longitude?.toStringAsFixed(6)}'
+              : '');
     }
 
     _argsLoaded = true;
@@ -136,173 +152,199 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AuthHeader(
-                      title: localizations.translate('clinic_details_title'),
-                      subTitle: localizations.translate(
-                        'clinic_details_subtitle',
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    _buildLabel(localizations.translate('facility_name_title')),
-                    const SizedBox(height: 8),
-                    AppTextFormField(
-                      controller: _facilityNameController,
-                      hintText: localizations.translate(
-                        'facility_name_subtitle',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildLabel(
-                      localizations.translate('facility_contact_title'),
-                    ),
-                    const SizedBox(height: 8),
-                    AppTextFormField(
-                      controller: _contactController,
-                      hintText: localizations.translate(
-                        'facility_contact_subtitle',
-                      ),
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildLabel(
-                      localizations.translate('facility_location_title'),
-                    ),
-                    const SizedBox(height: 8),
-                    AppTextFormField(
-                      controller: _locationController,
-                      hintText: localizations.translate(
-                        'facility_location_subtitle',
-                      ),
-                      type: TextFormFieldType.location,
-                      // onTap: _onOpenMap,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildLabel(
-                      localizations.translate('facility_address_title'),
-                    ),
-                    const SizedBox(height: 8),
-                    AppTextFormField(
-                      controller: _addressController,
-                      hintText: localizations.translate(
-                        'facility_address_subtitle',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel(
-                                localizations.translate('facility_city_title'),
-                              ),
-                              const SizedBox(height: 8),
-                              AppTextFormField(
-                                controller: _cityController,
-                                hintText: localizations.translate(
-                                  'facility_city_subtitle',
-                                ),
-                                type: TextFormFieldType.speciality,
-                                onSuffixTap: _showGovernoratesPicker,
-                                onChanged: _onCityChanged,
-                                keyboardType: TextInputType.name,
-                              ),
-                            ],
-                          ),
+    return BlocListener<ClinicManagementCubit, ClinicManagementState>(
+      listener: (context, state) {
+        if (state is UpdateClinicProfileLoading) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Saving clinic...')));
+        } else if (state is UpdateClinicProfileSuccess) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Clinic updated')));
+          Navigator.pop(context, true);
+        } else if (state is UpdateClinicProfileFailure) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.errorMessage)));
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.scaffoldBg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AuthHeader(
+                        title: localizations.translate('clinic_details_title'),
+                        subTitle: localizations.translate(
+                          'clinic_details_subtitle',
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel(
-                                localizations.translate('facility_area_title'),
-                              ),
-                              const SizedBox(height: 8),
-                              AppTextFormField(
-                                controller: _areaController,
-                                hintText: localizations.translate(
-                                  'facility_area_subtitle',
-                                ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(height: 26),
+                      _buildLabel(
+                        localizations.translate('facility_name_title'),
+                      ),
+                      const SizedBox(height: 8),
+                      AppTextFormField(
+                        controller: _facilityNameController,
+                        hintText: localizations.translate(
+                          'facility_name_subtitle',
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel(
-                                localizations.translate('facility_image_title'),
-                              ),
-                              const SizedBox(height: 8),
-                              AppTextFormField(
-                                controller: _facilityImageController,
-                                hintText: localizations.translate(
-                                  'facility_image_subtitle',
-                                ),
-                                type: TextFormFieldType.fileUpload,
-                                onSuffixTap: _pickClinicImage,
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildLabel(
+                        localizations.translate('facility_contact_title'),
+                      ),
+                      const SizedBox(height: 8),
+                      AppTextFormField(
+                        controller: _contactController,
+                        hintText: localizations.translate(
+                          'facility_contact_subtitle',
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel(
-                                localizations.translate(
-                                  'facility_specialization_title',
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              AppTextFormField(
-                                controller: _specializationController,
-                                hintText: localizations.translate(
-                                  'facility_specialization_subtitle',
-                                ),
-                                type: TextFormFieldType.speciality,
-                                onSuffixTap: _showSpecializationPicker,
-                                onChanged: _onSpecializationChanged,
-                                keyboardType: TextInputType.name,
-                              ),
-                            ],
-                          ),
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildLabel(
+                        localizations.translate('facility_location_title'),
+                      ),
+                      const SizedBox(height: 8),
+                      AppTextFormField(
+                        controller: _locationController,
+                        hintText: localizations.translate(
+                          'facility_location_subtitle',
                         ),
-                      ],
-                    ),
-                  ],
+                        type: TextFormFieldType.location,
+                        // onTap: _onOpenMap,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildLabel(
+                        localizations.translate('facility_address_title'),
+                      ),
+                      const SizedBox(height: 8),
+                      AppTextFormField(
+                        controller: _addressController,
+                        hintText: localizations.translate(
+                          'facility_address_subtitle',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  localizations.translate(
+                                    'facility_city_title',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextFormField(
+                                  controller: _cityController,
+                                  hintText: localizations.translate(
+                                    'facility_city_subtitle',
+                                  ),
+                                  type: TextFormFieldType.speciality,
+                                  onSuffixTap: _showGovernoratesPicker,
+                                  onChanged: _onCityChanged,
+                                  keyboardType: TextInputType.name,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  localizations.translate(
+                                    'facility_area_title',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextFormField(
+                                  controller: _areaController,
+                                  hintText: localizations.translate(
+                                    'facility_area_subtitle',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  localizations.translate(
+                                    'facility_image_title',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextFormField(
+                                  controller: _facilityImageController,
+                                  hintText: localizations.translate(
+                                    'facility_image_subtitle',
+                                  ),
+                                  type: TextFormFieldType.fileUpload,
+                                  onSuffixTap: _pickClinicImage,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  localizations.translate(
+                                    'facility_specialization_title',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                AppTextFormField(
+                                  controller: _specializationController,
+                                  hintText: localizations.translate(
+                                    'facility_specialization_subtitle',
+                                  ),
+                                  type: TextFormFieldType.speciality,
+                                  onSuffixTap: _showSpecializationPicker,
+                                  onChanged: _onSpecializationChanged,
+                                  keyboardType: TextInputType.name,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-              child: CustomButton(
-                text: localizations.translate('Save'),
-                width: double.infinity,
-                onPressed: _onSavePressed,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                child: CustomButton(
+                  text: localizations.translate('Save'),
+                  width: double.infinity,
+                  onPressed: _onSavePressed,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -365,26 +407,40 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
   // }
 
   void _onSavePressed() {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.appointmentDetails,
-      arguments: <String, dynamic>{
-        'isOwner': _isOwner,
-        'name': _facilityNameController.text.trim(),
-        'phoneNumber': _contactController.text.trim(),
-        'location': _locationController.text.trim(),
-        'address': _addressController.text.trim(),
-        'city': _cityController.text.trim(),
-        'area': _areaController.text.trim(),
-        'specialization': _specializationController.text.trim(),
-        'clinicImage': _clinicImage,
-        'latitude': _latitude,
-        'longitude': _longitude,
-        'legalDocument1': _legalDocument1,
-        'legalDocument2': _legalDocument2,
-        'legalDocument3': _legalDocument3,
-      },
+    final clinicId = _clinicId;
+    if (clinicId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing clinic id')));
+      return;
+    }
+
+    final request = UpdateClinicProfileRequestModel(
+      clinicId: clinicId,
+      name: _facilityNameController.text.trim().isEmpty
+          ? null
+          : _facilityNameController.text.trim(),
+      address: _addressController.text.trim().isEmpty
+          ? null
+          : _addressController.text.trim(),
+      phoneNumber: _contactController.text.trim().isEmpty
+          ? null
+          : _contactController.text.trim(),
+      city: _cityController.text.trim().isEmpty
+        ? null
+        : _cityController.text.trim(),
+      area: _areaController.text.trim().isEmpty
+        ? null
+        : _areaController.text.trim(),
+      specialization: _specializationController.text.trim().isEmpty
+        ? null
+        : _specializationController.text.trim(),
+      latitude: _latitude,
+      longitude: _longitude,
+      clinicImagePath: _clinicImage?.path,
     );
+
+    context.read<ClinicManagementCubit>().updateClinicProfile(request);
   }
 
   List<String> get _filteredSpecializations {

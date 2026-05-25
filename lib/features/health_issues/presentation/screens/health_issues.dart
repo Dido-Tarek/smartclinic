@@ -91,12 +91,27 @@ class _HealthIssuesState extends State<HealthIssues> {
                                 description: record.notes ?? record.status,
                                 isActive:
                                     record.status.toLowerCase() == 'active',
-                                onEditPressed: () {
-                                  debugPrint('Editing ${record.name}');
+                                badgeLabel: record.status,
+                                relation: record.status,
+                                showEditButton: true,
+                                showDeleteButton: false,
+                                onEditPressed: () async {
+                                  final familyCubit = context
+                                      .read<HealthIssuesCubit>();
+                                  final result = await Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.addHealthIssue,
+                                    arguments: record,
+                                  );
+                                  if (!mounted) return;
+                                  if (result == true) {
+                                    // refresh list
+                                    context
+                                        .read<HealthIssuesCubit>()
+                                        .emitGetPatientHistory();
+                                  }
                                 },
-                                onDeletePressed: () {
-                                  debugPrint('Deleting ${record.name}');
-                                },
+                                onDeletePressed: () {},
                               );
                             },
                           ),

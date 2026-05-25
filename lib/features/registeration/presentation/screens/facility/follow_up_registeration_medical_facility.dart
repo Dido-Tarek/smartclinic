@@ -4,6 +4,7 @@ import 'package:cherry_toast/cherry_toast.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 import 'dart:io';
+import 'package:latlong2/latlong.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
@@ -13,6 +14,7 @@ import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/core/widgets/custom_small_text_field.dart';
+import 'package:smartclinic/core/widgets/map_location_picker.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/register_state.dart';
 import 'package:smartclinic/features/registeration/data/model/medical_facility_register_model.dart';
@@ -53,6 +55,8 @@ class _FollowUpRegisterScreenDoctorState
   final _addressController = TextEditingController();
   final _specializationController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
+  double? _latitude;
+  double? _longitude;
   String? _selectedGender;
   final List<PlatformFile> _nationalIdFiles = [];
   bool _isSpecializationPickerOpen = false;
@@ -106,6 +110,7 @@ class _FollowUpRegisterScreenDoctorState
               context.read<RegisterCubit>().selectedRole,
             );
             final userId = _extractUserId(data);
+            final email = _readRegistrationValue('email');
             if (userId == null || userId.trim().isEmpty) {
               CherryToast.error(
                 title: const Text('Registration'),
@@ -116,6 +121,7 @@ class _FollowUpRegisterScreenDoctorState
               return;
             }
 
+            await _userSession.clearSession();
             await _userSession.saveUserId(userId.trim());
             await _userSession.saveRole(selectedRole);
             if (!mounted) {
@@ -133,6 +139,8 @@ class _FollowUpRegisterScreenDoctorState
               navigator.pushReplacementNamed(
                 AppRoutes.verifyDoctor,
                 arguments: {
+                  'email': email,
+                  'registrationEmail': email,
                   'registrationData': data,
                   'userId': userId.trim(),
                   'role': selectedRole,
@@ -179,11 +187,14 @@ class _FollowUpRegisterScreenDoctorState
                 ),
                 const SizedBox(height: 18),
 
-                _buildLabel(localizations.translate("Address_title")),
+                _buildLabel(localizations.translate("facility_location_title")),
                 AppTextFormField(
-                  hintText: localizations.translate("Address_hint"),
+                  hintText: localizations.translate(
+                    "facility_location_subtitle",
+                  ),
                   controller: _addressController,
-                  type: TextFormFieldType.text,
+                  type: TextFormFieldType.location,
+                  onTap: _pickLocation,
                 ),
                 const SizedBox(height: 18),
                 _buildLabel(localizations.translate("Specialization_title")),
@@ -257,6 +268,37 @@ class _FollowUpRegisterScreenDoctorState
       return;
     }
     _dobController.text = _formatDate(date);
+  }
+
+  Future<void> _pickLocation() async {
+    final initialLocation = _latitude != null && _longitude != null
+        ? LatLng(_latitude!, _longitude!)
+        : const LatLng(30.0444, 31.2357);
+
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            MapLocationPickerScreen(initialLocation: initialLocation),
+      ),
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    final pickedLatitude = (result['latitude'] as num?)?.toDouble();
+    final pickedLongitude = (result['longitude'] as num?)?.toDouble();
+    if (pickedLatitude == null || pickedLongitude == null) {
+      return;
+    }
+
+    setState(() {
+      _latitude = pickedLatitude;
+      _longitude = pickedLongitude;
+      _addressController.text =
+          '${pickedLatitude.toStringAsFixed(6)}, ${pickedLongitude.toStringAsFixed(6)}';
+    });
   }
 
   List<String> get _filteredSpecializations {
@@ -529,6 +571,16 @@ class _FollowUpRegisterScreenDoctorState
       return;
     }
 
+    if (_latitude == null || _longitude == null) {
+      CherryToast.error(
+        title: const Text('Validation'),
+        description: const Text(
+          'Please select the clinic location on the map.',
+        ),
+      ).show(context);
+      return;
+    }
+
     final birthDateForApi = _formatBirthDateForApi(_dobController.text);
     if (birthDateForApi == null) {
       CherryToast.error(
@@ -579,6 +631,8 @@ class _FollowUpRegisterScreenDoctorState
       gender: _selectedGender!,
       specialization: _specializationController.text,
       address: _addressController.text,
+      latitude: _latitude!,
+      longitude: _longitude!,
       nationalIdFront: nationalIdFront,
       nationalIdBack: nationalIdBack,
     );

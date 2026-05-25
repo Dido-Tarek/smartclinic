@@ -14,3 +14,12 @@ AddClinicResponseModel _$AddClinicResponseModelFromJson(
   message: json['message'] as String?,
   status: json['status'] as String?,
 );
+
+Map<String, dynamic> _$AddClinicResponseModelToJson(
+  AddClinicResponseModel instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'message': instance.message,
+  'status': instance.status,
+};

@@ -106,6 +106,11 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
       _legalDocument1 = normalized['legalDocument1'] as File?;
       _legalDocument2 = normalized['legalDocument2'] as File?;
       _legalDocument3 = normalized['legalDocument3'] as File?;
+        _prefillFee(_clinicFeeController, normalized['clinicFee']);
+        _prefillFee(_onlineFeeController, normalized['onlineFee']);
+        _prefillFee(_homeVisitFeeController, normalized['homeVisitFee']);
+        _prefillFee(_followUpFeeController, normalized['followUpFee']);
+        _prefillFee(_emergencyFeeController, normalized['emergencyFee']);
 
       if (normalized['clinic'] is bool ||
           normalized['online'] is bool ||
@@ -119,6 +124,19 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     }
 
     _argsLoaded = true;
+  }
+
+  void _prefillFee(TextEditingController controller, Object? value) {
+    if (value == null) {
+      return;
+    }
+
+    final text = value is num ? value.toString() : value.toString().trim();
+    if (text.isEmpty) {
+      return;
+    }
+
+    controller.text = text;
   }
 
   @override

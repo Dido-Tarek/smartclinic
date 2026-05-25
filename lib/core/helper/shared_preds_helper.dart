@@ -6,6 +6,9 @@ class SharedPrefsHelper {
   static const String userIdKey =
       'user_id'; // مفتاح موحد للـ IDs (مريض/دكتور/مستشفى)
   static const String userRoleKey = 'user_role'; // مفتاح الدور الحالي
+  static const String userFullNameKey = 'user_full_name';
+  static const String userEmailKey = 'user_email';
+  static const String fcmTokenKey = 'fcm_token';
 
   // كائن الـ SharedPreferences الحقيقي
   static SharedPreferences? _sharedPreferences;

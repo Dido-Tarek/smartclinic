@@ -138,8 +138,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     onTap: () {
                                       Navigator.pushNamed(
                                         context,
-                                        AppRoutes.doctorProfileView,
-                                        arguments: {'name': item.doctorName},
+                                        AppRoutes.bookingSummary,
+                                        arguments: {
+                                          'doctorName': item.doctorName,
+                                          'specialization': item.specialization,
+                                          'clinicName': item.clinicName,
+                                          'doctorImage': item.imagePath,
+                                          'consultationType':
+                                              item.consultationType,
+                                          'selectedDate': item.appointmentDate,
+                                          'selectedTime': item.appointmentTime,
+                                        },
                                       );
                                     },
                                   );
@@ -192,9 +201,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         onTap: () {
                                           Navigator.pushNamed(
                                             context,
-                                            AppRoutes.doctorProfileView,
+                                            AppRoutes.bookingSummary,
                                             arguments: {
-                                              'name': item.doctorName,
+                                              'doctorName': item.doctorName,
+                                              'specialization':
+                                                  item.specialization,
+                                              'clinicName': item.clinicName,
+                                              'doctorImage': item.imagePath,
+                                              'consultationType':
+                                                  item.consultationType,
+                                              'selectedDate':
+                                                  item.appointmentDate,
+                                              'selectedTime':
+                                                  item.appointmentTime,
                                             },
                                           );
                                         },
@@ -251,9 +270,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         onTap: () {
                                           Navigator.pushNamed(
                                             context,
-                                            AppRoutes.doctorProfileView,
+                                            AppRoutes.bookingSummary,
                                             arguments: {
-                                              'name': item.doctorName,
+                                              'doctorName': item.doctorName,
+                                              'specialization':
+                                                  item.specialization,
+                                              'clinicName': item.clinicName,
+                                              'doctorImage': item.imagePath,
+                                              'consultationType':
+                                                  item.consultationType,
+                                              'selectedDate':
+                                                  item.appointmentDate,
+                                              'selectedTime':
+                                                  item.appointmentTime,
                                             },
                                           );
                                         },
@@ -387,16 +416,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     _AppointmentCardData(
       doctorName: 'Dr. Mahmoud Abo Leila',
       specialization: 'Dentist',
+      clinicName: 'Dar El-Hekma Clinic',
       appointmentDate: 'June 13 2056',
       appointmentTime: '3:30 PM',
       imagePath: AppImages.imagesDoctorDRMahmoudAboLeila,
+      consultationType: 'clinic',
     ),
     _AppointmentCardData(
       doctorName: 'Dr. Sara Hassan',
       specialization: 'Cardiologist',
+      clinicName: 'Dar El-Hekma Clinic',
       appointmentDate: 'June 14 2056',
       appointmentTime: '5:00 PM',
       imagePath: AppImages.imagesDoctorDRSaraHassan,
+      consultationType: 'online',
     ),
   ];
 }
@@ -470,16 +503,20 @@ class _EmptyAppointmentsView extends StatelessWidget {
 class _AppointmentCardData {
   final String doctorName;
   final String specialization;
+  final String clinicName;
   final String appointmentDate;
   final String appointmentTime;
   final String imagePath;
+  final String consultationType;
 
   const _AppointmentCardData({
     required this.doctorName,
     required this.specialization,
+    required this.clinicName,
     required this.appointmentDate,
     required this.appointmentTime,
     required this.imagePath,
+    required this.consultationType,
   });
 
   factory _AppointmentCardData.fromModel(
@@ -492,9 +529,11 @@ class _AppointmentCardData {
         model.type ?? model.clinicName,
         'General appointment',
       ),
+      clinicName: _resolveText(model.clinicName, 'Dar El-Hekma Clinic'),
       appointmentDate: _resolveText(model.date, 'Date pending'),
       appointmentTime: _resolveText(model.time, 'Time pending'),
       imagePath: _resolveImagePath(model.doctorName, fallbackIndex),
+      consultationType: _resolveText(model.type, 'clinic'),
     );
   }
 

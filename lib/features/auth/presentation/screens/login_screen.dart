@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
+import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
-import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/features/auth/data/models/login_request_model.dart';
+import 'package:smartclinic/features/auth/domain/auth_repo.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/login_state.dart';
+import 'package:smartclinic/features/registeration/presentation/screens/facility/license_verification.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -23,6 +26,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final UserSession _userSession = getIt<UserSession>();
+
+  LicenseReviewStatus _reviewStatus = LicenseReviewStatus.pending;
+  bool _isReviewStatusLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadReviewStatusIfNeeded();
+    });
+  }
 
   @override
   void dispose() {
@@ -46,24 +61,34 @@ class _LoginScreenState extends State<LoginScreen> {
               final token = _extractToken(data);
               final selectedRole = userSession.roleString ?? 'Patient';
               final role = _extractRole(data) ?? selectedRole;
+              final fullName = _extractFullName(data);
+              final email = _emailController.text.trim();
 
-              if (token != null && userId != null) {
-                await userSession.saveUserSession(
-                  token: token,
-                  userId: userId,
-                  role: role,
-                );
-              } else {
-                if (userId != null) {
-                  await userSession.saveUserId(userId);
-                }
-                await userSession.saveRole(role);
+              if (token != null && token.trim().isNotEmpty) {
+                await userSession.saveToken(token.trim());
+              }
+              if (userId != null && userId.trim().isNotEmpty) {
+                await userSession.saveUserId(userId.trim());
+              }
+              await userSession.saveRole(role);
+
+              if (fullName != null && fullName.trim().isNotEmpty) {
+                await userSession.saveFullName(fullName.trim());
+              }
+              if (email.isNotEmpty) {
+                await userSession.saveEmail(email);
               }
 
               if (!context.mounted) {
                 return;
               }
-              Navigator.pushReplacementNamed(context, _resolveHomeRoute(role));
+              Navigator.pushReplacementNamed(
+                context,
+                userSession.resolvePostLoginRoute(
+                  role: role,
+                  userId: userId ?? userSession.userId ?? '',
+                ),
+              );
             },
             error: (message) {
               CherryToast.error(
@@ -209,6 +234,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? null
                                 : () => _onLoginPressed(context),
                           ),
+                          if (_shouldShowReviewStatus) ...[
+                            const SizedBox(height: 12),
+                            _buildReviewStatusBadge(localizations),
+                          ],
                           const SizedBox(height: 10),
                           _GoogleButton(
                             text: localizations.translate(
@@ -278,6 +307,147 @@ class _LoginScreenState extends State<LoginScreen> {
       title: const Text('Coming Soon'),
       description: Text(localizations.translate('login_coming_soon')),
     ).show(context);
+  }
+
+  bool get _shouldShowReviewStatus {
+    final role = getRoleEnum(_userSession.roleString);
+    return role.isDoctor || role.isHospital;
+  }
+
+  Future<void> _loadReviewStatusIfNeeded() async {
+    if (!_shouldShowReviewStatus) {
+      return;
+    }
+
+    final userId = _userSession.userId?.trim() ?? '';
+    if (userId.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isReviewStatusLoading = true;
+    });
+
+    final response = await getIt<AuthRepo>().getPendingDoctors();
+    if (!mounted) {
+      return;
+    }
+
+    if (response is Success<List<dynamic>>) {
+      final matchedStatus = _resolveReviewStatus(userId, response.data);
+      if (matchedStatus != null) {
+        setState(() {
+          _reviewStatus = matchedStatus;
+        });
+      }
+    }
+
+    setState(() {
+      _isReviewStatusLoading = false;
+    });
+  }
+
+  LicenseReviewStatus? _resolveReviewStatus(
+    String userId,
+    List<dynamic> doctors,
+  ) {
+    for (final doctor in doctors) {
+      if (doctor is! Map) {
+        continue;
+      }
+
+      final normalized = doctor.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+      final candidateId =
+          normalized['userId'] ?? normalized['doctorId'] ?? normalized['id'];
+      if (candidateId?.toString().trim() != userId) {
+        continue;
+      }
+
+      return _mapStatus(
+        normalized['status'] ??
+            normalized['approvalStatus'] ??
+            normalized['reviewStatus'],
+      );
+    }
+
+    return LicenseReviewStatus.pending;
+  }
+
+  LicenseReviewStatus? _mapStatus(dynamic statusValue) {
+    final status = statusValue?.toString().trim().toLowerCase();
+    if (status == null || status.isEmpty) {
+      return null;
+    }
+
+    if (status.contains('approve') ||
+        status.contains('done') ||
+        status.contains('complete')) {
+      return LicenseReviewStatus.done;
+    }
+
+    if (status.contains('reject') ||
+        status.contains('decline') ||
+        status.contains('deny')) {
+      return LicenseReviewStatus.rejected;
+    }
+
+    return LicenseReviewStatus.pending;
+  }
+
+  Widget _buildReviewStatusBadge(AppLocalizations localizations) {
+    final statusColor = switch (_reviewStatus) {
+      LicenseReviewStatus.done => AppColors.success,
+      LicenseReviewStatus.pending => AppColors.warning,
+      LicenseReviewStatus.rejected => AppColors.error,
+    };
+
+    final statusLabel = switch (_reviewStatus) {
+      LicenseReviewStatus.done => localizations.translate(
+        'license_status_done',
+      ),
+      LicenseReviewStatus.pending => localizations.translate(
+        'license_status_pending',
+      ),
+      LicenseReviewStatus.rejected => localizations.translate(
+        'license_status_rejected',
+      ),
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _isReviewStatusLoading
+                  ? localizations.translate('loading')
+                  : 'Status: $statusLabel',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String? _extractUserId(dynamic data) {
@@ -387,15 +557,40 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  String _resolveHomeRoute(String role) {
-    final roleEnum = getRoleEnum(role);
-    if (roleEnum.isDoctor) {
-      return AppRoutes.home;
+  String? _extractFullName(dynamic data) {
+    if (data == null) {
+      return null;
     }
-    if (roleEnum.isHospital) {
-      return AppRoutes.hospitalhome;
+
+    if (data is Map) {
+      final direct =
+          data['fullName'] ??
+          data['fullname'] ??
+          data['name'] ??
+          data['userName'] ??
+          data['username'];
+      if (direct != null && direct.toString().trim().isNotEmpty) {
+        return direct.toString().trim();
+      }
+
+      for (final value in data.values) {
+        final nested = _extractFullName(value);
+        if (nested != null && nested.isNotEmpty) {
+          return nested;
+        }
+      }
     }
-    return AppRoutes.home;
+
+    if (data is List) {
+      for (final value in data) {
+        final nested = _extractFullName(value);
+        if (nested != null && nested.isNotEmpty) {
+          return nested;
+        }
+      }
+    }
+
+    return null;
   }
 }
 

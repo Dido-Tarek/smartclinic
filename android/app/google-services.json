@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "362099453661",
+    "project_id": "smartclinic-cfd89",
+    "storage_bucket": "smartclinic-cfd89.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:362099453661:android:759a70027283d72dfb7534",
+        "android_client_info": {
+          "package_name": "com.example.smartclinic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVH490U8dIGIo852IJptc3Ly4hlCMiCh4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

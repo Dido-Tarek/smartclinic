@@ -96,6 +96,8 @@ class _AuthApiService implements AuthApiService {
     required String birthDate,
     required String phoneNumber,
     required String address,
+    required String latitude,
+    required String longitude,
     required String specialization,
     required File nationalIdFront,
     required File nationalIdBack,
@@ -112,6 +114,8 @@ class _AuthApiService implements AuthApiService {
     _data.fields.add(MapEntry('BirthDate', birthDate));
     _data.fields.add(MapEntry('PhoneNumber', phoneNumber));
     _data.fields.add(MapEntry('Address', address));
+    _data.fields.add(MapEntry('Latitude', latitude));
+    _data.fields.add(MapEntry('Longitude', longitude));
     _data.fields.add(MapEntry('Specialization', specialization));
     _data.files.add(
       MapEntry(
@@ -161,6 +165,8 @@ class _AuthApiService implements AuthApiService {
     required String birthDate,
     required String phoneNumber,
     required String address,
+    required String latitude,
+    required String longitude,
     required String specialization,
     required File nationalIdFront,
     required File nationalIdBack,
@@ -177,6 +183,8 @@ class _AuthApiService implements AuthApiService {
     _data.fields.add(MapEntry('BirthDate', birthDate));
     _data.fields.add(MapEntry('PhoneNumber', phoneNumber));
     _data.fields.add(MapEntry('Address', address));
+    _data.fields.add(MapEntry('Latitude', latitude));
+    _data.fields.add(MapEntry('Longitude', longitude));
     _data.fields.add(MapEntry('Specialization', specialization));
     _data.files.add(
       MapEntry(

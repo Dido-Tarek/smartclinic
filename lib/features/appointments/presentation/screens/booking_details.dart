@@ -261,7 +261,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (context, index) {
                     final typeKey = _availableConsultationTypes[index];
-                      final title = _consultationTypeLabels[typeKey] ?? typeKey;
+                    final title = _consultationTypeLabels[typeKey] ?? typeKey;
                     final selected = _selectedConsultationType == typeKey;
 
                     return GestureDetector(
@@ -285,9 +285,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                         child: Text(
                           title,
                           style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : AppColors.deepNavy,
+                            color: selected ? Colors.white : AppColors.deepNavy,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

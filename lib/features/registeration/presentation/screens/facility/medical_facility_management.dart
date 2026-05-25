@@ -92,7 +92,7 @@ class _MedicalFacilityManagementPageState
               });
             }
           },
-          success: (data) {
+          success: (data) async {
             if (!mounted) {
               return;
             }
@@ -106,6 +106,13 @@ class _MedicalFacilityManagementPageState
             final role = getRoleEnum(_userSession.roleString);
 
             if (_claimOwnershipFlow) {
+              final userId = _userSession.userId?.trim() ?? '';
+              if (userId.isNotEmpty) {
+                await _userSession.markSetupCompleted(
+                  role: _userSession.roleString ?? 'Doctor',
+                  userId: userId,
+                );
+              }
               CherryToast.success(
                 title: const Text('Success'),
                 description: Text(
@@ -879,7 +886,7 @@ class _MedicalFacilityManagementPageState
     );
   }
 
-  void _onGetStartedPressed() {
+  Future<void> _onGetStartedPressed() async {
     if (!_canContinue) {
       _showUploadRequiredMessage();
       return;
@@ -887,6 +894,14 @@ class _MedicalFacilityManagementPageState
 
     if (_claimOwnershipFlow || _staffFlow) {
       return;
+    }
+
+    final userId = _userSession.userId?.trim() ?? '';
+    if (userId.isNotEmpty) {
+      await _userSession.markSetupCompleted(
+        role: _userSession.roleString ?? 'Doctor',
+        userId: userId,
+      );
     }
 
     Navigator.pushReplacementNamed(

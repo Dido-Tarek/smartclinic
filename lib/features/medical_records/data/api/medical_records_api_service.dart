@@ -28,4 +28,7 @@ abstract class MedicalRecordsApiService {
   Future<List<UploadRecordResponse>> getPatientRecords(
     @Path("patientId") String patientId,
   );
+
+  @DELETE("api/MedicalRecords/delete/{id}")
+  Future<void> deleteMedicalRecord(@Path("id") int id);
 }

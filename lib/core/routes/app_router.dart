@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/booking_summary.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/appointment_details.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/appointments.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/clinic_details.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/family_member.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/add_family_member.dart';
@@ -14,8 +16,11 @@ import 'package:smartclinic/features/auth/presentation/manager/register_cubit.da
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
 import 'package:smartclinic/features/home/presentation/screens/home_screen.dart';
 import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
+import 'package:smartclinic/features/chat/presentation/screens/doctor_chat_room.dart';
+import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_management.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
 import 'package:smartclinic/features/nouga/presentation/screens/nouga.dart';
+import 'package:smartclinic/features/security/presentation/screens/verification_screen.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/follow_up_registeration_medical_facility.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/license_verification.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/medical_facility_management.dart';
@@ -30,7 +35,7 @@ import 'package:smartclinic/features/user_management/presentation/screens/doctor
 import 'package:smartclinic/features/doctor_profile/presentation/screens/doctor_profile_view.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_details.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_information.dart';
-import 'package:smartclinic/features/appointments/presentation/screens/booking_summary.dart';
+import 'package:smartclinic/features/appointments/presentation/screens/appointment_summary.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_confirmation.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
@@ -45,6 +50,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/main_registeration_screen.dart';
 import '../../features/registeration/presentation/screens/patient/follow_up_registeration_patient.dart';
 import 'package:smartclinic/features/medical_records/presentation/screens/upload_medical_records.dart';
+import 'package:smartclinic/features/medical_records/presentation/screens/medical_records_history_screen.dart';
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -100,10 +106,21 @@ class AppRouter {
           ),
         );
       case AppRoutes.uploadMedicalRecords:
+        final source = settings.arguments;
+        final medicalRecordsSource = source is MedicalRecordsSource
+            ? source
+            : MedicalRecordsSource.registration;
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (context) => getIt<MedicalRecordsCubit>(),
-            child: const UploadMedicalRecordsScreen(),
+            child: UploadMedicalRecordsScreen(source: medicalRecordsSource),
+          ),
+        );
+      case AppRoutes.medicalRecordsHistory:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<MedicalRecordsCubit>(),
+            child: const MedicalRecordsHistoryScreen(),
           ),
         );
       case AppRoutes.healthIssues:
@@ -164,6 +181,17 @@ class AppRouter {
             body: Center(child: Text('Home Screen Placeholder for Hospital')),
           ),
         );
+      case AppRoutes.verification:
+        final arguments = settings.arguments;
+        final email = arguments is Map
+            ? (arguments['email'] ?? arguments['registrationEmail'])?.toString().trim()
+            : arguments?.toString().trim();
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => VerificationPage(
+            email: (email == null || email.isEmpty) ? '' : email,
+          ),
+        );
       case AppRoutes.verifyDoctor:
         final arguments = settings.arguments;
         final registrationArgs = arguments is Map
@@ -174,7 +202,12 @@ class AppRouter {
               LicenseVerificationPage(registrationArgs: registrationArgs),
         );
       case AppRoutes.clinicDetails:
-        return MaterialPageRoute(builder: (_) => const ClinicDetailsPage());
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<ClinicManagementCubit>(),
+            child: const ClinicDetailsPage(),
+          ),
+        );
       case AppRoutes.doctorProfileSettings:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
@@ -185,15 +218,18 @@ class AppRouter {
       case AppRoutes.doctorProfileView:
         final args = settings.arguments;
         final data = args is Map ? args : null;
-        final enabledTypes = data is Map && data['enabledConsultationTypes'] is Iterable
+        final enabledTypes =
+            data is Map && data['enabledConsultationTypes'] is Iterable
             ? (data['enabledConsultationTypes'] as Iterable)
-                .map((item) => item.toString())
-                .where((item) => item.isNotEmpty)
-                .toSet()
-          : const {'clinic', 'online', 'homeVisit', 'emergency'};
+                  .map((item) => item.toString())
+                  .where((item) => item.isNotEmpty)
+                  .toSet()
+            : const {'clinic', 'online', 'homeVisit', 'emergency'};
         return MaterialPageRoute(
           builder: (_) => DoctorProfileView(
-            doctorName: data is Map && data['name'] != null ? data['name'] as String : null,
+            doctorName: data is Map && data['name'] != null
+                ? data['name'] as String
+                : null,
             enabledConsultationTypes: enabledTypes,
           ),
         );
@@ -203,16 +239,16 @@ class AppRouter {
             args is Map &&
             (args['clinic'] is bool ||
                 args['online'] is bool ||
-            args['homeVisit'] is bool ||
-            args['emergency'] is bool);
+                args['homeVisit'] is bool ||
+                args['emergency'] is bool);
         final appointmentTypes = hasTypeFlags
             ? {
                 if (args['clinic'] == true) 'clinic',
                 if (args['online'] == true) 'online',
                 if (args['homeVisit'] == true) 'homeVisit',
-            if (args['emergency'] == true) 'emergency',
+                if (args['emergency'] == true) 'emergency',
               }
-          : <String>{'clinic', 'online', 'homeVisit', 'emergency'};
+            : <String>{'clinic', 'online', 'homeVisit', 'emergency'};
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => BlocProvider(
@@ -225,21 +261,30 @@ class AppRouter {
       case AppRoutes.bookingDetails:
         final args = settings.arguments;
         final data = args is Map ? args : null;
-        final enabledTypes = data is Map && data['enabledAppointmentTypes'] is Iterable
+        final enabledTypes =
+            data is Map && data['enabledAppointmentTypes'] is Iterable
             ? (data['enabledAppointmentTypes'] as Iterable)
-                .map((item) => item.toString())
-                .where((item) => item.isNotEmpty)
-                .toSet()
-          : const {'clinic', 'online', 'homeVisit', 'emergency'};
+                  .map((item) => item.toString())
+                  .where((item) => item.isNotEmpty)
+                  .toSet()
+            : const {'clinic', 'online', 'homeVisit', 'emergency'};
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => BlocProvider(
             create: (context) => getIt<AppointmentsCubit>(),
             child: BookingDetailsPage(
-              doctorId: data is Map && data['doctorId'] != null ? data['doctorId'] as String : null,
-              clinicId: data is Map && data['clinicId'] != null ? data['clinicId'] as int : null,
-              doctorName: data is Map && data['name'] != null ? data['name'] as String : null,
-              doctorImage: data is Map && data['image'] != null ? data['image'] as String : null,
+              doctorId: data is Map && data['doctorId'] != null
+                  ? data['doctorId'] as String
+                  : null,
+              clinicId: data is Map && data['clinicId'] != null
+                  ? data['clinicId'] as int
+                  : null,
+              doctorName: data is Map && data['name'] != null
+                  ? data['name'] as String
+                  : null,
+              doctorImage: data is Map && data['image'] != null
+                  ? data['image'] as String
+                  : null,
               enabledAppointmentTypes: enabledTypes,
             ),
           ),
@@ -252,13 +297,72 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (context) => getIt<FamilyCubit>(),
             child: BookingInformationPage(
-              doctorId: data is Map && data['doctorId'] != null ? data['doctorId'] as String : null,
-              clinicId: data is Map && data['clinicId'] != null ? data['clinicId'] as int : null,
-              doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
-              consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
-              selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
-              selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
+              doctorId: data is Map && data['doctorId'] != null
+                  ? data['doctorId'] as String
+                  : null,
+              clinicId: data is Map && data['clinicId'] != null
+                  ? data['clinicId'] as int
+                  : null,
+              doctorName: data is Map && data['doctorName'] != null
+                  ? data['doctorName'] as String
+                  : null,
+              consultationType: data is Map && data['consultationType'] != null
+                  ? data['consultationType'] as String
+                  : null,
+              selectedDate: data is Map && data['selectedDate'] != null
+                  ? data['selectedDate'] as String
+                  : null,
+              selectedTime: data is Map && data['selectedTime'] != null
+                  ? data['selectedTime'] as String
+                  : null,
             ),
+          ),
+        );
+      case AppRoutes.appointmentSummary:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => AppointmentSummaryPage(
+            doctorName: data is Map && data['doctorName'] != null
+                ? data['doctorName'] as String
+                : null,
+            specialization: data is Map && data['specialization'] != null
+                ? data['specialization'] as String
+                : null,
+            clinicName: data is Map && data['clinicName'] != null
+                ? data['clinicName'] as String
+                : null,
+            rating: data is Map && data['rating'] != null
+                ? data['rating'] as double
+                : null,
+            doctorImage: data is Map && data['doctorImage'] != null
+                ? data['doctorImage'] as String
+                : null,
+            yearsOfExperience: data is Map && data['yearsOfExperience'] != null
+                ? data['yearsOfExperience'] as int
+                : null,
+            patientsCount: data is Map && data['patientsCount'] != null
+                ? data['patientsCount'] as int
+                : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null
+                ? data['reviewsCount'] as int
+                : null,
+            consultationType: data is Map && data['consultationType'] != null
+                ? data['consultationType'] as String
+                : null,
+            selectedDate: data is Map && data['selectedDate'] != null
+                ? data['selectedDate'] as String
+                : null,
+            selectedTime: data is Map && data['selectedTime'] != null
+                ? data['selectedTime'] as String
+                : null,
+            patientName: data is Map && data['patientName'] != null
+                ? data['patientName'] as String
+                : null,
+            paymentMethod: data is Map && data['paymentMethod'] != null
+                ? data['paymentMethod'] as String
+                : null,
           ),
         );
       case AppRoutes.bookingSummary:
@@ -267,40 +371,135 @@ class AppRouter {
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => BookingSummaryPage(
-            doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
-            specialization: data is Map && data['specialization'] != null ? data['specialization'] as String : null,
-            clinicName: data is Map && data['clinicName'] != null ? data['clinicName'] as String : null,
-            rating: data is Map && data['rating'] != null ? data['rating'] as double : null,
-            doctorImage: data is Map && data['doctorImage'] != null ? data['doctorImage'] as String : null,
-            yearsOfExperience: data is Map && data['yearsOfExperience'] != null ? data['yearsOfExperience'] as int : null,
-            patientsCount: data is Map && data['patientsCount'] != null ? data['patientsCount'] as int : null,
-            reviewsCount: data is Map && data['reviewsCount'] != null ? data['reviewsCount'] as int : null,
-            consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
-            selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
-            selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
-            patientName: data is Map && data['patientName'] != null ? data['patientName'] as String : null,
-            paymentMethod: data is Map && data['paymentMethod'] != null ? data['paymentMethod'] as String : null,
+            doctorId: data is Map && data['doctorId'] != null
+                ? data['doctorId'] as String
+                : null,
+            clinicId: data is Map && data['clinicId'] != null
+                ? data['clinicId'] as int
+                : null,
+            doctorName: data is Map && data['doctorName'] != null
+                ? data['doctorName'] as String
+                : null,
+            specialization: data is Map && data['specialization'] != null
+                ? data['specialization'] as String
+                : null,
+            clinicName: data is Map && data['clinicName'] != null
+                ? data['clinicName'] as String
+                : null,
+            rating: data is Map && data['rating'] != null
+                ? data['rating'] as double
+                : null,
+            doctorImage: data is Map && data['doctorImage'] != null
+                ? data['doctorImage'] as String
+                : null,
+            yearsOfExperience: data is Map && data['yearsOfExperience'] != null
+                ? data['yearsOfExperience'] as int
+                : null,
+            patientsCount: data is Map && data['patientsCount'] != null
+                ? data['patientsCount'] as int
+                : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null
+                ? data['reviewsCount'] as int
+                : null,
+            consultationType: data is Map && data['consultationType'] != null
+                ? data['consultationType'] as String
+                : null,
+            selectedDate: data is Map && data['selectedDate'] != null
+                ? data['selectedDate'] as String
+                : null,
+            selectedTime: data is Map && data['selectedTime'] != null
+                ? data['selectedTime'] as String
+                : null,
+            patientName: data is Map && data['patientName'] != null
+                ? data['patientName'] as String
+                : null,
+            familyMemberId: data is Map && data['familyMemberId'] != null
+                ? data['familyMemberId'] as int
+                : null,
+            notes: data is Map && data['notes'] != null
+                ? data['notes'] as String
+                : null,
+            paymentMethod: data is Map && data['paymentMethod'] != null
+                ? data['paymentMethod'] as String
+                : null,
           ),
         );
+      case AppRoutes.doctorChatRoom:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => DoctorChatRoomScreen(
+            doctorName: data is Map && data['doctorName'] != null
+                ? data['doctorName'] as String
+                : null,
+            specialization: data is Map && data['specialization'] != null
+                ? data['specialization'] as String
+                : null,
+            clinicName: data is Map && data['clinicName'] != null
+                ? data['clinicName'] as String
+                : null,
+            doctorImagePath: data is Map && data['doctorImage'] != null
+                ? data['doctorImage'] as String
+                : null,
+            consultationType: data is Map && data['consultationType'] != null
+                ? data['consultationType'] as String
+                : null,
+            selectedDate: data is Map && data['selectedDate'] != null
+                ? data['selectedDate'] as String
+                : null,
+            selectedTime: data is Map && data['selectedTime'] != null
+                ? data['selectedTime'] as String
+                : null,
+          ),
+        );
+      case AppRoutes.clinicManagement:
+        return MaterialPageRoute(builder: (_) => const ClinicManagementPage());
       case AppRoutes.bookingConfirmation:
         final args = settings.arguments;
         final data = args is Map ? args : null;
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => BookingConfirmationPage(
-            doctorName: data is Map && data['doctorName'] != null ? data['doctorName'] as String : null,
-            specialization: data is Map && data['specialization'] != null ? data['specialization'] as String : null,
-            clinicName: data is Map && data['clinicName'] != null ? data['clinicName'] as String : null,
-            rating: data is Map && data['rating'] != null ? data['rating'] as double : null,
-            doctorImage: data is Map && data['doctorImage'] != null ? data['doctorImage'] as String : null,
-            yearsOfExperience: data is Map && data['yearsOfExperience'] != null ? data['yearsOfExperience'] as int : null,
-            patientsCount: data is Map && data['patientsCount'] != null ? data['patientsCount'] as int : null,
-            reviewsCount: data is Map && data['reviewsCount'] != null ? data['reviewsCount'] as int : null,
-            consultationType: data is Map && data['consultationType'] != null ? data['consultationType'] as String : null,
-            selectedDate: data is Map && data['selectedDate'] != null ? data['selectedDate'] as String : null,
-            selectedTime: data is Map && data['selectedTime'] != null ? data['selectedTime'] as String : null,
-            patientName: data is Map && data['patientName'] != null ? data['patientName'] as String : null,
-            paymentMethod: data is Map && data['paymentMethod'] != null ? data['paymentMethod'] as String : null,
+            doctorName: data is Map && data['doctorName'] != null
+                ? data['doctorName'] as String
+                : null,
+            specialization: data is Map && data['specialization'] != null
+                ? data['specialization'] as String
+                : null,
+            clinicName: data is Map && data['clinicName'] != null
+                ? data['clinicName'] as String
+                : null,
+            rating: data is Map && data['rating'] != null
+                ? data['rating'] as double
+                : null,
+            doctorImage: data is Map && data['doctorImage'] != null
+                ? data['doctorImage'] as String
+                : null,
+            yearsOfExperience: data is Map && data['yearsOfExperience'] != null
+                ? data['yearsOfExperience'] as int
+                : null,
+            patientsCount: data is Map && data['patientsCount'] != null
+                ? data['patientsCount'] as int
+                : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null
+                ? data['reviewsCount'] as int
+                : null,
+            consultationType: data is Map && data['consultationType'] != null
+                ? data['consultationType'] as String
+                : null,
+            selectedDate: data is Map && data['selectedDate'] != null
+                ? data['selectedDate'] as String
+                : null,
+            selectedTime: data is Map && data['selectedTime'] != null
+                ? data['selectedTime'] as String
+                : null,
+            patientName: data is Map && data['patientName'] != null
+                ? data['patientName'] as String
+                : null,
+            paymentMethod: data is Map && data['paymentMethod'] != null
+                ? data['paymentMethod'] as String
+                : null,
           ),
         );
       case AppRoutes.medicalFacilityManagement:

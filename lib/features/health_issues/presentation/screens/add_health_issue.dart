@@ -31,11 +31,30 @@ class _AddHealthIssue extends State<AddHealthIssue> {
 
   String? _userId;
   String? _selectedStatus;
+  HealthIssueModel? _editingIssue;
 
   @override
   void initState() {
     super.initState();
     _loadUserId();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is HealthIssueModel) {
+      _editingIssue = args;
+      // populate fields
+      _conditionNameController.text = _editingIssue?.name ?? '';
+      _diagnosedDateController.text = _formatDateFromIso(_editingIssue?.diagnosedDate);
+      _notesController.text = _editingIssue?.notes ?? '';
+      _statusController.text = _editingIssue?.status ?? '';
+      _selectedStatus = (_editingIssue?.status ?? '').toLowerCase() == 'inactive' ? 'inactive' : 'active';
+      if (_selectedStatus == 'inactive') {
+        _recoveryDateController.text = _formatDateFromIso(_editingIssue?.curedDate);
+      }
+    }
   }
 
   @override
@@ -285,16 +304,25 @@ class _AddHealthIssue extends State<AddHealthIssue> {
     final issue = HealthIssueModel(
       name: _conditionNameController.text.trim(),
       status: _selectedStatus == 'inactive' ? 'Inactive' : 'Active',
-      diagnosedDate: _diagnosedDateController.text.trim(),
+      diagnosedDate: _formatDateForApi(_diagnosedDateController.text.trim()),
       curedDate: _selectedStatus == 'inactive'
-          ? _recoveryDateController.text.trim()
-          : null,
+        ? _formatDateForApi(_recoveryDateController.text.trim())
+        : null,
       notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+        ? null
+        : _notesController.text.trim(),
     );
 
-    context.read<HealthIssuesCubit>().emitAddHealthIssue(userId, issue);
+    final cubit = context.read<HealthIssuesCubit>();
+    if (_editingIssue != null && _editingIssue?.id != null) {
+      cubit.emitUpdateHealthIssue(_editingIssue!.id!, issue).then((_) {
+        Navigator.pop(context, true);
+      });
+    } else {
+      cubit.emitAddHealthIssue(userId, issue).then((_) {
+        Navigator.pop(context, true);
+      });
+    }
   }
 
   Future<void> _loadUserId() async {
@@ -350,6 +378,36 @@ class _AddHealthIssue extends State<AddHealthIssue> {
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
     return '$day / $month / $year';
+  }
+
+  String _formatDateForApi(String displayDate) {
+    // expect displayDate like 'DD / MM / YYYY' or 'DD/MM/YYYY'
+    final cleaned = displayDate.replaceAll(' ', '').replaceAll('/', '-');
+    final parts = cleaned.split('-');
+    if (parts.length >= 3) {
+      final day = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final year = int.tryParse(parts[2]);
+      if (day != null && month != null && year != null) {
+        final dt = DateTime(year, month, day);
+        return dt.toUtc().toIso8601String();
+      }
+    }
+    // fallback to current time in ISO
+    return DateTime.now().toUtc().toIso8601String();
+  }
+
+  String _formatDateFromIso(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final day = dt.day.toString().padLeft(2, '0');
+      final month = dt.month.toString().padLeft(2, '0');
+      final year = dt.year.toString();
+      return '$day / $month / $year';
+    } catch (_) {
+      return '';
+    }
   }
 
   Widget _buildLabel(String label) {
