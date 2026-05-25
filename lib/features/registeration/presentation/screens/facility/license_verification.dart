@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:smartclinic/features/auth/domain/auth_repo.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
@@ -53,20 +54,24 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
   PlatformFile? _specializationCertificateFile;
   LicenseReviewStatus _currentReviewStatus = LicenseReviewStatus.pending;
   bool _isSubmitting = false;
+  final UserSession _userSession = getIt<UserSession>();
 
   String? get _doctorId {
     final args = widget.registrationArgs;
-    if (args == null) {
+    if (args != null) {
+      final value = args['userId'] ?? args['doctorId'] ?? args['id'];
+      final text = value?.toString().trim();
+      if (text != null && text.isNotEmpty) {
+        return text;
+      }
+    }
+
+    final sessionUserId = _userSession.userId?.trim();
+    if (sessionUserId == null || sessionUserId.isEmpty) {
       return null;
     }
 
-    final value = args['userId'] ?? args['doctorId'] ?? args['id'];
-    final text = value?.toString().trim();
-    if (text == null || text.isEmpty) {
-      return null;
-    }
-
-    return text;
+    return sessionUserId;
   }
 
   @override
@@ -77,9 +82,6 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
     if (initialRegistrationNumber != null) {
       _syndicateCardController.text = initialRegistrationNumber;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshReviewStatus();
-    });
   }
 
   @override
@@ -188,10 +190,6 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-              child: _buildStatusBadge(localizations),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
@@ -312,149 +310,28 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
 
     if (response is Success<dynamic>) {
       CherryToast.success(
-        title: const Text('Submitted'),
-        description: const Text('Verification data submitted'),
+        title: const Text('Success'),
+        description: const Text(
+          'Your documents were uploaded successfully and are under review now.',
+        ),
       ).show(context);
-      await _waitForApprovalAndNavigate();
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.verification,
+        arguments: {
+          'email': _userSession.email,
+          'registrationEmail': _userSession.email,
+        },
+      );
     } else if (response is Failure<dynamic>) {
       CherryToast.error(
         title: const Text('Error'),
         description: Text(response.message),
       ).show(context);
     }
-  }
-
-  Future<void> _refreshReviewStatus() async {
-    final doctorId = _doctorId;
-    if (doctorId == null || doctorId.isEmpty) {
-      return;
-    }
-
-    final response = await getIt<AuthRepo>().getPendingDoctors();
-    if (!mounted) {
-      return;
-    }
-
-    if (response is Success<List<dynamic>>) {
-      final status = _resolveReviewStatus(doctorId, response.data);
-      if (status != null) {
-        setState(() {
-          _currentReviewStatus = status;
-        });
-      }
-    }
-  }
-
-  LicenseReviewStatus? _resolveReviewStatus(
-    String doctorId,
-    List<dynamic> doctors,
-  ) {
-    for (final doctor in doctors) {
-      if (doctor is! Map) {
-        continue;
-      }
-
-      final normalized = doctor.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
-      final candidateId =
-          normalized['userId'] ?? normalized['doctorId'] ?? normalized['id'];
-      if (candidateId?.toString() != doctorId) {
-        continue;
-      }
-
-      return _mapStatus(
-        normalized['status'] ??
-            normalized['approvalStatus'] ??
-            normalized['reviewStatus'],
-      );
-    }
-
-    return LicenseReviewStatus.pending;
-  }
-
-  Future<void> _waitForApprovalAndNavigate() async {
-    final doctorId = _doctorId;
-    if (doctorId == null || doctorId.isEmpty) {
-      return;
-    }
-
-    const int maxAttempts = 15;
-    const Duration pollDelay = Duration(seconds: 2);
-
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      final response = await getIt<AuthRepo>().getPendingDoctors();
-      if (!mounted) {
-        return;
-      }
-
-      if (response is Success<List<dynamic>>) {
-        final status = _resolveReviewStatus(doctorId, response.data);
-        if (status == LicenseReviewStatus.done) {
-          setState(() {
-            _currentReviewStatus = LicenseReviewStatus.done;
-          });
-          if (!mounted) {
-            return;
-          }
-          Navigator.of(
-            context,
-          ).pushReplacementNamed(AppRoutes.medicalFacilityManagement);
-          return;
-        }
-
-        if (status == LicenseReviewStatus.rejected) {
-          setState(() {
-            _currentReviewStatus = LicenseReviewStatus.rejected;
-          });
-          CherryToast.error(
-            title: const Text('Rejected'),
-            description: const Text('Verification was rejected.'),
-          ).show(context);
-          return;
-        }
-
-        setState(() {
-          _currentReviewStatus = LicenseReviewStatus.pending;
-        });
-      }
-
-      if (attempt < maxAttempts - 1) {
-        await Future.delayed(pollDelay);
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    CherryToast.info(
-      title: const Text('Pending'),
-      description: const Text(
-        'Verification is still pending. Try again later.',
-      ),
-    ).show(context);
-  }
-
-  LicenseReviewStatus? _mapStatus(dynamic statusValue) {
-    final status = statusValue?.toString().trim().toLowerCase();
-    if (status == null || status.isEmpty) {
-      return null;
-    }
-
-    if (status.contains('approve') ||
-        status.contains('done') ||
-        status.contains('complete')) {
-      return LicenseReviewStatus.done;
-    }
-
-    if (status.contains('reject') ||
-        status.contains('decline') ||
-        status.contains('deny')) {
-      return LicenseReviewStatus.rejected;
-    }
-
-    return LicenseReviewStatus.pending;
   }
 
   Widget _buildUploadContainer(
@@ -549,90 +426,5 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
         ),
       ),
     );
-  }
-
-  Widget _buildStatusBadge(AppLocalizations localizations) {
-    final Color statusColor = _statusColor;
-    final String statusValue = _statusLabel(localizations);
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: statusColor, width: 2),
-                color: Colors.white,
-              ),
-              child: Center(
-                child: Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            RichText(
-              text: TextSpan(
-                children: [
-                  const TextSpan(
-                    text: 'Status: ',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  TextSpan(
-                    text: statusValue,
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color get _statusColor {
-    switch (_currentReviewStatus) {
-      case LicenseReviewStatus.done:
-        return AppColors.success;
-      case LicenseReviewStatus.pending:
-        return AppColors.warning;
-      case LicenseReviewStatus.rejected:
-        return AppColors.error;
-    }
-  }
-
-  String _statusLabel(AppLocalizations localizations) {
-    switch (_currentReviewStatus) {
-      case LicenseReviewStatus.done:
-        return localizations.translate('license_status_done');
-      case LicenseReviewStatus.pending:
-        return localizations.translate('license_status_pending');
-      case LicenseReviewStatus.rejected:
-        return localizations.translate('license_status_rejected');
-    }
   }
 }

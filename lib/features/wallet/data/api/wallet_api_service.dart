@@ -22,6 +22,7 @@ class WalletApiService {
     final response = await _dio.post(
       _createPaymentIntentEndpoint,
       data: request.toJson(),
+      options: Options(contentType: Headers.jsonContentType),
     );
     return CreatePaymentIntentResponseModel.fromJson(
       response.data as Map<String, dynamic>,
@@ -31,7 +32,11 @@ class WalletApiService {
   // ── POST /api/Wallet/top-up ───────────────────────────────────────────────
   // DEV / TESTING ONLY — tops up wallet directly without going through Stripe.
   Future<TopUpResponseModel> topUp(TopUpRequestModel request) async {
-    final response = await _dio.post(_topUpEndpoint, data: request.toJson());
+    final response = await _dio.post(
+      _topUpEndpoint,
+      data: request.toJson(),
+      options: Options(contentType: Headers.jsonContentType),
+    );
     return TopUpResponseModel.fromJson(response.data as Map<String, dynamic>);
   }
 

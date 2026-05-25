@@ -87,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHomeBody() {
+    final fullName = _userSession.fullName?.trim();
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
@@ -97,7 +98,9 @@ class _HomeScreenState extends State<HomeScreen>
               SizedBox(height: 10),
               HomeHeader(
                 avatarAssetPath: AppImages.imagesIconsPatient,
-                title: 'Hi, Khatab !',
+                title: fullName == null || fullName.isEmpty
+                    ? 'Hi !'
+                    : 'Hi, $fullName !',
                 subtitle: 'How do you feel today?',
                 onNotificationTap: _openNotifications,
               ),

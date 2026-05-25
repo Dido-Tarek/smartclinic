@@ -12,6 +12,7 @@ class AppRoutes {
   static const String followUpRegisterPatient = '/followUpRegisterPatient';
   static const String followUpRegisterDoctor = '/followUpRegisterDoctor';
   static const String uploadMedicalRecords = '/uploadMedicalRecords';
+  static const String medicalRecordsHistory = '/medicalRecordsHistory';
   static const String healthIssues = '/healthIssues';
   static const String addHealthIssue = '/addHealthIssue';
   static const String familyMember = '/familyMember';
@@ -20,15 +21,18 @@ class AppRoutes {
   static const String appointments = '/appointments';
   static const String home = '/home';
   static const String hospitalhome = '/hospitalhome';
+  static const String verification = '/verification';
   static const String verifyDoctor = '/verifyDoctor';
   static const String clinicDetails = '/clinicDetails';
   static const String doctorProfileSettings = '/doctorProfileSettings';
   static const String doctorProfileView = '/doctorProfileView';
   static const String bookingDetails = '/bookingDetails';
   static const String bookingInformation = '/bookingInformation';
+  static const String appointmentSummary = '/appointmentSummary';
   static const String bookingSummary = '/bookingSummary';
   static const String bookingConfirmation = '/bookingConfirmation';
   static const String appointmentDetails = '/appointmentDetails';
+  static const String doctorChatRoom = '/doctorChatRoom';
   static const String clinicManagement = '/clinicManagement';
   static const String medicalFacilityManagement = '/medicalFacilityManagement';
   static const String search = '/search';

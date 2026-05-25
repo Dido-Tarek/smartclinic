@@ -7,6 +7,8 @@ class MedicalFacilityRequestModel {
   final String confirmPassword;
   final String phone;
   final String address;
+  final double latitude;
+  final double longitude;
   final String birthDate;
   final String gender;
   final String specialization;
@@ -20,6 +22,8 @@ class MedicalFacilityRequestModel {
     required this.confirmPassword,
     required this.phone,
     required this.address,
+    required this.latitude,
+    required this.longitude,
     required this.birthDate,
     required this.gender,
     required this.specialization,

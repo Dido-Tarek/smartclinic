@@ -19,6 +19,7 @@ class AppTextFormField extends StatefulWidget {
   final VoidCallback? onSuffixTap;
   final ValueChanged<String>? onChanged;
   final TextInputType keyboardType;
+  final bool readOnly;
 
   const AppTextFormField({
     super.key,
@@ -30,6 +31,7 @@ class AppTextFormField extends StatefulWidget {
     this.onSuffixTap,
     this.onChanged,
     this.keyboardType = TextInputType.text,
+    this.readOnly = false,
   });
 
   @override
@@ -60,19 +62,28 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveValidator = widget.validator ??
+      (widget.type == TextFormFieldType.password
+        ? _validatePasswordStrength
+        : null);
+
     return TextFormField(
       controller: widget.controller,
       // تفعيل إخفاء النص فقط لو النوع password
       obscureText: (widget.type == TextFormFieldType.password)
           ? _obscureText
           : false,
-      validator: widget.validator,
+      validator: effectiveValidator,
       onChanged: widget.onChanged,
       // جعل الحقل للقراءة فقط في حالة التاريخ أو الرفع أو القائمة المنسدلة
-      readOnly:
+        readOnly:
+          widget.readOnly ||
           widget.type == TextFormFieldType.date ||
+          widget.type == TextFormFieldType.location ||
           widget.type == TextFormFieldType.fileUpload,
-      onTap: widget.type == TextFormFieldType.fileUpload ? null : widget.onTap,
+        onTap: (widget.type == TextFormFieldType.fileUpload)
+          ? null
+          : widget.onTap,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
       decoration: InputDecoration(
         hintText: widget.hintText,
@@ -93,6 +104,28 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
         errorBorder: _buildBorder(color: Colors.redAccent),
       ),
     );
+  }
+
+  String? _validatePasswordStrength(String? value) {
+    final password = value?.trim() ?? '';
+    if (password.isEmpty) {
+      return 'Password is required';
+    }
+
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+
+    final hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+    final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(password);
+    final hasSymbol = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-\\/\[\]~`+=;]').hasMatch(password);
+
+    if (!hasLowercase || !hasUppercase || !hasNumber || !hasSymbol) {
+      return 'Password must include uppercase, lowercase, number, and symbol';
+    }
+
+    return null;
   }
 
   // بناء الأيقونة الخلفية بشكل ديناميكي

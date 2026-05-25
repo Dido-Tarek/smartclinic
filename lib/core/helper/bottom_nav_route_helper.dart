@@ -42,14 +42,8 @@ class BottomNavRouteHelper {
   }
 
   static String _resolveProfileRoute(UserRole userRole) {
-    if (userRole.isDoctor) {
-      return AppRoutes.doctorProfileSettings;
-    }
-
-    if (userRole.isHospital) {
-      return AppRoutes.medicalFacilityManagement;
-    }
-
+    // Always open the centralized User Management page.
+    // That page adapts its content based on the current logged-in user's role.
     return AppRoutes.userManagement;
   }
 }

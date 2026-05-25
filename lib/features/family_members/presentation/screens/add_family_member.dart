@@ -8,7 +8,6 @@ import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/core/widgets/custom_small_text_field.dart';
-import 'package:smartclinic/features/family_members/data/models/family_member_model.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
@@ -50,27 +49,22 @@ class _AddFamilyMember extends State<AddFamilyMember> {
 
     return BlocConsumer<FamilyCubit, FamilyState>(
       listener: (context, state) {
-        state.whenOrNull(
-          success: (_) {
+        if (state is AddFamilyMemberSuccess) {
             CherryToast.success(
               title: const Text('Saved'),
               description: Text(localizations.translate('family_member_saved')),
             ).show(context);
             Navigator.pop(context, true);
-          },
-          error: (message) {
+        } else if (state is AddFamilyMemberFailure) {
+            final message = state.errorMessage;
             CherryToast.error(
               title: const Text('Error'),
               description: Text(message),
             ).show(context);
-          },
-        );
+        }
       },
       builder: (context, state) {
-        final isLoading = state.maybeWhen(
-          loading: () => true,
-          orElse: () => false,
-        );
+        final isLoading = state is AddFamilyMemberLoading;
 
         return Scaffold(
           backgroundColor: AppColors.scaffoldBg,
@@ -256,15 +250,47 @@ class _AddFamilyMember extends State<AddFamilyMember> {
       return;
     }
 
-    final member = FamilyMemberModel(
+    // Format the date for API (YYYY-MM-DD)
+    final birthDateForApi = _formatBirthDateForApi(_dobController.text.trim());
+    if (birthDateForApi == null) {
+      CherryToast.error(
+        title: const Text('Invalid Date'),
+        description: Text(localizations.translate('invalid_date_format')),
+      ).show(context);
+      return;
+    }
+
+    context.read<FamilyCubit>().addFamilyMember(
       patientId: _userId!.trim(),
       name: _nameController.text.trim(),
       relation: _relationController.text.trim(),
       gender: _selectedGender!,
-      birthDate: _dobController.text.trim(),
+      birthDate: birthDateForApi,
       bloodType: _bloodTypeController.text.trim(),
     );
+  }
 
-    context.read<FamilyCubit>().emitAddMember(member);
+  String? _formatBirthDateForApi(String value) {
+    final normalized = value.replaceAll(' ', '');
+    final parts = normalized.split('/');
+    if (parts.length != 3) {
+      return null;
+    }
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) {
+      return null;
+    }
+
+    final date = DateTime.tryParse(
+      '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+    );
+    if (date == null) {
+      return null;
+    }
+
+    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 }

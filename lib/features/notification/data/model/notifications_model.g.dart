@@ -15,5 +15,18 @@ NotificationModel _$NotificationModelFromJson(Map<String, dynamic> json) =>
       isRead: json['isRead'] as bool,
     );
 
+Map<String, dynamic> _$NotificationModelToJson(NotificationModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'title': instance.title,
+      'message': instance.message,
+      'createdAt': instance.createdAt,
+      'isRead': instance.isRead,
+    };
+
 UnreadCountResponse _$UnreadCountResponseFromJson(Map<String, dynamic> json) =>
     UnreadCountResponse(count: (json['count'] as num).toInt());
+
+Map<String, dynamic> _$UnreadCountResponseToJson(
+  UnreadCountResponse instance,
+) => <String, dynamic>{'count': instance.count};

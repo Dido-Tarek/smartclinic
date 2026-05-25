@@ -89,23 +89,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ? const Center(child: CircularProgressIndicator())
                           : notifications.isEmpty
                           ? Center(child: _buildEmptyState())
-                          : ListView.separated(
+                          : ListView.builder(
                               physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.only(bottom: 8),
                               itemCount: notifications.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final notification = notifications[index];
-                                return _NotificationCard(
-                                  notification: notification,
-                                  onTap: notification.isRead
-                                      ? null
-                                      : () => context
-                                            .read<NotificationsCubit>()
-                                            .markAsRead(notification.id),
-                                  onDelete: () => context
-                                      .read<NotificationsCubit>()
-                                      .deleteNotification(notification.id),
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _NotificationCard(
+                                    notification: notification,
+                                    onTap: notification.isRead
+                                        ? null
+                                        : () => context
+                                              .read<NotificationsCubit>()
+                                              .markAsRead(notification.id),
+                                    onDelete: () => context
+                                        .read<NotificationsCubit>()
+                                        .deleteNotification(notification.id),
+                                  ),
                                 );
                               },
                             ),
@@ -163,12 +165,15 @@ class _NotificationCard extends StatelessWidget {
         : AppColors.accentBlue.withAlpha(120);
 
     return Material(
+      type: MaterialType.card,
+      elevation: notification.isRead ? 0 : 1.5,
       color: backgroundColor,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),

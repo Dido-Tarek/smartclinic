@@ -6,6 +6,7 @@ import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/features/auth/data/models/account_selection_model.dart';
 import 'package:smartclinic/core/widgets/login_redirect.dart';
+import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class AccountSelectionScreen extends StatefulWidget {
@@ -89,7 +90,9 @@ class _AccountSelectionScreenState extends State<AccountSelectionScreen> {
                   // 4. ALREADY HAVE AN ACCOUNT / LOGIN
                   LoginRedirectSection(
                     canLogin: _model.canNavigateToLogin,
-                    onLoginPressed: _model.onLoginTap,
+                    onLoginPressed:
+                        widget.onLoginTap ??
+                        () => Navigator.pushNamed(context, AppRoutes.login),
                   ),
 
                   SizedBox(height: height * 0.04), // Dynamic bottom padding
@@ -122,6 +125,16 @@ class _AccountSelectionScreenState extends State<AccountSelectionScreen> {
             title: const Text('Terms required'),
             description: const Text(
               'Please agree to the Terms and Privacy Policy to continue.',
+            ),
+          ).show(context);
+          return;
+        }
+
+        if (option.role == 'MedicalFacility') {
+          CherryToast.info(
+            title: const Text('Coming Soon'),
+            description: const Text(
+              'Hospital registration will be available soon.',
             ),
           ).show(context);
           return;

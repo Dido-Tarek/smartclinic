@@ -16,4 +16,8 @@ class MedicalRecordRequestModel {
     this.appointmentId,
     this.doctorId,
   });
+
+  bool get isValid =>
+      title.trim().isNotEmpty &&
+      patientId.trim().isNotEmpty;
 }

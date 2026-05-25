@@ -1,6 +1,7 @@
 // core/networking/dio_client.dart
 import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:smartclinic/core/helper/shared_preds_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DioClient {
@@ -32,14 +33,17 @@ class DioClient {
           options.headers['Accept-Language'] = lang;
           options.headers['Content-Type'] = 'application/json';
 
-          final token = _sharedPreferences.getString('auth_token');
-          if (token != null) {
+          final token =
+              _sharedPreferences.getString(SharedPrefsHelper.tokenKey) ??
+                  _sharedPreferences.getString('auth_token');
+          if (token != null && token.trim().isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
         },
         onError: (DioException e, handler) {
           if (e.response?.statusCode == 401) {
+            _sharedPreferences.remove(SharedPrefsHelper.tokenKey);
             _sharedPreferences.remove('auth_token');
           }
           return handler.next(e); // هنعالج الأخطاء في ملف الـ Error Handler

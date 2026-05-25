@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
+import 'package:smartclinic/features/medical_records/data/model/medical_records_request.dart';
 import 'package:smartclinic/features/medical_records/data/model/medical_records_response.dart';
 import '../../../../core/network/api_error_handler.dart';
 import '../../../../core/network/api_result.dart';
@@ -13,28 +12,37 @@ class MedicalRecordsRepoImpl implements MedicalRecordsRepo {
   MedicalRecordsRepoImpl(this._apiService);
 
   @override
-  Future<ApiResult<UploadRecordResponse>> uploadRecord({
-    required File file,
-    required String title,
-    required String description,
-    required String patientId,
-    int? appointmentId,
-    String? doctorId,
-  }) async {
+  Future<ApiResult<UploadRecordResponse>> uploadRecord(
+    MedicalRecordRequestModel request,
+  ) async {
     try {
+      if (!request.isValid) {
+        return ApiResult.failure(
+          'Please complete all medical record fields before uploading.',
+        );
+      }
+
       // تحويل الملف إلى MultipartFile للرفع
       final multipartFile = await MultipartFile.fromFile(
-        file.path,
-        filename: file.path.split('/').last,
+        request.file.path,
+        filename: request.file.path.split(RegExp(r'[\\/]')).last,
       );
+
+      // Log outgoing upload params for debugging server validation issues
+      try {
+        // ignore: avoid_print
+        print(
+          'Uploading medical record: filename=${multipartFile.filename}, title=${request.title}, patientId=${request.patientId}, appointmentId=${request.appointmentId}, doctorId=${request.doctorId}',
+        );
+      } catch (_) {}
 
       final response = await _apiService.uploadMedicalRecord(
         file: multipartFile,
-        title: title,
-        description: description,
-        patientId: patientId,
-        appointmentId: appointmentId,
-        doctorId: doctorId,
+        title: request.title.trim(),
+        description: request.description.trim(),
+        patientId: request.patientId.trim(),
+        appointmentId: request.appointmentId,
+        doctorId: request.doctorId?.trim(),
       );
 
       return ApiResult.success(response);
@@ -50,6 +58,16 @@ class MedicalRecordsRepoImpl implements MedicalRecordsRepo {
     try {
       final response = await _apiService.getPatientRecords(patientId);
       return ApiResult.success(response);
+    } catch (error) {
+      return ApiResult.failure(ApiErrorHandler.handle(error));
+    }
+  }
+
+  @override
+  Future<ApiResult<void>> deleteMedicalRecord(int id) async {
+    try {
+      await _apiService.deleteMedicalRecord(id);
+      return const ApiResult.success(null);
     } catch (error) {
       return ApiResult.failure(ApiErrorHandler.handle(error));
     }

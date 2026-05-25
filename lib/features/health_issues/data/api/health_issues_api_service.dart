@@ -13,14 +13,14 @@ abstract class HealthIssuesApiService {
   @POST("api/HealthIssues/add/{patientId}")
   Future<dynamic> addHealthIssue(
     @Path("patientId") String patientId,
-    @Body() HealthIssueModel healthIssue,
+    @Body() Object body,
   );
 
   // تعديل مشكلة صحية
   @PUT("api/HealthIssues/update-issue/{id}")
   Future<dynamic> updateHealthIssue(
     @Path("id") int issueId,
-    @Body() HealthIssueModel healthIssue,
+    @Body() Object body,
   );
 
   // جلب التاريخ المرضي للمريض

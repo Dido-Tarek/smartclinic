@@ -76,6 +76,8 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
             final navigator = Navigator.of(context);
             final selectedRole = context.read<RegisterCubit>().selectedRole;
             final userId = _extractUserId(data);
+            final fullName = _readRegistrationValue('name');
+            final email = _readRegistrationValue('email');
             if (userId == null || userId.trim().isEmpty) {
               CherryToast.error(
                 title: const Text('Registration'),
@@ -86,8 +88,15 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
               return;
             }
 
+            await _userSession.clearSession();
             await _userSession.saveUserId(userId.trim());
             await _userSession.saveRole(selectedRole);
+            if (fullName != null) {
+              await _userSession.saveFullName(fullName);
+            }
+            if (email != null) {
+              await _userSession.saveEmail(email);
+            }
             if (!mounted) {
               return;
             }
@@ -97,10 +106,14 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
               description: const Text('Registration completed successfully'),
             ).show(context);
             if (getRoleEnum(selectedRole).isPatient) {
-              navigator.pushReplacementNamed(AppRoutes.uploadMedicalRecords);
-            } else {
-              navigator.pushReplacementNamed(_resolveHomeRoute(selectedRole));
+              navigator.pushReplacementNamed(
+                AppRoutes.verification,
+                arguments: {'email': email},
+              );
+              return;
             }
+
+            navigator.pushReplacementNamed(_resolveHomeRoute(selectedRole));
           },
           error: (message) {
             CherryToast.error(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
@@ -186,7 +187,9 @@ class _MainRegisterScreenState extends State<MainRegisterScreen> {
 
     Navigator.pushNamed(
       context,
-      AppRoutes.followUpRegisterPatient,
+      getRoleEnum(selectedRole).isDoctor || getRoleEnum(selectedRole).isHospital
+          ? AppRoutes.followUpRegisterDoctor
+          : AppRoutes.followUpRegisterPatient,
       arguments: {
         'name': nameController.text.trim(),
         'email': emailController.text.trim(),

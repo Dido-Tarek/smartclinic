@@ -17,8 +17,7 @@ import 'package:smartclinic/features/clinic/domain/facility_repo.dart';
 import 'package:smartclinic/features/clinic/domain/facility_repo_impl.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/family_members/data/api/family_member_api_service.dart';
-import 'package:smartclinic/features/family_members/data/repo/family_member_repo_impl.dart';
-import 'package:smartclinic/features/family_members/domain/repo/family_member_repo.dart';
+import 'package:smartclinic/features/family_members/data/repo/family_member_repo.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/health_issues/data/api/health_issues_api_service.dart';
 import 'package:smartclinic/features/health_issues/data/repo/health_issues_repo_impl.dart';
@@ -48,6 +47,9 @@ import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.da
 import 'package:smartclinic/features/appointments/data/api/appointment_api_service.dart';
 import 'package:smartclinic/features/appointments/data/repo/appointment_repo.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
+import 'package:smartclinic/features/clinic_management/data/api/clinic_management_api_service.dart';
+import 'package:smartclinic/features/clinic_management/data/repo/clinic_management_repo.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -165,6 +167,16 @@ Future<void> setupGetIt() async {
     () => UserManagementCubit(getIt<UserManagementRepo>()),
   );
   getIt.registerFactory<WalletCubit>(() => WalletCubit(getIt<WalletRepo>()));
+  // Clinic management
+  getIt.registerLazySingleton<ClinicManagementApiService>(
+    () => ClinicManagementApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<ClinicManagementRepo>(
+    () => ClinicManagementRepoImpl(getIt<ClinicManagementApiService>()),
+  );
+  getIt.registerFactory<ClinicManagementCubit>(
+    () => ClinicManagementCubit(getIt<ClinicManagementRepo>()),
+  );
   // Appointments
   getIt.registerLazySingleton<AppointmentsApiService>(
     () => AppointmentsApiService(getIt<Dio>()),

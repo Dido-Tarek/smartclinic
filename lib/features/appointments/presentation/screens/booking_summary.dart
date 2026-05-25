@@ -1,11 +1,18 @@
+import 'package:cherry_toast/cherry_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/features/appointments/data/model/appointment_request_model.dart';
+import 'package:smartclinic/features/appointments/data/repo/appointment_repo.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/doctor_view_card.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
 class BookingSummaryPage extends StatefulWidget {
+  final String? doctorId;
+  final int? clinicId;
   final String? doctorName;
   final String? specialization;
   final String? clinicName;
@@ -18,10 +25,14 @@ class BookingSummaryPage extends StatefulWidget {
   final String? selectedDate;
   final String? selectedTime;
   final String? patientName;
+  final int? familyMemberId;
+  final String? notes;
   final String? paymentMethod;
 
   const BookingSummaryPage({
     super.key,
+    this.doctorId,
+    this.clinicId,
     this.doctorName,
     this.specialization,
     this.clinicName,
@@ -34,6 +45,8 @@ class BookingSummaryPage extends StatefulWidget {
     this.selectedDate,
     this.selectedTime,
     this.patientName,
+    this.familyMemberId,
+    this.notes,
     this.paymentMethod,
   });
 
@@ -43,8 +56,102 @@ class BookingSummaryPage extends StatefulWidget {
 
 class _BookingSummaryPageState extends State<BookingSummaryPage> {
   late String _selectedPaymentMethod;
+  bool _isSubmitting = false;
   final double _appointmentAmount = 20.0;
   final int _durationMinutes = 30;
+
+  DateTime? _parseBookingDate(String value) {
+    final parsedIso = DateTime.tryParse(value);
+    if (parsedIso != null) {
+      return parsedIso;
+    }
+
+    final isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
+    if (isoDate != null) {
+      final year = int.tryParse(isoDate.group(1)!);
+      final month = int.tryParse(isoDate.group(2)!);
+      final day = int.tryParse(isoDate.group(3)!);
+      if (year != null && month != null && day != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    final slashDate = RegExp(
+      r'^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$',
+    ).firstMatch(value);
+    if (slashDate != null) {
+      final first = int.tryParse(slashDate.group(1)!);
+      final second = int.tryParse(slashDate.group(2)!);
+      final year = int.tryParse(slashDate.group(3)!);
+      if (first != null && second != null && year != null) {
+        final firstCandidate = DateTime(year, second, first);
+        if (_matchesDateParts(firstCandidate, year, second, first)) {
+          return firstCandidate;
+        }
+
+        final secondCandidate = DateTime(year, first, second);
+        if (_matchesDateParts(secondCandidate, year, first, second)) {
+          return secondCandidate;
+        }
+      }
+    }
+
+    final namedDate = RegExp(
+      r'^(?:[A-Za-z]{3,9},\s*)?(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$',
+    ).firstMatch(value);
+    if (namedDate != null) {
+      final day = int.tryParse(namedDate.group(1)!);
+      final month = _monthNumber(namedDate.group(2)!);
+      final year = int.tryParse(namedDate.group(3)!);
+      if (day != null && month != null && year != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    return null;
+  }
+
+  bool _matchesDateParts(DateTime candidate, int year, int month, int day) {
+    return candidate.year == year &&
+        candidate.month == month &&
+        candidate.day == day;
+  }
+
+  int? _monthNumber(String monthName) {
+    const monthNames = <String, int>{
+      'january': 1,
+      'february': 2,
+      'march': 3,
+      'april': 4,
+      'may': 5,
+      'june': 6,
+      'july': 7,
+      'august': 8,
+      'september': 9,
+      'october': 10,
+      'november': 11,
+      'december': 12,
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'sept': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
+    };
+
+    return monthNames[monthName.toLowerCase()];
+  }
+
+  String _formatIsoDate(DateTime date) {
+    final utcDate = DateTime.utc(date.year, date.month, date.day);
+    return utcDate.toIso8601String();
+  }
 
   @override
   void initState() {
@@ -71,40 +178,145 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
     return normalized.contains('online');
   }
 
-  void _onConfirmAppointment() {
-    final doctorName = widget.doctorName ?? 'Dr. Mai ElKady';
-    final specialization = widget.specialization ?? 'Physician';
-    final clinicName = widget.clinicName ?? 'Good Health Care';
-    final rating = widget.rating ?? 4.8;
-    final doctorImage = widget.doctorImage ?? AppImages.imagesDoctorDRMaiElKady;
-    final yearsOfExperience = widget.yearsOfExperience ?? 6;
-    final patientsCount = widget.patientsCount ?? 2000;
-    final reviewsCount = widget.reviewsCount ?? 0;
-    final consultationType = widget.consultationType;
+  Future<void> _onConfirmAppointment() async {
+    final patientId = getIt<UserSession>().userId?.trim();
+    final doctorId = (widget.doctorId?.trim().isNotEmpty ?? false)
+        ? widget.doctorId!.trim()
+        : '5fe5c967-3797-4dac-a1a8-3faba1265e32';
+    final clinicId = widget.clinicId ?? 2;
     final selectedDate = widget.selectedDate;
     final selectedTime = widget.selectedTime;
-    final patientName = widget.patientName;
+    final consultationType = widget.consultationType ?? 'clinic';
 
-    // Navigate to booking confirmation with all booking and doctor details
-    Navigator.pushNamed(
-      context,
-      AppRoutes.bookingConfirmation,
-      arguments: {
-        'doctorName': doctorName,
-        'specialization': specialization,
-        'clinicName': clinicName,
-        'rating': rating,
-        'doctorImage': doctorImage,
-        'yearsOfExperience': yearsOfExperience,
-        'patientsCount': patientsCount,
-        'reviewsCount': reviewsCount,
-        'consultationType': consultationType,
-        'selectedDate': selectedDate,
-        'selectedTime': selectedTime,
-        'patientName': patientName,
-        'paymentMethod': _selectedPaymentMethod,
+    if (patientId == null ||
+        patientId.isEmpty ||
+        selectedDate == null ||
+        selectedTime == null) {
+      CherryToast.error(
+        title: const Text('Booking failed'),
+        description: const Text('Missing booking information.'),
+      ).show(context);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final normalizedDate = _normalizeDateForApi(selectedDate);
+    final normalizedTime = _normalizeTimeForApi(selectedTime);
+
+    final request = BookAppointmentRequestModel(
+      patientId: patientId,
+      doctorId: doctorId,
+      clinicId: clinicId,
+      date: normalizedDate,
+      time: normalizedTime,
+      type: consultationType,
+      familyMemberId: widget.familyMemberId,
+      notes: widget.notes,
+      patientName: widget.patientName,
+      payFromWallet: _selectedPaymentMethod == 'wallet',
+    );
+
+    final result = await getIt<AppointmentsRepo>().bookAppointment(request);
+
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = false);
+
+    result.fold(
+      (error) {
+        CherryToast.error(
+          title: const Text('Booking failed'),
+          description: Text(error),
+        ).show(context);
+      },
+      (_) {
+        CherryToast.success(
+          title: const Text('Appointment booked'),
+          description: const Text(
+            'Your appointment was submitted successfully.',
+          ),
+        ).show(context);
+
+        if (_selectedPaymentMethod == 'wallet') {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.appointments,
+            (route) => false,
+            arguments: {'initialIndex': 0},
+          );
+          return;
+        }
+
+        Navigator.pushNamed(
+          context,
+          AppRoutes.bookingConfirmation,
+          arguments: {
+            'doctorName': widget.doctorName,
+            'specialization': widget.specialization,
+            'clinicName': widget.clinicName,
+            'rating': widget.rating,
+            'doctorImage': widget.doctorImage,
+            'yearsOfExperience': widget.yearsOfExperience,
+            'patientsCount': widget.patientsCount,
+            'reviewsCount': widget.reviewsCount,
+            'consultationType': consultationType,
+            'selectedDate': selectedDate,
+            'selectedTime': selectedTime,
+            'patientName': widget.patientName,
+            'paymentMethod': _selectedPaymentMethod,
+          },
+        );
       },
     );
+  }
+
+  String _normalizeDateForApi(String? dateStr) {
+    if (dateStr == null) return '';
+    final parsed = _parseBookingDate(dateStr.trim());
+    if (parsed != null) {
+      return _formatDateOnly(parsed);
+    }
+
+    return dateStr.trim();
+  }
+
+  String _normalizeTimeForApi(String? timeStr) {
+    if (timeStr == null) return '';
+    final trimmed = timeStr.trim();
+    if (trimmed.isEmpty) return trimmed;
+
+    final ampmMatch = RegExp(
+      r'^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])\b',
+    ).firstMatch(trimmed);
+    if (ampmMatch != null) {
+      final hour = int.parse(ampmMatch.group(1)!);
+      final minute = int.parse(ampmMatch.group(2)!);
+      final ampm = ampmMatch.group(4)!.toLowerCase();
+      var hour24 = hour % 12;
+      if (ampm == 'pm') {
+        hour24 += 12;
+      }
+      return '${hour24.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+    }
+
+    final hhmm = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(trimmed);
+    if (hhmm != null) {
+      return '${int.parse(hhmm.group(1)!).toString().padLeft(2, '0')}:${hhmm.group(2)!}';
+    }
+
+    final hhmmss = RegExp(r'^(\d{1,2}):(\d{2}):(\d{2})$').firstMatch(trimmed);
+    if (hhmmss != null) {
+      return '${int.parse(hhmmss.group(1)!).toString().padLeft(2, '0')}:${hhmmss.group(2)!}';
+    }
+
+    return trimmed;
+  }
+
+  String _formatDateOnly(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -175,16 +387,16 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
         child: SizedBox(
           height: 54,
           child: ElevatedButton(
-            onPressed: _onConfirmAppointment,
+            onPressed: _isSubmitting ? null : _onConfirmAppointment,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.deepNavy,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text(
-              'Confirm',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            child: Text(
+              _isSubmitting ? 'Booking...' : 'Confirm',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -374,13 +586,13 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
         children: [
           _buildReceiptRow(
             'Amount',
-            '\$${_appointmentAmount.toStringAsFixed(2)}',
+            'EGP ${_appointmentAmount.toStringAsFixed(2)}',
             isHeader: false,
           ),
           const SizedBox(height: 12),
           _buildReceiptRow(
             'Duration ($_durationMinutes mins)',
-            '1 x \$${_appointmentAmount.toStringAsFixed(2)}',
+            '1 x EGP ${_appointmentAmount.toStringAsFixed(2)}',
             isHeader: false,
           ),
           const SizedBox(height: 12),
@@ -388,7 +600,7 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
           const SizedBox(height: 12),
           _buildReceiptRow(
             'Total',
-            '\$${totalAmount.toStringAsFixed(2)}',
+            'EGP ${totalAmount.toStringAsFixed(2)}',
             isHeader: true,
           ),
         ],

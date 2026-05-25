@@ -10,13 +10,21 @@ import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
+import 'package:smartclinic/features/medical_records/data/model/medical_records_request.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'package:cherry_toast/cherry_toast.dart';
 
+enum MedicalRecordsSource { registration, profile }
+
 class UploadMedicalRecordsScreen extends StatefulWidget {
-  const UploadMedicalRecordsScreen({super.key});
+  const UploadMedicalRecordsScreen({
+    super.key,
+    this.source = MedicalRecordsSource.registration,
+  });
+
+  final MedicalRecordsSource source;
 
   @override
   State<UploadMedicalRecordsScreen> createState() =>
@@ -33,12 +41,12 @@ class _UploadMedicalRecordsScreenState
   ];
 
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _appointmentIdController = TextEditingController();
-  final _doctorIdController = TextEditingController();
   final UserSession _userSession = getIt<UserSession>();
   String? _userId;
+  String _selectedFileTitle = '';
+  bool _hasSavedRecord = false;
+  bool _hasExistingRecords = false;
+  bool _loadedExistingRecords = false;
 
   final List<PlatformFile> _selectedFiles = <PlatformFile>[];
 
@@ -49,11 +57,13 @@ class _UploadMedicalRecordsScreenState
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadExistingRecordsFlag();
+  }
+
+  @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _appointmentIdController.dispose();
-    _doctorIdController.dispose();
     super.dispose();
   }
 
@@ -69,8 +79,11 @@ class _UploadMedicalRecordsScreenState
               title: const Text('Uploaded'),
               description: Text(data.message ?? 'Medical record uploaded'),
             ).show(context);
-            _clearForm();
-            Navigator.pushReplacementNamed(context, AppRoutes.healthIssues);
+            setState(() {
+              _selectedFiles.clear();
+              _hasSavedRecord = true;
+              _hasExistingRecords = true;
+            });
           },
           error: (message) {
             CherryToast.error(
@@ -108,15 +121,46 @@ class _UploadMedicalRecordsScreenState
                             ),
                           ),
                           const SizedBox(height: 20),
-                          Text(
-                            localizations.translate("past_records_label"),
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                localizations.translate("past_records_label"),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (_selectedFiles.isNotEmpty ||
+                                  _hasExistingRecords)
+                                TextButton(
+                                  onPressed: isLoading
+                                      ? null
+                                      : () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            AppRoutes.medicalRecordsHistory,
+                                          );
+                                        },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'see all',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.skyBlue,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 6),
                           DottedBorder(
                             options: RoundedRectDottedBorderOptions(
                               radius: const Radius.circular(18),
@@ -201,8 +245,14 @@ class _UploadMedicalRecordsScreenState
                   child: CustomButton(
                     text: isLoading
                         ? 'Uploading...'
-                        : localizations.translate("Save"),
-                    onPressed: isLoading ? () {} : _submit,
+                        : _hasSavedRecord
+                        ? 'Continue'
+                        : 'Save and Continue',
+                    onPressed: isLoading
+                        ? () {}
+                        : _hasSavedRecord
+                        ? _continueAfterSave
+                        : _submit,
                   ),
                 ),
               ],
@@ -243,7 +293,9 @@ class _UploadMedicalRecordsScreenState
     }
 
     setState(() {
+      _hasSavedRecord = false;
       _selectedFiles.add(selectedFile);
+      _selectedFileTitle = _buildTitleFromFileName(selectedFile.name);
     });
   }
 
@@ -273,39 +325,58 @@ class _UploadMedicalRecordsScreenState
       return;
     }
 
-    final appointmentIdText = _appointmentIdController.text.trim();
-    final appointmentId = appointmentIdText.isEmpty
-        ? null
-        : int.tryParse(appointmentIdText);
+    final request = MedicalRecordRequestModel(
+      file: File(selectedFile.path!),
+      title: _selectedFileTitle.isEmpty
+          ? _buildTitleFromFileName(selectedFile.name)
+          : _selectedFileTitle,
+      description: '',
+      patientId: userId,
+    );
 
-    if (appointmentIdText.isNotEmpty && appointmentId == null) {
-      CherryToast.error(
-        title: const Text('Invalid ID'),
-        description: const Text('Appointment ID must be a valid number.'),
-      ).show(context);
+    context.read<MedicalRecordsCubit>().emitUploadRecord(request: request);
+  }
+
+  void _continueAfterSave() {
+    if (widget.source == MedicalRecordsSource.registration) {
+      Navigator.pushReplacementNamed(context, AppRoutes.healthIssues);
       return;
     }
 
-    context.read<MedicalRecordsCubit>().emitUploadRecord(
-      file: File(selectedFile.path!),
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      patientId: userId,
-      appointmentId: appointmentId,
-      doctorId: _doctorIdController.text.trim().isEmpty
-          ? null
-          : _doctorIdController.text.trim(),
-    );
+    Navigator.of(context).pop(true);
   }
 
   void _clearForm() {
-    _titleController.clear();
-    _descriptionController.clear();
-    _appointmentIdController.clear();
-    _doctorIdController.clear();
+    _selectedFileTitle = '';
     setState(() {
       _selectedFiles.clear();
+      _hasSavedRecord = false;
     });
+  }
+
+  Future<void> _loadExistingRecordsFlag() async {
+    if (_loadedExistingRecords) {
+      return;
+    }
+    _loadedExistingRecords = true;
+
+    final patientId = _userSession.userId?.trim() ?? '';
+    if (patientId.isEmpty || !mounted) {
+      return;
+    }
+
+    final records = await context.read<MedicalRecordsCubit>().getMedicalRecords(
+      patientId,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    if (records.isNotEmpty) {
+      setState(() {
+        _hasExistingRecords = true;
+      });
+    }
   }
 
   Future<void> _loadUserId() async {
@@ -334,11 +405,20 @@ class _UploadMedicalRecordsScreenState
     return _allowedExtensions.contains(extension);
   }
 
+  String _buildTitleFromFileName(String fileName) {
+    final lastDot = fileName.lastIndexOf('.');
+    if (lastDot <= 0) {
+      return fileName;
+    }
+    return fileName.substring(0, lastDot);
+  }
+
   void _removeSelectedFile(int index) {
     setState(() {
       _selectedFiles.removeAt(index);
     });
   }
+
 
   Widget _buildUploadedFileTile({
     required PlatformFile file,

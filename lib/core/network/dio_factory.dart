@@ -18,7 +18,14 @@ class DioFactory {
 
     // إضافة LogInterceptor للـ Debugging (اختياري)
     dio.interceptors.add(
-      LogInterceptor(responseBody: true, error: true, requestHeader: true),
+      LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        responseHeader: true,
+        responseBody: true,
+        error: true,
+      ),
     );
 
     return dio;

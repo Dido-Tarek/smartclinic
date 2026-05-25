@@ -4,7 +4,7 @@ import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
-import 'package:smartclinic/features/family_members/data/models/family_member_model.dart';
+import 'package:smartclinic/features/family_members/data/models/family_member_response_model.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_state.dart';
 import 'package:cherry_toast/cherry_toast.dart';
@@ -62,9 +62,12 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
     // Fetch family members
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<FamilyCubit>().emitGetFamily();
+        context.read<FamilyCubit>().getMyFamily();
       }
     });
+    _selectedRelationship = 'me';
+    _relationshipController.text = 'Me';
+    _problemController = TextEditingController();
   }
 
   @override
@@ -93,11 +96,11 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
           (member) => member.id.toString() == value,
           orElse: () => _familyMembers.first,
         );
-        _nameController.text = familyMember.name;
-        _genderController.text = familyMember.gender;
+        _nameController.text = familyMember.name ?? '';
+        _genderController.text = familyMember.gender ?? '';
         // Calculate age from birth date
-        _ageController.text = _calculateAge(familyMember.birthDate);
-        _relationshipController.text = familyMember.relation;
+        _ageController.text = _calculateAge(familyMember.birthDate ?? '');
+        _relationshipController.text = familyMember.relation ?? '';
       }
     });
   }
@@ -138,6 +141,11 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
         'selectedDate': widget.selectedDate,
         'selectedTime': widget.selectedTime,
         'patientName': _nameController.text,
+        'familyMemberId': _selectedRelationship == null ||
+                _selectedRelationship == 'me'
+            ? null
+            : int.tryParse(_selectedRelationship!),
+        'notes': _problemController.text.trim(),
       },
     );
   }
@@ -155,14 +163,9 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
           child: BlocBuilder<FamilyCubit, FamilyState>(
             builder: (context, state) {
-              // Get family members from state
-              state.whenOrNull(
-                success: (data) {
-                  if (data is List<FamilyMemberModel>) {
-                    _familyMembers = data;
-                  }
-                },
-              );
+              if (state is GetMyFamilySuccess) {
+                _familyMembers = state.response.members;
+              }
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +267,7 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
     final relationships = <String, String>{
       'me': 'Me',
       ..._familyMembers.asMap().entries.fold(<String, String>{}, (map, entry) {
-        map[entry.value.id.toString()] = entry.value.name;
+        map[entry.value.id.toString()] = entry.value.name ?? '';
         return map;
       }),
     };
