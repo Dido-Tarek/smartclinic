@@ -1,21 +1,26 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/features/notification/data/model/notifications_model.dart';
 import 'package:smartclinic/features/notification/domain/repo/notifications_repo.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({
     super.key,
-    this.avatarAssetPath = AppImages.imagesIconsMan,
+    this.avatarPath,
+    this.fallbackAssetPath = AppImages.imagesIconsMan,
     this.title = 'Hi, Khatab !',
     this.subtitle = 'How do you feel today?',
     this.onNotificationTap,
   });
 
-  final String avatarAssetPath;
+  final String? avatarPath;
+  final String fallbackAssetPath;
   final String title;
   final String subtitle;
   final VoidCallback? onNotificationTap;
@@ -26,10 +31,12 @@ class HomeHeader extends StatefulWidget {
 
 class _HomeHeaderState extends State<HomeHeader> {
   bool _showNotificationDot = false;
+  late final UserSession _userSession;
 
   @override
   void initState() {
     super.initState();
+    _userSession = getIt<UserSession>();
     _loadUnreadCount();
   }
 
@@ -59,7 +66,7 @@ class _HomeHeaderState extends State<HomeHeader> {
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundImage: AssetImage(widget.avatarAssetPath),
+          backgroundImage: _resolveAvatarImage(),
           backgroundColor: AppColors.scaffoldBg,
         ),
         SizedBox(width: 16),
@@ -126,5 +133,29 @@ class _HomeHeaderState extends State<HomeHeader> {
         ),
       ],
     );
+  }
+
+  ImageProvider _resolveAvatarImage() {
+    final imagePath = widget.avatarPath ?? _userSession.profileImage;
+    final source = imagePath?.trim();
+
+    if (source == null || source.isEmpty) {
+      return AssetImage(widget.fallbackAssetPath);
+    }
+
+    if (source.startsWith('assets/')) {
+      return AssetImage(source);
+    }
+
+    final file = File(source);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    final remoteUrl =
+        source.startsWith('http://') || source.startsWith('https://')
+        ? source
+        : 'http://smartclinicccc.runasp.net/${source.startsWith('/') ? source.substring(1) : source}';
+    return NetworkImage(remoteUrl);
   }
 }

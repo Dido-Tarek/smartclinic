@@ -145,19 +145,31 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     return BlocConsumer<AddClinicCubit, AddClinicState>(
       listener: (context, state) async {
         state.whenOrNull(
-          success: (_) {
+          success: (_) async {
             CherryToast.success(
               title: Text(localizations.translate('clinic_added_success')),
             ).show(context);
 
-            final role = getRoleEnum(getIt<UserSession>().roleString);
-            Navigator.pushReplacementNamed(
+            final userSession = getIt<UserSession>();
+            final userId = userSession.userId?.trim() ?? '';
+            final roleString = userSession.roleString ?? 'Doctor';
+            
+            if (userId.isNotEmpty) {
+              await userSession.markSetupCompleted(
+                role: roleString,
+                userId: userId,
+              );
+            }
+
+            final role = getRoleEnum(roleString);
+            Navigator.pushNamedAndRemoveUntil(
               context,
               role.isDoctor
                   ? AppRoutes.home
                   : role.isHospital
                   ? AppRoutes.hospitalhome
                   : AppRoutes.home,
+              (route) => false,
             );
           },
           error: (error) {

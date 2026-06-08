@@ -25,6 +25,7 @@ class AppRoutes {
   static const String verifyDoctor = '/verifyDoctor';
   static const String clinicDetails = '/clinicDetails';
   static const String doctorProfileSettings = '/doctorProfileSettings';
+  static const String patientProfileSettings = '/patientProfileSettings';
   static const String doctorProfileView = '/doctorProfileView';
   static const String bookingDetails = '/bookingDetails';
   static const String bookingInformation = '/bookingInformation';

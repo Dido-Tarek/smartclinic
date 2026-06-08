@@ -6,67 +6,48 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
-import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
-import 'package:smartclinic/features/user_management/data/model/doctor_profile_response_model.dart';
+import 'package:smartclinic/features/user_management/data/model/patient_profile_response_model.dart';
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 const String _remoteImageBaseUrl = 'http://smartclinicccc.runasp.net/';
 
-class DoctorProfileSettingsPage extends StatefulWidget {
-  const DoctorProfileSettingsPage({super.key});
+class PatientProfileSettingsPage extends StatefulWidget {
+  const PatientProfileSettingsPage({super.key});
 
   @override
-  State<DoctorProfileSettingsPage> createState() =>
-      _DoctorProfileSettingsPageState();
+  State<PatientProfileSettingsPage> createState() =>
+      _PatientProfileSettingsPageState();
 }
 
-class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
+class _PatientProfileSettingsPageState
+    extends State<PatientProfileSettingsPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _specializationController =
-      TextEditingController();
-  final TextEditingController _bioController = TextEditingController();
-  final TextEditingController _yearsController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _birthDateController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _genderController = TextEditingController();
   final TextEditingController _bloodGroupController = TextEditingController();
 
   final UserSession _userSession = getIt<UserSession>();
 
   File? _pickedImageFile;
-  DoctorProfileModel? _doctorProfile;
-  bool _requestedDoctorProfile = false;
-
-  bool get _isDoctor => _userSession.userRole.isDoctor;
+  PatientProfileModel? _patientProfile;
+  bool _requestedPatientProfile = false;
 
   @override
   void initState() {
     super.initState();
-    _fillPatientFieldsFromSession();
+    _fillFieldsFromSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_isDoctor || _requestedDoctorProfile) {
+      if (!mounted || _requestedPatientProfile) {
         return;
       }
-
-      final userId = _userSession.userId?.trim();
-      if (userId == null || userId.isEmpty) {
-        CherryToast.error(
-          title: const Text('Error'),
-          description: const Text('Missing doctor profile id.'),
-        ).show(context);
-        return;
-      }
-
-      _requestedDoctorProfile = true;
-      context.read<UserManagementCubit>().getDoctorProfile(userId);
+      _requestedPatientProfile = true;
+      context.read<UserManagementCubit>().getPatientProfile();
     });
   }
 
@@ -74,48 +55,32 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _specializationController.dispose();
-    _bioController.dispose();
-    _yearsController.dispose();
-    _emailController.dispose();
-    _birthDateController.dispose();
     _addressController.dispose();
-    _genderController.dispose();
     _bloodGroupController.dispose();
     super.dispose();
   }
 
-  void _fillPatientFieldsFromSession() {
+  void _fillFieldsFromSession() {
     if (_userSession.fullName != null) {
       _nameController.text = _userSession.fullName!;
     }
     if (_userSession.phone != null) {
       _phoneController.text = _userSession.phone!;
     }
-    if (_userSession.email != null) {
-      _emailController.text = _userSession.email!;
-    }
-    if (_userSession.birthDate != null) {
-      _birthDateController.text = _userSession.birthDate!;
-    }
     if (_userSession.address != null) {
       _addressController.text = _userSession.address!;
-    }
-    if (_userSession.gender != null) {
-      _genderController.text = _userSession.gender!;
     }
     if (_userSession.bloodGroup != null) {
       _bloodGroupController.text = _userSession.bloodGroup!;
     }
   }
 
-  void _fillDoctorFields(DoctorProfileModel profile) {
-    _doctorProfile = profile;
+  void _fillFields(PatientProfileModel profile) {
+    _patientProfile = profile;
     _nameController.text = profile.fullName;
     _phoneController.text = profile.phoneNumber ?? '';
-    _specializationController.text = profile.specialization ?? '';
-    _bioController.text = profile.bio ?? '';
-    _yearsController.text = profile.yearsOfExperience?.toString() ?? '';
+    _addressController.text = profile.address ?? '';
+    _bloodGroupController.text = profile.bloodGroup ?? '';
   }
 
   Future<void> _pickImage() async {
@@ -134,18 +99,19 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
     }
   }
 
-  void _saveDoctorProfile() {
-    if (!_formKey.currentState!.validate()) return;
+  void _savePatientProfile() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     final data = <String, dynamic>{
       'FullName': _nameController.text.trim(),
       'PhoneNumber': _phoneController.text.trim(),
-      'Specialization': _specializationController.text.trim(),
-      'Bio': _bioController.text.trim(),
-      'YearsOfExperience': int.tryParse(_yearsController.text.trim()) ?? 0,
+      'Address': _addressController.text.trim(),
+      'BloodGroup': _bloodGroupController.text.trim(),
     };
 
-    context.read<UserManagementCubit>().updateDoctorProfile(
+    context.read<UserManagementCubit>().updatePatientProfile(
       data,
       _pickedImageFile,
     );
@@ -153,17 +119,13 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isDoctor) {
-      return _buildPatientScaffold();
-    }
-
     return BlocConsumer<UserManagementCubit, UserManagementState>(
       listener: (context, state) async {
-        if (state is ProfileLoaded) {
-          _fillDoctorFields(state.profile);
-          final profileImage = state.profile.profileImage;
-          if (profileImage != null && profileImage.isNotEmpty) {
-            await _userSession.saveProfileImage(profileImage);
+        if (state is PatientProfileLoaded) {
+          _fillFields(state.profile);
+          final profilePicture = state.profile.profilePicture;
+          if (profilePicture != null && profilePicture.isNotEmpty) {
+            await _userSession.saveProfileImage(profilePicture);
           }
           return;
         }
@@ -176,11 +138,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
           if (_pickedImageFile != null) {
             await _userSession.saveProfileImage(_pickedImageFile!.path);
           }
-          if (_isDoctor) {
-            await context.read<UserManagementCubit>().getDoctorProfile(
-              _userSession.userId!.trim(),
-            );
-          }
+          await context.read<UserManagementCubit>().getPatientProfile();
         }
 
         if (state is UserManagementError) {
@@ -192,10 +150,10 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
       },
       builder: (context, state) {
         final isLoading =
-            state is UserManagementLoading && _doctorProfile == null;
+            state is UserManagementLoading && _patientProfile == null;
         final profileImage = _pickedImageFile?.path;
         final fallbackImage =
-            _doctorProfile?.profileImage ?? _userSession.profileImage;
+            _patientProfile?.profilePicture ?? _userSession.profileImage;
 
         return Scaffold(
           appBar: const CustomAppBar(
@@ -230,7 +188,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
                                   child: ClipOval(
                                     child: _buildAvatar(
                                       profileImage ?? fallbackImage,
-                                      AppImages.imagesDoctorDRMahmoudAboLeila,
+                                      AppImages.imagesIconsPatient,
                                     ),
                                   ),
                                 ),
@@ -254,42 +212,34 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
                           _buildTextField(
                             controller: _nameController,
                             label: 'Full name',
-                            validator: (v) =>
-                                (v == null || v.isEmpty) ? 'Required' : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 12),
                           _buildTextField(
                             controller: _phoneController,
                             label: 'Phone number',
                             keyboardType: TextInputType.phone,
-                            validator: (v) =>
-                                (v == null || v.isEmpty) ? 'Required' : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 12),
                           _buildTextField(
-                            controller: _specializationController,
-                            label: 'Specialization',
-                            validator: (v) =>
-                                (v == null || v.isEmpty) ? 'Required' : null,
+                            controller: _addressController,
+                            label: 'Address',
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 12),
                           _buildTextField(
-                            controller: _bioController,
-                            label: 'Bio',
-                            maxLines: 5,
-                            validator: (v) => null,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildTextField(
-                            controller: _yearsController,
-                            label: 'Years of experience',
-                            keyboardType: TextInputType.number,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Required';
-                              final n = int.tryParse(v);
-                              if (n == null) return 'Invalid number';
-                              return null;
-                            },
+                            controller: _bloodGroupController,
+                            label: 'Blood group',
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Required'
+                                : null,
                           ),
                           const SizedBox(height: 20),
                           SizedBox(
@@ -297,7 +247,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
                             child: ElevatedButton(
                               onPressed: state is UserManagementLoading
                                   ? null
-                                  : _saveDoctorProfile,
+                                  : _savePatientProfile,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.deepNavy,
                                 padding: const EdgeInsets.symmetric(
@@ -335,95 +285,10 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
     );
   }
 
-  Widget _buildPatientScaffold() {
-    final profileImage = _userSession.profileImage;
-    final imageIsNetwork =
-        profileImage != null &&
-        profileImage.trim().isNotEmpty &&
-        !profileImage.trim().startsWith('assets/');
-
-    return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Profile Settings',
-        showNotification: false,
-        showBackButton: true,
-      ),
-      backgroundColor: AppColors.scaffoldBg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.deepNavy, width: 2),
-                  ),
-                  child: ClipOval(
-                    child: imageIsNetwork
-                        ? Image.network(
-                            profileImage!.trim(),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Image.asset(
-                              AppImages.imagesIconsPatient,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Image.asset(
-                            AppImages.imagesIconsPatient,
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildReadOnlyField(
-                controller: _nameController,
-                label: 'Full name',
-              ),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(
-                controller: _phoneController,
-                label: 'Phone number',
-              ),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(controller: _emailController, label: 'Email'),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(
-                controller: _birthDateController,
-                label: 'Birth date',
-              ),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(
-                controller: _addressController,
-                label: 'Address',
-              ),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(
-                controller: _genderController,
-                label: 'Gender',
-              ),
-              const SizedBox(height: 12),
-              _buildReadOnlyField(
-                controller: _bloodGroupController,
-                label: 'Blood group',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -434,44 +299,11 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
         const SizedBox(height: 8),
-        TextFormField(
+        AppTextFormField(
+          hintText: label,
           controller: controller,
           keyboardType: keyboardType,
-          maxLines: maxLines,
           validator: validator,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 12,
-              horizontal: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReadOnlyField({
-    required TextEditingController controller,
-    required String label,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        AppTextFormField(
-          hintText: 'Not provided',
-          controller: controller,
-          readOnly: true,
         ),
       ],
     );

@@ -15,6 +15,8 @@ import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/features/auth/data/models/facility_claim_ownership_request.dart.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_state.dart';
+import 'package:smartclinic/features/clinic_management/data/repo/clinic_management_repo.dart'
+    as smartclinic_clinic_repo;
 import 'package:smartclinic/injection_dependency.dart';
 
 class _ClinicOption {
@@ -72,6 +74,36 @@ class _MedicalFacilityManagementPageState
   File? _documentThree;
 
   @override
+  void initState() {
+    super.initState();
+    _checkExistingClinics();
+  }
+
+  Future<void> _checkExistingClinics() async {
+    try {
+      final repo = getIt<smartclinic_clinic_repo.ClinicManagementRepo>();
+      final result = await repo.getMyClinics();
+      result.fold((error) => null, (response) async {
+        if (response.clinics.isNotEmpty) {
+          final userId = _userSession.userId?.trim() ?? '';
+          if (userId.isNotEmpty) {
+            await _userSession.markSetupCompleted(
+              role: _userSession.roleString ?? 'Doctor',
+              userId: userId,
+            );
+          }
+          if (mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              _resolveHomeRoute(getRoleEnum(_userSession.roleString)),
+            );
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _clinicController.dispose();
     _clinicSearchController.dispose();
@@ -104,9 +136,19 @@ class _MedicalFacilityManagementPageState
 
             final navigator = Navigator.of(context);
             final role = getRoleEnum(_userSession.roleString);
+            final userId = _userSession.userId?.trim() ?? '';
+
+            Future<void> markPending() async {
+              if (userId.isNotEmpty) {
+                await _userSession.markFacilityVerificationPending(
+                  role: _userSession.roleString ?? 'Doctor',
+                  userId: userId,
+                );
+              }
+            }
 
             if (_claimOwnershipFlow) {
-              final userId = _userSession.userId?.trim() ?? '';
+              await markPending();
               if (userId.isNotEmpty) {
                 await _userSession.markSetupCompleted(
                   role: _userSession.roleString ?? 'Doctor',
@@ -119,15 +161,19 @@ class _MedicalFacilityManagementPageState
                   localizations.translate("clinic_claim_success_message"),
                 ),
               ).show(context);
+              CherryToast.info(
+                title: const Text('Review pending'),
+                description: const Text('Your profile is under review.'),
+              ).show(context);
               navigator.pushReplacementNamed(_resolveHomeRoute(role));
               return;
             }
 
             if (_staffFlow) {
-              CherryToast.success(
-                title: const Text('Success'),
-                description: Text(
-                  localizations.translate("staff_request_success_message"),
+              CherryToast.info(
+                title: const Text('Coming Soon'),
+                description: const Text(
+                  'Staff document uploads are coming soon.',
                 ),
               ).show(context);
               return;
@@ -139,6 +185,24 @@ class _MedicalFacilityManagementPageState
                 localizations.translate('owner_documents_uploaded_message'),
               ),
             ).show(context);
+
+            CherryToast.info(
+              title: const Text('Add new facility'),
+              description: const Text('Please add your new facility details.'),
+            ).show(context);
+
+            await markPending();
+
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.clinicDetails,
+              arguments: <String, dynamic>{
+                'isOwner': true,
+                'legalDocument1': _documentOne,
+                'legalDocument2': _documentTwo,
+                'legalDocument3': _documentThree,
+              },
+            );
           },
           error: (error) {
             if (!mounted) {
@@ -263,23 +327,7 @@ class _MedicalFacilityManagementPageState
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStatusChip(),
-                        const SizedBox(height: 16),
-                        CustomButton(
-                          text: t('get_started', 'Get Started'),
-                          color: _canContinue
-                              ? AppColors.deepNavy
-                              : AppColors.textSecondary,
-                          onPressed: _onGetStartedPressed,
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -686,6 +734,14 @@ class _MedicalFacilityManagementPageState
   }
 
   void _onUploadCredentialPressed() {
+    if (_staffFlow) {
+      CherryToast.info(
+        title: const Text('Coming Soon'),
+        description: const Text('Staff document uploads are coming soon.'),
+      ).show(context);
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -892,6 +948,14 @@ class _MedicalFacilityManagementPageState
       return;
     }
 
+    if (!_claimOwnershipFlow && !_staffFlow) {
+      CherryToast.info(
+        title: const Text('Add new clinic'),
+        description: const Text('Please add a new clinic first.'),
+      ).show(context);
+      return;
+    }
+
     if (_claimOwnershipFlow || _staffFlow) {
       return;
     }
@@ -1019,20 +1083,6 @@ class _MedicalFacilityManagementPageState
         description: Text(
           AppLocalizations.of(context)?.translate('missing_user_session') ??
               'Missing user session. Please sign in again.',
-        ),
-      ).show(context);
-      return;
-    }
-
-    // Staff flow must have a selected clinic to request access for
-    if (_staffFlow && _selectedClinicId == null) {
-      if (!mounted) return;
-
-      CherryToast.error(
-        title: const Text('Select clinic'),
-        description: Text(
-          AppLocalizations.of(context)?.translate('select_clinic_for_staff') ??
-              'Please select the clinic you want staff access for.',
         ),
       ).show(context);
       return;

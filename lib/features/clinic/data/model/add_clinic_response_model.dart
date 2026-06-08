@@ -4,6 +4,7 @@ part 'add_clinic_response_model.g.dart';
 
 @JsonSerializable()
 class AddClinicResponseModel {
+  @JsonKey(readValue: _readId)
   final int? id;
   final String? name;
   final String? message;
@@ -13,4 +14,8 @@ class AddClinicResponseModel {
 
   factory AddClinicResponseModel.fromJson(Map<String, dynamic> json) =>
       _$AddClinicResponseModelFromJson(json);
+
+  static int? _readId(Map<dynamic, dynamic> json, String key) {
+    return (json['id'] as num?)?.toInt() ?? (json['clinicId'] as num?)?.toInt();
+  }
 }

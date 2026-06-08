@@ -9,7 +9,7 @@ part of 'add_clinic_response_model.dart';
 AddClinicResponseModel _$AddClinicResponseModelFromJson(
   Map<String, dynamic> json,
 ) => AddClinicResponseModel(
-  id: (json['id'] as num?)?.toInt(),
+  id: AddClinicResponseModel._readId(json, 'id') as int?,
   name: json['name'] as String?,
   message: json['message'] as String?,
   status: json['status'] as String?,
@@ -23,3 +23,4 @@ Map<String, dynamic> _$AddClinicResponseModelToJson(
   'message': instance.message,
   'status': instance.status,
 };
+

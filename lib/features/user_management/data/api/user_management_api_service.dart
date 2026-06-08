@@ -22,6 +22,10 @@ class UserManagementApiService {
     return await _dio.get('/api/Doctors/profile/$id');
   }
 
+  Future<Response> getPatientProfile() async {
+    return await _dio.get('/api/Patient/profile');
+  }
+
   Future<Response> updateDoctorProfile(
     Map<String, dynamic> data,
     File? image,
@@ -35,5 +39,20 @@ class UserManagementApiService {
         ),
     });
     return await _dio.post('/api/Doctors/update-profile', data: formData);
+  }
+
+  Future<Response> updatePatientProfile(
+    Map<String, dynamic> data,
+    File? image,
+  ) async {
+    final formData = FormData.fromMap({
+      ...data,
+      if (image != null)
+        'ProfilePicture': await MultipartFile.fromFile(
+          image.path,
+          filename: image.path.split('/').last,
+        ),
+    });
+    return await _dio.post('/api/Patient/update-profile', data: formData);
   }
 }

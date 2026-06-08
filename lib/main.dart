@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -22,15 +24,16 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await SharedPrefsHelper.init();
   await setupGetIt();
-  await Firebase.initializeApp();
-  await PushNotificationService.initialize(appNavigatorKey);
+  runApp(MyApp(key: appKey));
+
+  unawaited(_initializeServices());
 
   // ---------------------------------------------------------
   // await getIt<UserSession>().initMockSession(
   //   role: UserRole.doctor,
   //   userId: "5fe5c967-3797-4dac-a1a8-3faba1265e32",
   //   token:
-  //       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiRGlhYSBFbCBEaW4gdGFyZWsiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjVmZTVjOTY3LTM3OTctNGRhYy1hMWE4LTNmYWJhMTI2NWUzMiIsImp0aSI6ImMxNzMwNjliLTUzZjEtNGM0Zi05NzY5LTVjNDMxYzRmNzkzMyIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkRvY3RvciIsImV4cCI6MTc3OTU5OTE2MiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo1MDAwIiwiYXVkIjoiaHR0cDovL2xvY2FsaG9zdDo0MjAwIn0.ITvJaJzZooKn_3ODPz_GZHJ73NaY4IoREdlZTUfIrxE",
+  //       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiRGlhYSBFbCBEaW4gdGFyZWsiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjVmZTVjOTY3LTM3OTctNGRhYy1hMWE4LTNmYWJhMTI2NWUzMiIsImp0aSI6IjI2YzFjYjA5LTVmNGMtNGE0OC1hYzFmLWEyODcxNDRiNzhjMiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkRvY3RvciIsImV4cCI6MTc3OTY4MzM2MiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo1MDAwIiwiYXVkIjoiaHR0cDovL2xvY2FsaG9zdDo0MjAwIn0.8O6ShURaBw22mss2NlNX9Gg3YkiacQRjU4hLXtuyUeU",
   // );
   // Doctor Email: diaatarek93@gmail.com
   // Doctor Password: Pass@123
@@ -51,7 +54,15 @@ void main() async {
   // );
 
   // ---------------------------------------------------------
-  runApp(MyApp(key: appKey));
+}
+
+Future<void> _initializeServices() async {
+  try {
+    await Firebase.initializeApp();
+    await PushNotificationService.initialize(appNavigatorKey);
+  } catch (error) {
+    debugPrint('Startup service initialization failed: $error');
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -71,12 +82,18 @@ class MyAppState extends State<MyApp> {
   }
 
   Future<void> _loadSavedLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final languageCode = prefs.getString('language_code') ?? 'en';
-    setState(() {
-      _locale = Locale(languageCode);
-    });
-    FlutterNativeSplash.remove();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final languageCode = prefs.getString('language_code') ?? 'en';
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _locale = Locale(languageCode);
+      });
+    } finally {
+      FlutterNativeSplash.remove();
+    }
   }
 
   void setLocale(Locale locale) {

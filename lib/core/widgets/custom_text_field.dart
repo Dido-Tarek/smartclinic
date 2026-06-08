@@ -81,9 +81,10 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
           widget.type == TextFormFieldType.date ||
           widget.type == TextFormFieldType.location ||
           widget.type == TextFormFieldType.fileUpload,
-        onTap: (widget.type == TextFormFieldType.fileUpload)
-          ? null
-          : widget.onTap,
+        onTap: (widget.type == TextFormFieldType.fileUpload ||
+                widget.type == TextFormFieldType.location)
+            ? null
+            : widget.onTap,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
       decoration: InputDecoration(
         hintText: widget.hintText,
@@ -137,8 +138,12 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
           onPressed: () => setState(() => _obscureText = !_obscureText),
         );
       case TextFormFieldType.date:
-      case TextFormFieldType.location:
         return Icon(_getSuffixIcon(), color: AppColors.textSecondary);
+      case TextFormFieldType.location:
+        return IconButton(
+          icon: Icon(_getSuffixIcon(), color: AppColors.textSecondary),
+          onPressed: widget.onSuffixTap,
+        );
       case TextFormFieldType.speciality:
         return IconButton(
           icon: Icon(_getSuffixIcon(), color: AppColors.textSecondary),

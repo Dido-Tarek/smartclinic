@@ -73,11 +73,11 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
             ).show(context);
           },
           success: (data) async {
-            final navigator = Navigator.of(context);
             final selectedRole = context.read<RegisterCubit>().selectedRole;
             final userId = _extractUserId(data);
             final fullName = _readRegistrationValue('name');
             final email = _readRegistrationValue('email');
+            final phone = _readRegistrationValue('phone');
             if (userId == null || userId.trim().isEmpty) {
               CherryToast.error(
                 title: const Text('Registration'),
@@ -97,7 +97,20 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
             if (email != null) {
               await _userSession.saveEmail(email);
             }
-            if (!mounted) {
+            if (phone != null) {
+              await _userSession.savePhone(phone);
+            }
+            await _userSession.saveBirthDate(_dobController.text.trim());
+            await _userSession.saveAddress(_addressController.text.trim());
+            if (_selectedGender != null) {
+              await _userSession.saveGender(_selectedGender!);
+            }
+            if (_bloodTypeController.text.trim().isNotEmpty) {
+              await _userSession.saveBloodGroup(
+                _bloodTypeController.text.trim(),
+              );
+            }
+            if (!context.mounted) {
               return;
             }
 
@@ -105,6 +118,7 @@ class _FollowUpRegisterScreenState extends State<FollowUpRegisterScreen> {
               title: const Text('Success'),
               description: const Text('Registration completed successfully'),
             ).show(context);
+            final navigator = Navigator.of(context);
             if (getRoleEnum(selectedRole).isPatient) {
               navigator.pushReplacementNamed(
                 AppRoutes.verification,

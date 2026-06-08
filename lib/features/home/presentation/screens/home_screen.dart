@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
@@ -10,6 +11,9 @@ import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/home_header.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_state.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +36,12 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _userSession = getIt<UserSession>();
     _appointmentsController = PageController(viewportFraction: 0.96);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<DoctorsCubit>().searchDoctors(pageSize: 12, pageNumber: 1);
+    });
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
       final currentPage = _appointmentsController.hasClients
@@ -97,7 +107,8 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               SizedBox(height: 10),
               HomeHeader(
-                avatarAssetPath: AppImages.imagesIconsPatient,
+                avatarPath: _userSession.profileImage,
+                fallbackAssetPath: AppImages.imagesIconsPatient,
                 title: fullName == null || fullName.isEmpty
                     ? 'Hi !'
                     : 'Hi, $fullName !',
@@ -250,32 +261,60 @@ class _HomeScreenState extends State<HomeScreen>
                     Navigator.pushNamed(context, AppRoutes.search),
               ),
               SizedBox(height: 12),
-              SizedBox(
-                height: 290,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  itemCount: _doctors.length,
-                  separatorBuilder: (_, __) => SizedBox(width: 18),
-                  itemBuilder: (context, index) {
-                    final item = _doctors[index];
-                    return SizedBox(
-                      width: 180,
-                      child: DoctorCardWidget(
-                        doctorName: item.name,
-                        specialization: item.specialization,
-                        rating: item.rating,
-                        imagePath: item.imagePath,
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.doctorProfileView,
-                          arguments: {'name': item.name},
-                        ),
-                        onFavoriteChanged: (value) {},
-                      ),
+              BlocBuilder<DoctorsCubit, DoctorsState>(
+                builder: (context, state) {
+                  final doctors = _resolvePopularDoctors(state);
+                  final isLoading =
+                      state is SearchDoctorsLoading && doctors.isEmpty;
+
+                  if (isLoading) {
+                    return const SizedBox(
+                      height: 290,
+                      child: Center(child: CircularProgressIndicator()),
                     );
-                  },
-                ),
+                  }
+
+                  return SizedBox(
+                    height: 290,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      itemCount: doctors.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 18),
+                      itemBuilder: (context, index) {
+                        final doctor = doctors[index];
+                        final imageSource =
+                            doctor.resolvedImageUrl ??
+                            _fallbackDoctorImage(doctor);
+                        final rating = _resolveDoctorRating(doctor);
+
+                        return SizedBox(
+                          width: 180,
+                          child: DoctorCardWidget(
+                            doctorName: doctor.name ?? 'Doctor',
+                            specialization: doctor.specialization ?? 'Doctor',
+                            rating: rating,
+                            reviewsCount: doctor.reviewsCount,
+                            imagePath: imageSource,
+                            imageUrl: doctor.resolvedImageUrl,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.doctorProfileView,
+                              arguments: {
+                                'name': doctor.name,
+                                'doctorImage': doctor.resolvedImageUrl,
+                                'specialization': doctor.specialization,
+                                'rating': rating,
+                                'reviewsCount': doctor.reviewsCount,
+                              },
+                            ),
+                            onFavoriteChanged: (value) {},
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -320,39 +359,83 @@ class _HomeScreenState extends State<HomeScreen>
       ],
     );
   }
+
+  List<DoctorModel> _resolvePopularDoctors(DoctorsState state) {
+    if (state is SearchDoctorsSuccess && state.response.doctors.isNotEmpty) {
+      return state.response.doctors;
+    }
+
+    return _fallbackDoctors;
+  }
+
+  double _resolveDoctorRating(DoctorModel doctor) {
+    final reviewsCount = doctor.reviewsCount;
+    if (reviewsCount != null && reviewsCount > 0) {
+      return (reviewsCount / 100).clamp(0.0, 5.0).toDouble();
+    }
+
+    return doctor.rating ?? 0;
+  }
+
+  String _fallbackDoctorImage(DoctorModel doctor) {
+    final specialization = (doctor.specialization ?? '').toLowerCase();
+    final name = (doctor.name ?? '').toLowerCase();
+
+    if (name.contains('razan')) {
+      return AppImages.imagesDoctorDRRazanHany;
+    }
+
+    if (specialization.contains('neuro')) {
+      return AppImages.imagesDoctorDRKhoulodAshraf;
+    }
+
+    if (specialization.contains('cardio')) {
+      return AppImages.imagesDoctorDRAhmedAlaa;
+    }
+
+    if (specialization.contains('dent')) {
+      return AppImages.imagesDoctorDRMaiElKady;
+    }
+
+    return AppImages.imagesDoctorDRHussienShokry;
+  }
 }
 
-class _DoctorItem {
-  const _DoctorItem({
-    required this.name,
-    required this.specialization,
-    required this.rating,
-    required this.imagePath,
-  });
-
-  final String name;
-  final String specialization;
-  final double rating;
-  final String imagePath;
-}
-
-const List<_DoctorItem> _doctors = <_DoctorItem>[
-  _DoctorItem(
-    name: 'Dr. Mai El Kady',
+const List<DoctorModel> _fallbackDoctors = <DoctorModel>[
+  DoctorModel(
+    id: '1',
+    name: 'Mai El Kady',
     specialization: 'Dentist',
+    city: 'Cairo',
+    area: 'Nasr City',
+    consultationType: 0,
+    consultationPrice: 250,
+    reviewsCount: 380,
     rating: 3.8,
-    imagePath: AppImages.imagesDoctorDRMaiElKady,
+    imageUrl: AppImages.imagesDoctorDRMaiElKady,
   ),
-  _DoctorItem(
-    name: 'Dr. Ahmed Alaa',
+  DoctorModel(
+    id: '2',
+    name: 'Ahmed Alaa',
     specialization: 'Cardiologist',
+    city: 'Cairo',
+    area: 'Maadi',
+    consultationType: 1,
+    consultationPrice: 300,
+    reviewsCount: 400,
     rating: 4.0,
-    imagePath: AppImages.imagesDoctorDRAhmedAlaa,
+    imageUrl: AppImages.imagesDoctorDRAhmedAlaa,
   ),
-  _DoctorItem(
-    name: 'Dr. Khoulod Ashraf',
+  DoctorModel(
+    id: '3',
+    name: 'Khoulod Ashraf',
     specialization: 'Neurologist',
+    city: 'Alexandria',
+    area: 'Heliopolis',
+    consultationType: 2,
+    consultationPrice: 350,
+    reviewsCount: 420,
     rating: 4.2,
-    imagePath: AppImages.imagesDoctorDRKhoulodAshraf,
+    imageUrl: AppImages.imagesDoctorDRKhoulodAshraf,
   ),
 ];

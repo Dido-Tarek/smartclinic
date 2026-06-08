@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
@@ -11,6 +12,9 @@ import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/features/appointments/data/model/appointment_response_model.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_state.dart';
+import 'package:smartclinic/features/clinic_management/data/model/clinic_response_model.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -24,29 +28,45 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
   late final UserSession _userSession;
-  late final PageController _upcomingController;
+  late final AppointmentsCubit _myAppointmentsCubit;
+  AppointmentsCubit? _doctorAppointmentsCubit;
+  ClinicManagementCubit? _clinicManagementCubit;
+  final List<ClinicModel> _doctorClinics = <ClinicModel>[];
+  ClinicModel? _selectedDoctorClinic;
 
   @override
   void initState() {
     super.initState();
     _userSession = getIt<UserSession>();
-    _upcomingController = PageController(viewportFraction: 0.95);
+    _myAppointmentsCubit = context.read<AppointmentsCubit>();
+    if (_userSession.userRole.isDoctor) {
+      _doctorAppointmentsCubit = getIt<AppointmentsCubit>();
+      _clinicManagementCubit = getIt<ClinicManagementCubit>();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
-      context.read<AppointmentsCubit>().getMyAppointments();
+      _myAppointmentsCubit.getMyAppointments();
+      if (_userSession.userRole.isDoctor) {
+        _clinicManagementCubit!.getMyClinics();
+      }
     });
   }
 
   @override
   void dispose() {
-    _upcomingController.dispose();
+    _doctorAppointmentsCubit?.close();
+    _clinicManagementCubit?.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_userSession.userRole.isDoctor) {
+      return _buildDoctorView(context);
+    }
+
     return BlocConsumer<AppointmentsCubit, AppointmentsState>(
       listener: (context, state) {
         if (state is GetMyAppointmentsFailure) {
@@ -303,6 +323,390 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
+  Widget _buildDoctorView(BuildContext context) {
+    final clinicCubit = _clinicManagementCubit;
+    final doctorCubit = _doctorAppointmentsCubit;
+
+    if (clinicCubit == null || doctorCubit == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return BlocProvider.value(
+      value: clinicCubit,
+      child: BlocListener<ClinicManagementCubit, ClinicManagementState>(
+        listener: (context, state) {
+          if (state is GetMyClinicsSuccess) {
+            setState(() {
+              _doctorClinics
+                ..clear()
+                ..addAll(state.response.clinics);
+              _selectedDoctorClinic ??= _doctorClinics.isNotEmpty
+                  ? _doctorClinics.first
+                  : null;
+            });
+
+            final selectedClinic = _selectedDoctorClinic;
+            final selectedId = selectedClinic?.id;
+            if (selectedId != null) {
+              doctorCubit.getDoctorRequests(selectedId);
+            }
+          } else if (state is GetMyClinicsFailure) {
+            CherryToast.error(
+              title: const Text('Error'),
+              description: Text(state.errorMessage),
+            ).show(context);
+          }
+        },
+        child: BlocConsumer<AppointmentsCubit, AppointmentsState>(
+          bloc: _myAppointmentsCubit,
+          listener: (context, state) {
+            if (state is GetMyAppointmentsFailure) {
+              CherryToast.error(
+                title: const Text('Error'),
+                description: Text(state.errorMessage),
+              ).show(context);
+            }
+          },
+          builder: (context, patientState) {
+            return DefaultTabController(
+              initialIndex: widget.initialIndex,
+              length: 2,
+              child: Scaffold(
+                backgroundColor: AppColors.scaffoldBg,
+                appBar: CustomAppBar(
+                  title: 'Appointments',
+                  onNotificationTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.notifications),
+                ),
+                bottomNavigationBar: CustomNavBar(
+                  selectedIndex: 2,
+                  userRole: _userSession.userRole,
+                  onChatbotPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.nouga),
+                ),
+                body: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: TabBar(
+                        indicatorColor: AppColors.blueAction,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        labelColor: AppColors.blueAction,
+                        unselectedLabelColor: AppColors.textSecondary,
+                        labelStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        tabs: const [
+                          Tab(text: 'My Consultations'),
+                          Tab(text: 'My Clinic Schedule'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildAppointmentsSourceBody(
+                            context,
+                            patientState,
+                            onEmptyAction: () =>
+                                Navigator.pushNamed(context, AppRoutes.search),
+                          ),
+                          BlocConsumer<AppointmentsCubit, AppointmentsState>(
+                            bloc: doctorCubit,
+                            listener: (context, state) {
+                              if (state is GetDoctorRequestsFailure) {
+                                CherryToast.error(
+                                  title: const Text('Error'),
+                                  description: Text(state.errorMessage),
+                                ).show(context);
+                              }
+                            },
+                            builder: (context, doctorState) {
+                              return _buildDoctorScheduleTab(
+                                context,
+                                doctorState,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppointmentsSourceBody(
+    BuildContext context,
+    AppointmentsState state, {
+    required VoidCallback onEmptyAction,
+  }) {
+    final upcomingAppointments = _resolveUpcomingAppointments(state);
+    final isLoading =
+        state is GetMyAppointmentsLoading || state is GetDoctorRequestsLoading;
+
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: TabBar(
+              indicatorColor: AppColors.blueAction,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelColor: AppColors.blueAction,
+              unselectedLabelColor: AppColors.textSecondary,
+              labelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(text: 'Upcoming'),
+                Tab(text: 'Cancelled'),
+                Tab(text: 'Completed'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: TabBarView(
+              children: [
+                isLoading && upcomingAppointments.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : upcomingAppointments.isEmpty
+                    ? _EmptyAppointmentsView(onBookNow: onEmptyAction)
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                        child: ListView.separated(
+                          padding: EdgeInsets.only(
+                            top: 8,
+                            bottom: MediaQuery.of(context).padding.bottom + 88,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: upcomingAppointments.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final item = upcomingAppointments[index];
+                            return AppointmentCardWidget(
+                              doctorName: item.doctorName,
+                              specialization: item.specialization,
+                              appointmentDate: item.appointmentDate,
+                              appointmentTime: item.appointmentTime,
+                              imagePath: item.imagePath,
+                              showArrow: false,
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.bookingSummary,
+                                  arguments: {
+                                    'doctorName': item.doctorName,
+                                    'specialization': item.specialization,
+                                    'clinicName': item.clinicName,
+                                    'doctorImage': item.imagePath,
+                                    'consultationType': item.consultationType,
+                                    'selectedDate': item.appointmentDate,
+                                    'selectedTime': item.appointmentTime,
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                Builder(
+                  builder: (context) {
+                    final cancelledAppointments = _resolveCancelledAppointments(
+                      state,
+                    );
+                    return isLoading && cancelledAppointments.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : cancelledAppointments.isEmpty
+                        ? _EmptyAppointmentsView(onBookNow: onEmptyAction)
+                        : Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                            child: ListView.separated(
+                              padding: EdgeInsets.only(
+                                top: 8,
+                                bottom:
+                                    MediaQuery.of(context).padding.bottom + 88,
+                              ),
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: cancelledAppointments.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final item = cancelledAppointments[index];
+                                return AppointmentCardWidget(
+                                  doctorName: item.doctorName,
+                                  specialization: item.specialization,
+                                  appointmentDate: item.appointmentDate,
+                                  appointmentTime: item.appointmentTime,
+                                  imagePath: item.imagePath,
+                                  showArrow: false,
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.bookingSummary,
+                                      arguments: {
+                                        'doctorName': item.doctorName,
+                                        'specialization': item.specialization,
+                                        'clinicName': item.clinicName,
+                                        'doctorImage': item.imagePath,
+                                        'consultationType':
+                                            item.consultationType,
+                                        'selectedDate': item.appointmentDate,
+                                        'selectedTime': item.appointmentTime,
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          );
+                  },
+                ),
+                Builder(
+                  builder: (context) {
+                    final completedAppointments = _resolveCompletedAppointments(
+                      state,
+                    );
+                    return isLoading && completedAppointments.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : completedAppointments.isEmpty
+                        ? _EmptyAppointmentsView(onBookNow: onEmptyAction)
+                        : Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                            child: ListView.separated(
+                              padding: EdgeInsets.only(
+                                top: 8,
+                                bottom:
+                                    MediaQuery.of(context).padding.bottom + 88,
+                              ),
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: completedAppointments.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final item = completedAppointments[index];
+                                return AppointmentCardWidget(
+                                  doctorName: item.doctorName,
+                                  specialization: item.specialization,
+                                  appointmentDate: item.appointmentDate,
+                                  appointmentTime: item.appointmentTime,
+                                  imagePath: item.imagePath,
+                                  showArrow: false,
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.bookingSummary,
+                                      arguments: {
+                                        'doctorName': item.doctorName,
+                                        'specialization': item.specialization,
+                                        'clinicName': item.clinicName,
+                                        'doctorImage': item.imagePath,
+                                        'consultationType':
+                                            item.consultationType,
+                                        'selectedDate': item.appointmentDate,
+                                        'selectedTime': item.appointmentTime,
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorScheduleTab(
+    BuildContext context,
+    AppointmentsState state,
+  ) {
+    if (_doctorClinics.isEmpty) {
+      return _EmptyAppointmentsView(
+        title: 'No clinic schedule yet',
+        subtitle: 'Select or create a clinic to start managing appointments.',
+        showActionButton: false,
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: DropdownButtonFormField<int>(
+            initialValue: _selectedDoctorClinic?.id,
+            decoration: InputDecoration(
+              labelText: 'Clinic schedule',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: AppColors.textSecondary.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+            items: _doctorClinics
+                .where((clinic) => clinic.id != null)
+                .map(
+                  (clinic) => DropdownMenuItem<int>(
+                    value: clinic.id,
+                    child: Text(clinic.name ?? 'Clinic'),
+                  ),
+                )
+                .toList(),
+            onChanged: (clinicId) {
+              if (clinicId == null) {
+                return;
+              }
+              final selectedClinic = _doctorClinics.firstWhere(
+                (clinic) => clinic.id == clinicId,
+                orElse: () => _selectedDoctorClinic!,
+              );
+              setState(() {
+                _selectedDoctorClinic = selectedClinic;
+              });
+              _doctorAppointmentsCubit?.getDoctorRequests(clinicId);
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _buildAppointmentsSourceBody(
+            context,
+            state,
+            onEmptyAction: () =>
+                Navigator.pushNamed(context, AppRoutes.clinicManagement),
+          ),
+        ),
+      ],
+    );
+  }
+
   List<_AppointmentCardData> _resolveUpcomingAppointments(
     AppointmentsState state,
   ) {
@@ -436,8 +840,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
 class _EmptyAppointmentsView extends StatelessWidget {
   final VoidCallback onBookNow;
+  final String title;
+  final String subtitle;
+  final bool showActionButton;
 
-  const _EmptyAppointmentsView({required this.onBookNow});
+  const _EmptyAppointmentsView({
+    this.onBookNow = _noop,
+    this.title = "You don't have an appointment",
+    this.subtitle = "You don't have an appointment scheduled at the moment.",
+    this.showActionButton = true,
+  });
+
+  static void _noop() {}
 
   @override
   Widget build(BuildContext context) {
@@ -453,8 +867,8 @@ class _EmptyAppointmentsView extends StatelessWidget {
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 28),
-            const Text(
-              "You don't have an appointment",
+            Text(
+              title,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -463,8 +877,8 @@ class _EmptyAppointmentsView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
-              "You don't have an appointment scheduled at the moment.",
+            Text(
+              subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textSecondary,
@@ -473,26 +887,28 @@ class _EmptyAppointmentsView extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 40,
-              child: ElevatedButton(
-                onPressed: onBookNow,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.deepNavy,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
+            if (showActionButton) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: onBookNow,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepNavy,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                  ),
+                  child: const Text(
+                    'Book Now',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
-                child: const Text(
-                  'Book Now',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
