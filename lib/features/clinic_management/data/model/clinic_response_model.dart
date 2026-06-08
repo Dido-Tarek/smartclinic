@@ -255,3 +255,26 @@ class DoctorAvailabilityResponseModel {
             .toList(),
       );
 }
+
+// GET /api/Clinics/unowned-list
+class UnownedClinicsResponseModel {
+  final List<ClinicModel> clinics;
+  const UnownedClinicsResponseModel({required this.clinics});
+
+  factory UnownedClinicsResponseModel.fromJson(Map<String, dynamic> json) =>
+      UnownedClinicsResponseModel(
+        clinics:
+            (json['clinics'] as List<dynamic>? ??
+                    json['data'] as List<dynamic>? ??
+                    [])
+                .map((e) => ClinicModel.fromJson(e as Map<String, dynamic>))
+                .toList(),
+      );
+
+  factory UnownedClinicsResponseModel.fromList(List<dynamic> list) =>
+      UnownedClinicsResponseModel(
+        clinics: list
+            .map((e) => ClinicModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}

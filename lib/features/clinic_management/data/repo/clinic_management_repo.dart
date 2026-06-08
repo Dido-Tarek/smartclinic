@@ -39,6 +39,12 @@ abstract class ClinicManagementRepo {
   Future<Either<String, DoctorAvailabilityResponseModel>> getDoctorAvailability(
     String doctorId,
   );
+
+  Future<Either<String, UnownedClinicsResponseModel>> getUnownedClinics({
+    String? query,
+    String? city,
+    String? area,
+  });
 }
 
 class ClinicManagementRepoImpl implements ClinicManagementRepo {
@@ -156,6 +162,21 @@ class ClinicManagementRepoImpl implements ClinicManagementRepo {
   ) async {
     try {
       return Right(await _api.getDoctorAvailability(doctorId));
+    } catch (e) {
+      return Left(ApiErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Either<String, UnownedClinicsResponseModel>> getUnownedClinics({
+    String? query,
+    String? city,
+    String? area,
+  }) async {
+    try {
+      return Right(
+        await _api.getUnownedClinics(query: query, city: city, area: area),
+      );
     } catch (e) {
       return Left(ApiErrorHandler.handle(e));
     }

@@ -84,10 +84,12 @@ class ClinicManagementApiService {
       if (request.phoneNumber != null) 'PhoneNumber': request.phoneNumber,
       if (request.city != null) 'City': request.city,
       if (request.area != null) 'Area': request.area,
-      if (request.specialization != null) 'Specialization': request.specialization,
+      if (request.specialization != null)
+        'Specialization': request.specialization,
       if (request.latitude != null) 'Latitude': request.latitude,
       if (request.longitude != null) 'Longitude': request.longitude,
-      if (request.sessionDuration != null) 'SessionDuration': request.sessionDuration,
+      if (request.sessionDuration != null)
+        'SessionDuration': request.sessionDuration,
       if (request.clinicFee != null) 'ClinicFee': request.clinicFee,
       if (request.onlineFee != null) 'OnlineFee': request.onlineFee,
       if (request.homeVisitFee != null) 'HomeVisitFee': request.homeVisitFee,
@@ -170,6 +172,30 @@ class ClinicManagementApiService {
       );
     }
     return DoctorAvailabilityResponseModel.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
+
+  // ── GET /api/Clinics/unowned-list ────────────────────────────────────────
+  Future<UnownedClinicsResponseModel> getUnownedClinics({
+    String? query,
+    String? city,
+    String? area,
+  }) async {
+    final response = await _dio.get(
+      '$_clinics/unowned-list',
+      queryParameters: {
+        if (query != null) 'query': query,
+        if (city != null) 'city': city,
+        if (area != null) 'area': area,
+      },
+    );
+    if (response.data is List) {
+      return UnownedClinicsResponseModel.fromList(
+        response.data as List<dynamic>,
+      );
+    }
+    return UnownedClinicsResponseModel.fromJson(
       response.data as Map<String, dynamic>,
     );
   }

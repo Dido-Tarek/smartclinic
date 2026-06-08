@@ -41,28 +41,12 @@ class MedicalFacilityManagementPage extends StatefulWidget {
 
 class _MedicalFacilityManagementPageState
     extends State<MedicalFacilityManagementPage> {
-  static const List<_ClinicOption> _clinicOptions = <_ClinicOption>[
-    _ClinicOption(id: 1001, name: 'Al Noor Clinic', location: 'Downtown'),
-    _ClinicOption(
-      id: 1002,
-      name: 'Blue Crescent Medical Center',
-      location: 'City Center',
-    ),
-    _ClinicOption(
-      id: 1003,
-      name: 'MediCare Family Clinic',
-      location: 'West District',
-    ),
-    _ClinicOption(
-      id: 1004,
-      name: 'LifeLine Specialty Clinic',
-      location: 'North Avenue',
-    ),
-  ];
-
   final UserSession _userSession = getIt<UserSession>();
   final TextEditingController _clinicController = TextEditingController();
   final TextEditingController _clinicSearchController = TextEditingController();
+
+  List<_ClinicOption> _unownedClinics = [];
+  bool _isLoadingUnowned = false;
 
   int? _selectedClinicId;
   bool _claimOwnershipFlow = false;
@@ -77,6 +61,49 @@ class _MedicalFacilityManagementPageState
   void initState() {
     super.initState();
     _checkExistingClinics();
+    _fetchUnownedClinics();
+  }
+
+  Future<void> _fetchUnownedClinics() async {
+    setState(() {
+      _isLoadingUnowned = true;
+    });
+    try {
+      final repo = getIt<smartclinic_clinic_repo.ClinicManagementRepo>();
+      final result = await repo.getUnownedClinics();
+      result.fold(
+        (error) {
+          if (mounted) {
+            setState(() {
+              _isLoadingUnowned = false;
+            });
+          }
+        },
+        (response) {
+          if (mounted) {
+            setState(() {
+              _unownedClinics = response.clinics
+                  .take(5)
+                  .map(
+                    (clinic) => _ClinicOption(
+                      id: clinic.id ?? 0,
+                      name: clinic.name ?? 'Unnamed Clinic',
+                      location: clinic.address ?? '',
+                    ),
+                  )
+                  .toList();
+              _isLoadingUnowned = false;
+            });
+          }
+        },
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingUnowned = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkExistingClinics() async {
@@ -192,17 +219,6 @@ class _MedicalFacilityManagementPageState
             ).show(context);
 
             await markPending();
-
-            Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.clinicDetails,
-              arguments: <String, dynamic>{
-                'isOwner': true,
-                'legalDocument1': _documentOne,
-                'legalDocument2': _documentTwo,
-                'legalDocument3': _documentThree,
-              },
-            );
           },
           error: (error) {
             if (!mounted) {
@@ -588,7 +604,7 @@ class _MedicalFacilityManagementPageState
           child: StatefulBuilder(
             builder: (context, setSheetState) {
               final query = _clinicSearchController.text.trim().toLowerCase();
-              final clinics = _clinicOptions.where((clinic) {
+              final clinics = _unownedClinics.where((clinic) {
                 if (query.isEmpty) {
                   return true;
                 }
@@ -626,81 +642,99 @@ class _MedicalFacilityManagementPageState
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 320,
-                    child: ListView.separated(
-                      itemCount: clinics.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final clinic = clinics[index];
-                        final isSelected = clinic.id == _selectedClinicId;
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            setState(() {
-                              _selectedClinicId = clinic.id;
-                              _clinicController.text = clinic.name;
-                              // If staff flow is active, remain in staff flow when selecting a clinic.
-                              if (_staffFlow) {
-                                _claimOwnershipFlow = false;
-                                // keep _staffFlow true
-                              } else {
-                                _claimOwnershipFlow = true;
-                                _staffFlow = false;
-                              }
-                              _credentialsUploaded = false;
-                              _clearDocuments();
-                            });
-                            Navigator.pop(bottomSheetContext);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.accentBlue.withValues(alpha: 0.35)
-                                  : AppColors.cardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.skyBlue
-                                    : AppColors.textPrimary,
+                    child: _isLoadingUnowned
+                        ? const Center(child: CircularProgressIndicator())
+                        : clinics.isEmpty
+                        ? Center(
+                            child: Text(
+                              AppLocalizations.of(
+                                    context,
+                                  )?.translate('no_unowned_clinics_found') ??
+                                  'No unowned clinics found',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.local_hospital_outlined,
-                                  color: AppColors.deepNavy,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                          )
+                        : ListView.separated(
+                            itemCount: clinics.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final clinic = clinics[index];
+                              final isSelected = clinic.id == _selectedClinicId;
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  setState(() {
+                                    _selectedClinicId = clinic.id;
+                                    _clinicController.text = clinic.name;
+                                    // If staff flow is active, remain in staff flow when selecting a clinic.
+                                    if (_staffFlow) {
+                                      _claimOwnershipFlow = false;
+                                      // keep _staffFlow true
+                                    } else {
+                                      _claimOwnershipFlow = true;
+                                      _staffFlow = false;
+                                    }
+                                    _credentialsUploaded = false;
+                                    _clearDocuments();
+                                  });
+                                  Navigator.pop(bottomSheetContext);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.accentBlue.withValues(
+                                            alpha: 0.35,
+                                          )
+                                        : AppColors.cardBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.skyBlue
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        clinic.name,
-                                        style: const TextStyle(
-                                          color: AppColors.textPrimary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                      const Icon(
+                                        Icons.local_hospital_outlined,
+                                        color: AppColors.deepNavy,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        clinic.location,
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 12,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              clinic.name,
+                                              style: const TextStyle(
+                                                color: AppColors.textPrimary,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              clinic.location,
+                                              style: const TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                   const SizedBox(height: 12),
                   Align(
