@@ -8,6 +8,8 @@ class DoctorModel {
   final int? consultationType;
   final double? consultationPrice;
   final String? imageUrl;
+  final String? profileImage;
+  final int? reviewsCount;
   final double? rating;
 
   const DoctorModel({
@@ -19,6 +21,8 @@ class DoctorModel {
     this.consultationType,
     this.consultationPrice,
     this.imageUrl,
+    this.profileImage,
+    this.reviewsCount,
     this.rating,
   });
 
@@ -31,8 +35,12 @@ class DoctorModel {
     consultationType: json['consultationType'] as int?,
     consultationPrice: (json['consultationPrice'] as num?)?.toDouble(),
     imageUrl: json['imageUrl'] as String?,
+    profileImage: json['profileImage'] as String?,
+    reviewsCount: (json['reviewsCount'] as num?)?.toInt(),
     rating: (json['rating'] as num?)?.toDouble(),
   );
+
+  String? get resolvedImageUrl => imageUrl ?? profileImage;
 }
 
 // ── POST /api/Doctors/search-doctors response ────────────────────────────────

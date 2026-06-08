@@ -252,12 +252,20 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                         return DoctorCardWidget(
                           doctorName: doctor.name ?? 'Doctor',
                           specialization: doctor.specialization ?? 'Doctor',
-                          rating: doctor.rating ?? 0,
+                          rating: _resolveDoctorRating(doctor),
+                          reviewsCount: doctor.reviewsCount,
                           imagePath: _resolveDoctorImage(doctor),
+                          imageUrl: doctor.resolvedImageUrl,
                           onTap: () => Navigator.pushNamed(
                             context,
                             AppRoutes.doctorProfileView,
-                            arguments: {'name': doctor.name},
+                            arguments: {
+                              'name': doctor.name,
+                              'doctorImage': doctor.resolvedImageUrl,
+                              'specialization': doctor.specialization,
+                              'rating': _resolveDoctorRating(doctor),
+                              'reviewsCount': doctor.reviewsCount,
+                            },
                           ),
                           onFavoriteChanged: (_) {},
                         );
@@ -320,6 +328,11 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
   }
 
   String _resolveDoctorImage(DoctorModel doctor) {
+    final resolvedImage = doctor.resolvedImageUrl;
+    if (resolvedImage != null && resolvedImage.trim().isNotEmpty) {
+      return resolvedImage.trim();
+    }
+
     final specialization = (doctor.specialization ?? '').toLowerCase();
     final name = (doctor.name ?? '').toLowerCase();
 
@@ -340,6 +353,15 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
     }
 
     return AppImages.imagesDoctorDRHussienShokry;
+  }
+
+  double _resolveDoctorRating(DoctorModel doctor) {
+    final reviewsCount = doctor.reviewsCount;
+    if (reviewsCount != null && reviewsCount > 0) {
+      return (reviewsCount / 100).clamp(0.0, 5.0).toDouble();
+    }
+
+    return doctor.rating ?? 0;
   }
 }
 

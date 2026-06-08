@@ -148,11 +148,6 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
     return monthNames[monthName.toLowerCase()];
   }
 
-  String _formatIsoDate(DateTime date) {
-    final utcDate = DateTime.utc(date.year, date.month, date.day);
-    return utcDate.toIso8601String();
-  }
-
   @override
   void initState() {
     super.initState();

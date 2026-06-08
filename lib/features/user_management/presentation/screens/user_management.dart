@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cherry_toast/cherry_toast.dart';
@@ -11,6 +13,8 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
 import 'package:smartclinic/features/medical_records/presentation/screens/upload_medical_records.dart';
 import 'package:smartclinic/injection_dependency.dart';
+
+const String _remoteImageBaseUrl = 'http://smartclinicccc.runasp.net/';
 
 class UserManagementPage extends StatefulWidget {
   const UserManagementPage({super.key});
@@ -38,6 +42,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
       email: _userSession.email?.trim().isNotEmpty == true
           ? _userSession.email!.trim()
           : '',
+      imagePath: _userSession.profileImage,
+      fallbackAsset: isDoctor
+        ? AppImages.imagesDoctorDRMahmoudAboLeila
+        : AppImages.imagesIconsPatient,
     );
 
     final items = isDoctor ? _doctorItems : _patientItems;
@@ -104,9 +112,25 @@ class _UserManagementPageState extends State<UserManagementPage> {
                           child: _SettingTile(
                             label: item.label,
                             icon: item.icon,
-                            onTap: () => _navigateTo(switch (item.label) {
+                            onTap: () async {
+                              if (item.label == 'Clinic Settings') {
+                                final role = _userSession.roleString ?? 'Doctor';
+                                final userId = _userSession.userId?.trim() ?? '';
+                                if (userId.isNotEmpty) {
+                                  if (!_userSession.isSetupCompleted(
+                                        role: role,
+                                        userId: userId,
+                                      )) {
+                                    _navigateTo(AppRoutes.medicalFacilityManagement);
+                                    return;
+                                  }
+                                }
+                              }
+                              _navigateTo(switch (item.label) {
                               'Profile Settings' =>
-                                AppRoutes.doctorProfileSettings,
+                                isDoctor
+                                    ? AppRoutes.doctorProfileSettings
+                                    : AppRoutes.patientProfileSettings,
                               'Notifications' => AppRoutes.notifications,
                               // 'Reset Password' => AppRoutes.verifyDoctor,
                               'Payment Settings' => AppRoutes.wallet,
@@ -121,7 +145,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                               String() => throw UnimplementedError(
                                 'No route defined for ${item.label}',
                               ),
-                            }), // Placeholder for now
+                            });
+                            },
                           ),
                         ),
                       ),
@@ -154,11 +179,19 @@ class _UserManagementPageState extends State<UserManagementPage> {
         context,
         route,
         arguments: MedicalRecordsSource.profile,
-      );
+      ).whenComplete(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
       return;
     }
 
-    Navigator.pushNamed(context, route);
+    Navigator.pushNamed(context, route).whenComplete(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 }
 
@@ -166,6 +199,45 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.profile});
 
   final _ProfileData profile;
+
+  Widget _buildAvatar(_ProfileData profile) {
+    final imagePath = profile.imagePath;
+    final imageSource = imagePath?.trim();
+
+    if (imageSource == null || imageSource.isEmpty) {
+      return Image.asset(profile.fallbackAsset, fit: BoxFit.cover);
+    }
+
+    if (imageSource.startsWith('assets/')) {
+      return Image.asset(imageSource, fit: BoxFit.cover);
+    }
+
+    final file = File(imageSource);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          profile.fallbackAsset,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    final remoteUrl = imageSource.startsWith('http://') ||
+            imageSource.startsWith('https://')
+        ? imageSource
+        : '${_remoteImageBaseUrl}${imageSource.startsWith('/') ? imageSource.substring(1) : imageSource}';
+
+    return Image.network(
+      remoteUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Image.asset(
+        profile.fallbackAsset,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,12 +255,7 @@ class _ProfileHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.deepNavy, width: 2.2),
               ),
-              child: ClipOval(
-                child: Image.asset(
-                  AppImages.imagesDoctorDRMahmoudAboLeila,
-                  fit: BoxFit.cover,
-                ),
-              ),
+              child: ClipOval(child: _buildAvatar(profile)),
             ),
             Positioned(
               right: -2,
@@ -329,10 +396,17 @@ class _LogoutButton extends StatelessWidget {
 }
 
 class _ProfileData {
-  const _ProfileData({required this.name, required this.email});
+  const _ProfileData({
+    required this.name,
+    required this.email,
+    required this.imagePath,
+    required this.fallbackAsset,
+  });
 
   final String name;
   final String email;
+  final String? imagePath;
+  final String fallbackAsset;
 }
 
 class _SettingItem {

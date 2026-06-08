@@ -28,6 +28,15 @@ class UserManagementCubit extends Cubit<UserManagementState> {
     );
   }
 
+  Future<void> getPatientProfile() async {
+    emit(UserManagementLoading());
+    final result = await _repo.getPatientProfile();
+    result.when(
+      success: (profile) => emit(PatientProfileLoaded(profile)),
+      failure: (message) => emit(UserManagementError(message)),
+    );
+  }
+
   Future<void> resetPassword(ResetPasswordRequest request) async {
     emit(UserManagementLoading());
     final result = await _repo.resetPassword(request);
@@ -43,6 +52,18 @@ class UserManagementCubit extends Cubit<UserManagementState> {
   ) async {
     emit(UserManagementLoading());
     final result = await _repo.updateDoctorProfile(data, image);
+    result.when(
+      success: (_) => emit(UserManagementSuccess()),
+      failure: (message) => emit(UserManagementError(message)),
+    );
+  }
+
+  Future<void> updatePatientProfile(
+    Map<String, dynamic> data,
+    File? image,
+  ) async {
+    emit(UserManagementLoading());
+    final result = await _repo.updatePatientProfile(data, image);
     result.when(
       success: (_) => emit(UserManagementSuccess()),
       failure: (message) => emit(UserManagementError(message)),

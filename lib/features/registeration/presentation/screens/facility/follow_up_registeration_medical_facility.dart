@@ -194,7 +194,7 @@ class _FollowUpRegisterScreenDoctorState
                   ),
                   controller: _addressController,
                   type: TextFormFieldType.location,
-                  onTap: _pickLocation,
+                  onSuffixTap: _pickLocation,
                 ),
                 const SizedBox(height: 18),
                 _buildLabel(localizations.translate("Specialization_title")),
@@ -293,11 +293,15 @@ class _FollowUpRegisterScreenDoctorState
       return;
     }
 
+    final pickedAddress = result['address']?.toString().trim();
+
     setState(() {
       _latitude = pickedLatitude;
       _longitude = pickedLongitude;
       _addressController.text =
-          '${pickedLatitude.toStringAsFixed(6)}, ${pickedLongitude.toStringAsFixed(6)}';
+          pickedAddress == null || pickedAddress.isEmpty
+          ? '${pickedLatitude.toStringAsFixed(6)}, ${pickedLongitude.toStringAsFixed(6)}'
+          : pickedAddress;
     });
   }
 

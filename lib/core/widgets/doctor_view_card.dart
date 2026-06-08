@@ -25,6 +25,10 @@ class DoctorViewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageSource = doctorImagePath.trim();
+    final isNetworkImage = imageSource.startsWith('http://') ||
+        imageSource.startsWith('https://');
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       height: 150,
@@ -51,11 +55,20 @@ class DoctorViewCard extends StatelessWidget {
                 child: SizedBox(
                   width: 150,
                   height: 150,
-                  child: Image.asset(
-                    doctorImagePath,
-                    fit: BoxFit.cover,
-                    colorBlendMode: BlendMode.srcOver,
-                  ),
+                  child: isNetworkImage
+                      ? Image.network(
+                          imageSource,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                            doctorImagePath,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Image.asset(
+                          doctorImagePath,
+                          fit: BoxFit.cover,
+                          colorBlendMode: BlendMode.srcOver,
+                        ),
                 ),
               ),
             ),

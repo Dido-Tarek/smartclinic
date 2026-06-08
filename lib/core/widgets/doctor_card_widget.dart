@@ -5,7 +5,9 @@ class DoctorCardWidget extends StatefulWidget {
   final String doctorName;
   final String specialization;
   final double rating;
+  final int? reviewsCount;
   final String imagePath;
+  final String? imageUrl;
   final VoidCallback onTap;
   final Function(bool) onFavoriteChanged;
   final bool isInitialFavorite;
@@ -15,7 +17,9 @@ class DoctorCardWidget extends StatefulWidget {
     required this.doctorName,
     required this.specialization,
     required this.rating,
+    this.reviewsCount,
     required this.imagePath,
+    this.imageUrl,
     required this.onTap,
     required this.onFavoriteChanged,
     this.isInitialFavorite = false,
@@ -36,6 +40,20 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = widget.doctorName.trim().startsWith('Dr.')
+      ? widget.doctorName.trim()
+      : 'Dr. ${widget.doctorName.trim()}';
+    final displayRating = widget.reviewsCount != null &&
+        widget.reviewsCount! > 0
+      ? (widget.reviewsCount! / 100).clamp(0.0, 5.0).toDouble()
+      : widget.rating;
+    final imageSource = (widget.imageUrl ?? widget.imagePath).trim();
+    final isNetworkImage = imageSource.startsWith('http://') ||
+      imageSource.startsWith('https://') ||
+      (widget.imageUrl != null &&
+        widget.imageUrl!.trim().isNotEmpty &&
+        !imageSource.startsWith('assets/'));
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
@@ -69,7 +87,18 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 child: SizedBox(
                   height: 160, // fixed image area height
                   width: double.infinity,
-                  child: Image.asset(widget.imagePath, fit: BoxFit.cover),
+                  child: isNetworkImage
+                      ? Image.network(
+                          imageSource.startsWith('http')
+                              ? imageSource
+                              : 'http://smartclinicccc.runasp.net/$imageSource',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                            widget.imagePath,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Image.asset(widget.imagePath, fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -84,17 +113,28 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  widget.rating.toString(),
+                  displayRating.toStringAsFixed(1),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.darkSlate,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (widget.reviewsCount != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    '(${widget.reviewsCount} reviews)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    widget.doctorName,
+                    displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

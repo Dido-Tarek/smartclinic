@@ -47,7 +47,7 @@ class FacilityRepoImpl implements FacilityRepo {
         emergencyFee: model.emergencyFee,
       );
 
-      return ApiResult.success(response);
+      return ApiResult.success(AddClinicResponseModel.fromJson(response as Map<String, dynamic>));
     } catch (error) {
       return ApiResult.failure(ApiErrorHandler.handle(error));
     }

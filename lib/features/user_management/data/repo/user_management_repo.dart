@@ -4,6 +4,7 @@ import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/network/api_error_handler.dart';
 import 'package:smartclinic/features/user_management/data/api/user_management_api_service.dart';
 import 'package:smartclinic/features/user_management/data/model/doctor_profile_response_model.dart';
+import 'package:smartclinic/features/user_management/data/model/patient_profile_response_model.dart';
 import 'package:smartclinic/features/user_management/data/model/reset_password_request_model.dart';
 
 class UserManagementRepo {
@@ -28,6 +29,15 @@ class UserManagementRepo {
     }
   }
 
+  Future<ApiResult<PatientProfileModel>> getPatientProfile() async {
+    try {
+      final response = await _apiService.getPatientProfile();
+      return ApiResult.success(PatientProfileModel.fromJson(response.data));
+    } catch (error) {
+      return ApiResult.failure(ApiErrorHandler.handle(error));
+    }
+  }
+
   Future<ApiResult<dynamic>> resetPassword(ResetPasswordRequest request) async {
     try {
       final response = await _apiService.resetPassword(request);
@@ -43,6 +53,18 @@ class UserManagementRepo {
   ) async {
     try {
       await _apiService.updateDoctorProfile(data, image);
+      return const ApiResult.success(null);
+    } catch (error) {
+      return ApiResult.failure(ApiErrorHandler.handle(error));
+    }
+  }
+
+  Future<ApiResult<void>> updatePatientProfile(
+    Map<String, dynamic> data,
+    File? image,
+  ) async {
+    try {
+      await _apiService.updatePatientProfile(data, image);
       return const ApiResult.success(null);
     } catch (error) {
       return ApiResult.failure(ApiErrorHandler.handle(error));

@@ -7,11 +7,19 @@ import 'package:smartclinic/core/widgets/doctor_view_card.dart';
 
 class DoctorProfileView extends StatelessWidget {
   final String? doctorName;
+  final String? doctorImage;
+  final String? specialization;
+  final double? rating;
+  final int? reviewsCount;
   final Set<String> enabledConsultationTypes;
 
   const DoctorProfileView({
     super.key,
     this.doctorName,
+    this.doctorImage,
+    this.specialization,
+    this.rating,
+    this.reviewsCount,
     this.enabledConsultationTypes = const {
       'clinic',
       'online',
@@ -22,7 +30,11 @@ class DoctorProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = doctorName ?? 'Dr. Mai El Kady';
+    final name = _displayDoctorName(doctorName ?? 'Mai El Kady');
+    final imagePath = doctorImage ?? AppImages.imagesDoctorDRMaiElKady;
+    final doctorSpecialization = specialization ?? 'Dentist';
+    final displayRating = rating ?? 3.8;
+    final displayReviewsCount = reviewsCount ?? 425;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -41,11 +53,11 @@ class DoctorProfileView extends StatelessWidget {
               // ── Doctor card (already updated to horizontal layout) ──
               DoctorViewCard(
                 doctorName: name,
-                specialization: 'Dentist',
+                specialization: doctorSpecialization,
                 clinicName: 'Dar El-Hekma Clinic',
-                rating: 3.8,
-                reviewsCount: 425,
-                doctorImagePath: AppImages.imagesDoctorDRMaiElKady,
+                rating: displayRating,
+                reviewsCount: displayReviewsCount,
+                doctorImagePath: imagePath,
                 yearsOfExperience: 5,
                 patientsCount: 500,
               ),
@@ -112,11 +124,11 @@ class DoctorProfileView extends StatelessWidget {
                   'doctorId': name,
                   'clinicId': 0,
                   'name': name,
-                  'image': AppImages.imagesDoctorDRMaiElKady,
-                  'specialization': 'Dentist',
+                    'image': imagePath,
+                    'specialization': doctorSpecialization,
                   'clinicName': 'Dar El-Hekma Clinic',
-                  'rating': 3.8,
-                  'reviewsCount': 425,
+                    'rating': displayRating,
+                    'reviewsCount': displayReviewsCount,
                   'yearsOfExperience': 5,
                   'patientsCount': 500,
                   'enabledAppointmentTypes': enabledConsultationTypes.toList(),
@@ -136,6 +148,14 @@ class DoctorProfileView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _displayDoctorName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('Dr.')) {
+      return trimmed;
+    }
+    return 'Dr. $trimmed';
   }
 }
 

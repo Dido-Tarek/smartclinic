@@ -10,7 +10,15 @@ class UserSession {
   static const String _fullNameKey = SharedPrefsHelper.userFullNameKey;
   static const String _emailKey = SharedPrefsHelper.userEmailKey;
   static const String _fcmTokenKey = SharedPrefsHelper.fcmTokenKey;
+  static const String _phoneKey = 'user_phone';
+  static const String _birthDateKey = 'user_birth_date';
+  static const String _addressKey = 'user_address';
+  static const String _genderKey = 'user_gender';
+  static const String _bloodGroupKey = 'user_blood_group';
+  static const String _profileImageKey = 'user_profile_image';
   static const String _setupCompletedPrefix = 'setup_completed';
+  static const String _facilityVerificationPendingPrefix =
+      'facility_verification_pending';
 
   /// حفظ بيانات الجلسة بالكامل (تستخدم بعد Login أو Register ناجح)
   Future<void> saveUserSession({
@@ -33,6 +41,30 @@ class UserSession {
 
   Future<void> saveEmail(String email) async {
     await SharedPrefsHelper.setData(_emailKey, email);
+  }
+
+  Future<void> savePhone(String phone) async {
+    await SharedPrefsHelper.setData(_phoneKey, phone);
+  }
+
+  Future<void> saveBirthDate(String birthDate) async {
+    await SharedPrefsHelper.setData(_birthDateKey, birthDate);
+  }
+
+  Future<void> saveAddress(String address) async {
+    await SharedPrefsHelper.setData(_addressKey, address);
+  }
+
+  Future<void> saveGender(String gender) async {
+    await SharedPrefsHelper.setData(_genderKey, gender);
+  }
+
+  Future<void> saveBloodGroup(String bloodGroup) async {
+    await SharedPrefsHelper.setData(_bloodGroupKey, bloodGroup);
+  }
+
+  Future<void> saveProfileImage(String profileImage) async {
+    await SharedPrefsHelper.setData(_profileImageKey, profileImage);
   }
 
   Future<void> saveDeviceToken(String token) async {
@@ -65,6 +97,30 @@ class UserSession {
     return SharedPrefsHelper.getBool(key) ?? false;
   }
 
+  Future<void> markFacilityVerificationPending({
+    required String role,
+    required String userId,
+  }) async {
+    final key = _facilityVerificationKey(role: role, userId: userId);
+    await SharedPrefsHelper.setData(key, true);
+  }
+
+  Future<void> clearFacilityVerificationPending({
+    required String role,
+    required String userId,
+  }) async {
+    final key = _facilityVerificationKey(role: role, userId: userId);
+    await SharedPrefsHelper.removeData(key);
+  }
+
+  bool isFacilityVerificationPending({
+    required String role,
+    required String userId,
+  }) {
+    final key = _facilityVerificationKey(role: role, userId: userId);
+    return SharedPrefsHelper.getBool(key) ?? false;
+  }
+
   // --- Getters ---
 
   String? get token => SharedPrefsHelper.getString(_tokenKey);
@@ -78,6 +134,18 @@ class UserSession {
   String? get fullName => SharedPrefsHelper.getString(_fullNameKey);
 
   String? get email => SharedPrefsHelper.getString(_emailKey);
+
+  String? get phone => SharedPrefsHelper.getString(_phoneKey);
+
+  String? get birthDate => SharedPrefsHelper.getString(_birthDateKey);
+
+  String? get address => SharedPrefsHelper.getString(_addressKey);
+
+  String? get gender => SharedPrefsHelper.getString(_genderKey);
+
+  String? get bloodGroup => SharedPrefsHelper.getString(_bloodGroupKey);
+
+  String? get profileImage => SharedPrefsHelper.getString(_profileImageKey);
 
   String? get deviceToken => SharedPrefsHelper.getString(_fcmTokenKey);
 
@@ -107,6 +175,12 @@ class UserSession {
     await SharedPrefsHelper.removeData(_fullNameKey);
     await SharedPrefsHelper.removeData(_emailKey);
     await SharedPrefsHelper.removeData(_fcmTokenKey);
+    await SharedPrefsHelper.removeData(_phoneKey);
+    await SharedPrefsHelper.removeData(_birthDateKey);
+    await SharedPrefsHelper.removeData(_addressKey);
+    await SharedPrefsHelper.removeData(_genderKey);
+    await SharedPrefsHelper.removeData(_bloodGroupKey);
+    await SharedPrefsHelper.removeData(_profileImageKey);
   }
 
   Future<void> initMockSession({
@@ -147,5 +221,13 @@ class UserSession {
   String _setupCompletedKey({required String role, required String userId}) {
     final normalizedRole = getRoleEnum(role).name.toLowerCase();
     return '${_setupCompletedPrefix}_${normalizedRole}_${userId.trim()}';
+  }
+
+  String _facilityVerificationKey({
+    required String role,
+    required String userId,
+  }) {
+    final normalizedRole = getRoleEnum(role).name.toLowerCase();
+    return '${_facilityVerificationPendingPrefix}_${normalizedRole}_${userId.trim()}';
   }
 }

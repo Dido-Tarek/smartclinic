@@ -22,25 +22,11 @@ class _HealthIssuesApiService implements HealthIssuesApiService {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<dynamic> addHealthIssue(
-    String patientId,
-    Object body,
-  ) async {
+  Future<dynamic> addHealthIssue(String patientId, Object body) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    if (body is Map<String, dynamic>) {
-      _data.addAll(body);
-    } else {
-      // attempt to add via toJson if possible
-      try {
-        final dynamic json = (body as dynamic).toJson();
-        if (json is Map<String, dynamic>) {
-          _data.addAll(json);
-        }
-      } catch (_) {}
-    }
+    final _data = body;
     final _options = _setStreamType<dynamic>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
@@ -57,24 +43,11 @@ class _HealthIssuesApiService implements HealthIssuesApiService {
   }
 
   @override
-  Future<dynamic> updateHealthIssue(
-    int issueId,
-    Object body,
-  ) async {
+  Future<dynamic> updateHealthIssue(int issueId, Object body) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
-    final _data = <String, dynamic>{};
-    if (body is Map<String, dynamic>) {
-      _data.addAll(body);
-    } else {
-      try {
-        final dynamic json = (body as dynamic).toJson();
-        if (json is Map<String, dynamic>) {
-          _data.addAll(json);
-        }
-      } catch (_) {}
-    }
+    final _data = body;
     final _options = _setStreamType<dynamic>(
       Options(method: 'PUT', headers: _headers, extra: _extra)
           .compose(

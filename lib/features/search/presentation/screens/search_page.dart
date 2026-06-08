@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
@@ -6,9 +7,28 @@ import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
 import 'package:smartclinic/core/widgets/specialization_widget.dart';
+import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
+import 'package:smartclinic/features/search/presentation/manager/search_doctors_state.dart';
 
-class SearchPage extends StatelessWidget {
+class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
+
+  @override
+  State<SearchPage> createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<DoctorsCubit>().searchDoctors(pageSize: 20, pageNumber: 1);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,29 +76,58 @@ class SearchPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _doctors.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.63,
-                ),
-                itemBuilder: (context, index) {
-                  final doctor = _doctors[index];
-                  return DoctorCardWidget(
-                    doctorName: doctor.name,
-                    specialization: doctor.specialization,
-                    rating: doctor.rating,
-                    imagePath: doctor.imagePath,
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.doctorProfileView,
-                      arguments: {'name': doctor.name},
-                    ),
-                    onFavoriteChanged: (_) {},
+              BlocBuilder<DoctorsCubit, DoctorsState>(
+                builder: (context, state) {
+                  final doctors = _resolveDoctors(state);
+                  final isLoading =
+                      state is SearchDoctorsLoading && doctors.isEmpty;
+
+                  if (isLoading) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 36),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: doctors.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.63,
+                        ),
+                    itemBuilder: (context, index) {
+                      final doctor = doctors[index];
+                      final imageSource =
+                          doctor.resolvedImageUrl ??
+                          _fallbackDoctorImage(doctor);
+                      final rating = _resolveDoctorRating(doctor);
+
+                      return DoctorCardWidget(
+                        doctorName: doctor.name ?? 'Doctor',
+                        specialization: doctor.specialization ?? 'Doctor',
+                        rating: rating,
+                        reviewsCount: doctor.reviewsCount,
+                        imagePath: imageSource,
+                        imageUrl: doctor.resolvedImageUrl,
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.doctorProfileView,
+                          arguments: {
+                            'name': doctor.name,
+                            'doctorImage': doctor.resolvedImageUrl,
+                            'specialization': doctor.specialization,
+                            'rating': rating,
+                            'reviewsCount': doctor.reviewsCount,
+                          },
+                        ),
+                        onFavoriteChanged: (_) {},
+                      );
+                    },
                   );
                 },
               ),
@@ -97,18 +146,44 @@ class _SpecialtyItem {
   final String iconPath;
 }
 
-class _DoctorItem {
-  const _DoctorItem({
-    required this.name,
-    required this.specialization,
-    required this.rating,
-    required this.imagePath,
-  });
+List<DoctorModel> _resolveDoctors(DoctorsState state) {
+  if (state is SearchDoctorsSuccess && state.response.doctors.isNotEmpty) {
+    return state.response.doctors;
+  }
 
-  final String name;
-  final String specialization;
-  final double rating;
-  final String imagePath;
+  return _fallbackDoctors;
+}
+
+double _resolveDoctorRating(DoctorModel doctor) {
+  final reviewsCount = doctor.reviewsCount;
+  if (reviewsCount != null && reviewsCount > 0) {
+    return (reviewsCount / 100).clamp(0.0, 5.0).toDouble();
+  }
+
+  return doctor.rating ?? 0;
+}
+
+String _fallbackDoctorImage(DoctorModel doctor) {
+  final specialization = (doctor.specialization ?? '').toLowerCase();
+  final name = (doctor.name ?? '').toLowerCase();
+
+  if (name.contains('razan')) {
+    return AppImages.imagesDoctorDRRazanHany;
+  }
+
+  if (specialization.contains('neuro')) {
+    return AppImages.imagesDoctorDRKhoulodAshraf;
+  }
+
+  if (specialization.contains('cardio')) {
+    return AppImages.imagesDoctorDRAhmedAlaa;
+  }
+
+  if (specialization.contains('dent')) {
+    return AppImages.imagesDoctorDRMaiElKady;
+  }
+
+  return AppImages.imagesDoctorDRHussienShokry;
 }
 
 const List<_SpecialtyItem> _specialties = <_SpecialtyItem>[
@@ -123,29 +198,53 @@ const List<_SpecialtyItem> _specialties = <_SpecialtyItem>[
   ),
 ];
 
-const List<_DoctorItem> _doctors = <_DoctorItem>[
-  _DoctorItem(
-    name: 'Dr. Mai El Kady',
+const List<DoctorModel> _fallbackDoctors = <DoctorModel>[
+  DoctorModel(
+    id: '1',
+    name: 'Mai El Kady',
     specialization: 'Dentist',
+    city: 'Cairo',
+    area: 'Nasr City',
+    consultationType: 0,
+    consultationPrice: 250,
+    reviewsCount: 380,
     rating: 3.8,
-    imagePath: AppImages.imagesDoctorDRMaiElKady,
+    imageUrl: AppImages.imagesDoctorDRMaiElKady,
   ),
-  _DoctorItem(
-    name: 'Dr. Razan Hany',
+  DoctorModel(
+    id: '2',
+    name: 'Razan Hany',
     specialization: 'Dentist',
+    city: 'Giza',
+    area: 'Maadi',
+    consultationType: 1,
+    consultationPrice: 300,
+    reviewsCount: 400,
     rating: 4.0,
-    imagePath: AppImages.imagesDoctorDRRazanHany,
+    imageUrl: AppImages.imagesDoctorDRRazanHany,
   ),
-  _DoctorItem(
-    name: 'Dr. Khoulod Ashraf',
+  DoctorModel(
+    id: '3',
+    name: 'Khoulod Ashraf',
     specialization: 'Neurologist',
+    city: 'Alexandria',
+    area: 'Heliopolis',
+    consultationType: 2,
+    consultationPrice: 350,
+    reviewsCount: 420,
     rating: 4.2,
-    imagePath: AppImages.imagesDoctorDRKhoulodAshraf,
+    imageUrl: AppImages.imagesDoctorDRKhoulodAshraf,
   ),
-  _DoctorItem(
-    name: 'Dr. Hussien Shokry',
+  DoctorModel(
+    id: '4',
+    name: 'Hussien Shokry',
     specialization: 'Dentist',
+    city: 'Cairo',
+    area: 'Nasr City',
+    consultationType: 0,
+    consultationPrice: 275,
+    reviewsCount: 410,
     rating: 4.0,
-    imagePath: AppImages.imagesDoctorDRHussienShokry,
+    imageUrl: AppImages.imagesDoctorDRHussienShokry,
   ),
 ];

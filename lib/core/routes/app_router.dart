@@ -32,6 +32,7 @@ import 'package:smartclinic/features/search/presentation/screens/search_filter.d
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
 import 'package:smartclinic/features/user_management/presentation/screens/user_management.dart';
 import 'package:smartclinic/features/user_management/presentation/screens/doctor_profile_settings.dart';
+import 'package:smartclinic/features/user_management/presentation/screens/patient_profile_settings.dart';
 import 'package:smartclinic/features/doctor_profile/presentation/screens/doctor_profile_view.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_details.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_information.dart';
@@ -174,7 +175,12 @@ class AppRouter {
       case AppRoutes.inbox:
         return MaterialPageRoute(builder: (_) => const InboxChatRoomsScreen());
       case AppRoutes.home:
-        return MaterialPageRoute(builder: (_) => const HomeScreen());
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<DoctorsCubit>(),
+            child: const HomeScreen(),
+          ),
+        );
       case AppRoutes.hospitalhome:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
@@ -184,7 +190,9 @@ class AppRouter {
       case AppRoutes.verification:
         final arguments = settings.arguments;
         final email = arguments is Map
-            ? (arguments['email'] ?? arguments['registrationEmail'])?.toString().trim()
+            ? (arguments['email'] ?? arguments['registrationEmail'])
+                  ?.toString()
+                  .trim()
             : arguments?.toString().trim();
         return MaterialPageRoute(
           settings: settings,
@@ -215,6 +223,13 @@ class AppRouter {
             child: const DoctorProfileSettingsPage(),
           ),
         );
+      case AppRoutes.patientProfileSettings:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<UserManagementCubit>(),
+            child: const PatientProfileSettingsPage(),
+          ),
+        );
       case AppRoutes.doctorProfileView:
         final args = settings.arguments;
         final data = args is Map ? args : null;
@@ -229,6 +244,18 @@ class AppRouter {
           builder: (_) => DoctorProfileView(
             doctorName: data is Map && data['name'] != null
                 ? data['name'] as String
+                : null,
+            doctorImage: data is Map && data['doctorImage'] != null
+                ? data['doctorImage'] as String
+                : null,
+            specialization: data is Map && data['specialization'] != null
+                ? data['specialization'] as String
+                : null,
+            rating: data is Map && data['rating'] != null
+                ? (data['rating'] as num).toDouble()
+                : null,
+            reviewsCount: data is Map && data['reviewsCount'] != null
+                ? data['reviewsCount'] as int
                 : null,
             enabledConsultationTypes: enabledTypes,
           ),
@@ -510,7 +537,12 @@ class AppRouter {
           ),
         );
       case AppRoutes.search:
-        return MaterialPageRoute(builder: (_) => const SearchPage());
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (context) => getIt<DoctorsCubit>(),
+            child: const SearchPage(),
+          ),
+        );
       case AppRoutes.searchFilter:
         return PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 280),
