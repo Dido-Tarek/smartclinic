@@ -69,4 +69,14 @@ class WalletApiService {
   Future<void> stripeWebhook() async {
     await _dio.post(_stripeWebhookEndpoint);
   }
+
+  static const String _clinicBalanceEndpoint = '/api/Wallet/clinic-balance';
+
+  // ── GET /api/Wallet/clinic-balance/{clinicId} ────────────────────────────
+  Future<WalletBalanceResponseModel> getClinicBalance(int clinicId) async {
+    final response = await _dio.get('$_clinicBalanceEndpoint/$clinicId');
+    return WalletBalanceResponseModel.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
 }

@@ -109,3 +109,27 @@ class GetHistoryFailure extends WalletState {
   @override
   List<Object?> get props => [errorMessage];
 }
+
+// ── Get clinic balance ──────────────────────────────────────────────────────
+
+class GetClinicBalanceLoading extends WalletState {
+  const GetClinicBalanceLoading();
+}
+
+class GetClinicBalanceSuccess extends WalletState {
+  final WalletBalanceResponseModel response;
+
+  const GetClinicBalanceSuccess(this.response);
+
+  @override
+  List<Object?> get props => [response];
+}
+
+class GetClinicBalanceFailure extends WalletState {
+  final String errorMessage;
+
+  const GetClinicBalanceFailure(this.errorMessage);
+
+  @override
+  List<Object?> get props => [errorMessage];
+}

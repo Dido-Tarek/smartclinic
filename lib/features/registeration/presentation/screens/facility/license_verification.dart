@@ -316,6 +316,11 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
         ),
       ).show(context);
       await Future.delayed(const Duration(milliseconds: 700));
+      // Save the professional photo locally in session so it can be used
+      // immediately for profile / search card display while backend processes it.
+      if (_professionalPhotoFile?.path != null) {
+        await _userSession.saveProfileImage(_professionalPhotoFile!.path!);
+      }
       if (!mounted) {
         return;
       }

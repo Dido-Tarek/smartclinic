@@ -15,6 +15,10 @@ abstract class WalletRepo {
   Future<Either<String, WalletBalanceResponseModel>> getBalance();
 
   Future<Either<String, WalletHistoryResponseModel>> getHistory();
+
+  Future<Either<String, WalletBalanceResponseModel>> getClinicBalance(
+    int clinicId,
+  );
 }
 
 class WalletRepoImpl implements WalletRepo {
@@ -60,6 +64,18 @@ class WalletRepoImpl implements WalletRepo {
   Future<Either<String, WalletHistoryResponseModel>> getHistory() async {
     try {
       final result = await _apiService.getHistory();
+      return Right(result);
+    } catch (e) {
+      return Left(ApiErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Either<String, WalletBalanceResponseModel>> getClinicBalance(
+    int clinicId,
+  ) async {
+    try {
+      final result = await _apiService.getClinicBalance(clinicId);
       return Right(result);
     } catch (e) {
       return Left(ApiErrorHandler.handle(e));

@@ -23,7 +23,7 @@ class ClinicDetailsPage extends StatefulWidget {
 }
 
 class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
-  static const List<String> _commonSpecializations = <String>[
+  static const List<String> _defaultSpecializations = <String>[
     'Cardiology',
     'Dermatology',
     'Endocrinology',
@@ -43,6 +43,15 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     'Radiology',
     'Urology',
   ];
+
+  List<String> get _commonSpecializations {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      return _defaultSpecializations;
+    }
+    final specialties = localizations.specialties;
+    return specialties.isNotEmpty ? specialties : _defaultSpecializations;
+  }
 
   static const List<String> _egyptianGovernorates = <String>[
     'Alexandria',
@@ -97,6 +106,13 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
   bool _isCityPickerOpen = false;
   bool _isApplyingCitySelection = false;
   Timer? _cityTypingDebounce;
+  bool _clinicProfileUpdateTriggered = false;
+  double? _clinicFee;
+  double? _onlineFee;
+  double? _homeVisitFee;
+  double? _followUpFee;
+  double? _emergencyFee;
+  int? _sessionDuration;
 
   @override
   void didChangeDependencies() {
@@ -112,12 +128,21 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
       _initialArgs = normalized;
       _clinicId = normalized['clinicId'] as int?;
       _facilityNameController.text = normalized['name'] as String? ?? '';
-      _contactController.text = normalized['phoneNumber'] as String? ?? '';
+      _contactController.text =
+          normalized['phoneNumber'] as String? ??
+          normalized['clinicPhone'] as String? ??
+          '';
       _addressController.text = normalized['address'] as String? ?? '';
       _cityController.text = normalized['city'] as String? ?? '';
       _areaController.text = normalized['area'] as String? ?? '';
       _specializationController.text =
           normalized['specialization'] as String? ?? '';
+      _clinicFee = (normalized['clinicFee'] as num?)?.toDouble();
+      _onlineFee = (normalized['onlineFee'] as num?)?.toDouble();
+      _homeVisitFee = (normalized['homeVisitFee'] as num?)?.toDouble();
+      _followUpFee = (normalized['followUpFee'] as num?)?.toDouble();
+      _emergencyFee = (normalized['emergencyFee'] as num?)?.toDouble();
+      _sessionDuration = normalized['sessionDuration'] as int?;
       final clinicImageText = normalized['clinicImageUrl'] as String?;
       if (clinicImageText != null && clinicImageText.trim().isNotEmpty) {
         _facilityImageController.text = clinicImageText.trim();
@@ -134,6 +159,9 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     }
 
     _argsLoaded = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerClinicProfileUpdateIfNeeded();
+    });
   }
 
   @override
@@ -421,6 +449,46 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     });
   }
 
+  void _triggerClinicProfileUpdateIfNeeded() {
+    if (_clinicProfileUpdateTriggered || _clinicId == null) {
+      return;
+    }
+
+    final request = UpdateClinicProfileRequestModel(
+      clinicId: _clinicId!,
+      name: _facilityNameController.text.trim().isEmpty
+          ? null
+          : _facilityNameController.text.trim(),
+      address: _addressController.text.trim().isEmpty
+          ? null
+          : _addressController.text.trim(),
+      phoneNumber: _contactController.text.trim().isEmpty
+          ? null
+          : _contactController.text.trim(),
+      city: _cityController.text.trim().isEmpty
+          ? null
+          : _cityController.text.trim(),
+      area: _areaController.text.trim().isEmpty
+          ? null
+          : _areaController.text.trim(),
+      specialization: _specializationController.text.trim().isEmpty
+          ? null
+          : _specializationController.text.trim(),
+      latitude: _latitude,
+      longitude: _longitude,
+      sessionDuration: _sessionDuration,
+      clinicFee: _clinicFee,
+      onlineFee: _onlineFee,
+      homeVisitFee: _homeVisitFee,
+      followUpFee: _followUpFee,
+      emergencyFee: _emergencyFee,
+      clinicImagePath: _clinicImage?.path,
+    );
+
+    _clinicProfileUpdateTriggered = true;
+    context.read<ClinicManagementCubit>().updateClinicProfile(request);
+  }
+
   void _onSavePressed() {
     final clinicId = _clinicId;
     if (clinicId == null) {
@@ -438,6 +506,11 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
       argsToPass['longitude'] = _longitude;
       if (_clinicImage != null) {
         argsToPass['clinicImage'] = _clinicImage;
+      }
+      if (_initialArgs != null &&
+          _initialArgs!['enabledAppointmentTypes'] != null) {
+        argsToPass['enabledAppointmentTypes'] =
+            _initialArgs!['enabledAppointmentTypes'];
       }
 
       Navigator.pushNamed(
@@ -470,6 +543,12 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
           : _specializationController.text.trim(),
       latitude: _latitude,
       longitude: _longitude,
+      sessionDuration: _sessionDuration,
+      clinicFee: _clinicFee,
+      onlineFee: _onlineFee,
+      homeVisitFee: _homeVisitFee,
+      followUpFee: _followUpFee,
+      emergencyFee: _emergencyFee,
       clinicImagePath: _clinicImage?.path,
     );
 

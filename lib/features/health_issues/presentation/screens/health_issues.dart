@@ -96,8 +96,7 @@ class _HealthIssuesState extends State<HealthIssues> {
                                 showEditButton: true,
                                 showDeleteButton: false,
                                 onEditPressed: () async {
-                                  final familyCubit = context
-                                      .read<HealthIssuesCubit>();
+                                  context.read<HealthIssuesCubit>();
                                   final result = await Navigator.pushNamed(
                                     context,
                                     AppRoutes.addHealthIssue,
@@ -106,6 +105,7 @@ class _HealthIssuesState extends State<HealthIssues> {
                                   if (!mounted) return;
                                   if (result == true) {
                                     // refresh list
+                                    // ignore: use_build_context_synchronously
                                     context
                                         .read<HealthIssuesCubit>()
                                         .emitGetPatientHistory();

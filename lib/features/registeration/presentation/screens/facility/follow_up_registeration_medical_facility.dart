@@ -30,7 +30,7 @@ class FollowUpRegisterDoctorScreen extends StatefulWidget {
 
 class _FollowUpRegisterScreenDoctorState
     extends State<FollowUpRegisterDoctorScreen> {
-  static const List<String> _commonSpecializations = <String>[
+  static const List<String> _defaultSpecializations = <String>[
     'Cardiology',
     'Dermatology',
     'Endocrinology',
@@ -50,6 +50,15 @@ class _FollowUpRegisterScreenDoctorState
     'Radiology',
     'Urology',
   ];
+
+  List<String> get _commonSpecializations {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      return _defaultSpecializations;
+    }
+    final specialties = localizations.specialties;
+    return specialties.isNotEmpty ? specialties : _defaultSpecializations;
+  }
 
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();

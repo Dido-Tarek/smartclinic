@@ -1,25 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/doctor_view_card.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
+import 'package:smartclinic/features/user_management/data/model/doctor_profile_response_model.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
+import 'package:smartclinic/injection_dependency.dart';
 
-class DoctorProfileView extends StatelessWidget {
+class DoctorProfileView extends StatefulWidget {
+  final String? doctorId;
   final String? doctorName;
   final String? doctorImage;
   final String? specialization;
   final double? rating;
   final int? reviewsCount;
+  final double? clinicFee;
+  final double? onlineFee;
+  final double? homeVisitFee;
+  final double? followUpFee;
+  final double? emergencyFee;
+  final String? clinicName;
+  final String? clinicAddress;
+  final String? clinicPhone;
+  final String? clinicWorkingHours;
+  final int? yearsOfExperience;
   final Set<String> enabledConsultationTypes;
 
   const DoctorProfileView({
     super.key,
+    this.doctorId,
     this.doctorName,
     this.doctorImage,
     this.specialization,
     this.rating,
     this.reviewsCount,
+    this.clinicFee,
+    this.onlineFee,
+    this.homeVisitFee,
+    this.followUpFee,
+    this.emergencyFee,
+    this.clinicName,
+    this.clinicAddress,
+    this.clinicPhone,
+    this.clinicWorkingHours,
+    this.yearsOfExperience,
     this.enabledConsultationTypes = const {
       'clinic',
       'online',
@@ -29,134 +57,243 @@ class DoctorProfileView extends StatelessWidget {
   });
 
   @override
+  State<DoctorProfileView> createState() => _DoctorProfileViewState();
+}
+
+class _DoctorProfileViewState extends State<DoctorProfileView> {
+  final UserSession _userSession = getIt<UserSession>();
+  DoctorProfileModel? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.doctorId != null && widget.doctorId!.trim().isNotEmpty) {
+      context.read<UserManagementCubit>().getDoctorProfile(
+        widget.doctorId!.trim(),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = _displayDoctorName(doctorName ?? 'Mai El Kady');
-    final imagePath = doctorImage ?? AppImages.imagesDoctorDRMaiElKady;
-    final doctorSpecialization = specialization ?? 'Dentist';
-    final displayRating = rating ?? 3.8;
-    final displayReviewsCount = reviewsCount ?? 425;
+    return BlocConsumer<UserManagementCubit, UserManagementState>(
+      listener: (context, state) async {
+        if (state is ProfileLoaded) {
+          setState(() {
+            _profile = state.profile;
+          });
+        }
+      },
+      builder: (context, state) {
+        final name = _displayDoctorName(
+          _profile?.fullName ?? widget.doctorName ?? 'Mai El Kady',
+        );
+        final isCurrentUserProfile =
+            widget.doctorId != null &&
+            widget.doctorId!.trim().isNotEmpty &&
+            widget.doctorId!.trim() == (_userSession.userId ?? '').trim();
+        final imagePath =
+            _profile?.profileImage ??
+            (isCurrentUserProfile ? _userSession.profileImage : null) ??
+            widget.doctorImage ??
+            AppImages.imagesDoctorDRMaiElKady;
+        final doctorSpecialization =
+            _profile?.specialization ?? widget.specialization ?? 'Dentist';
+        final displayRating = widget.rating ?? 4.0;
+        final displayReviewsCount = widget.reviewsCount ?? 0;
+        final clinicFee = _profile?.clinicFee ?? widget.clinicFee;
+        final onlineFee = _profile?.onlineFee ?? widget.onlineFee;
+        final homeVisitFee = _profile?.homeVisitFee ?? widget.homeVisitFee;
+        final followUpFee = _profile?.followUpFee ?? widget.followUpFee;
+        final emergencyFee = _profile?.emergencyFee ?? widget.emergencyFee;
+        final bio = _profile?.bio ?? 'No bio available.';
+        final clinicName =
+            _profile?.clinicName ?? widget.clinicName ?? 'Clinic';
+        final clinicAddress =
+            _profile?.clinicAddress ??
+            widget.clinicAddress ??
+            'Address not available';
+        final clinicPhone =
+            _profile?.clinicPhone ??
+            widget.clinicPhone ??
+            'Contact not available';
+        final clinicWorkingHours =
+            _profile?.clinicWorkingHours ??
+            widget.clinicWorkingHours ??
+            'Working times are not available yet.';
+        final yearsOfExperience =
+            _profile?.yearsOfExperience ?? widget.yearsOfExperience ?? 0;
 
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      appBar: CustomAppBar(
-        title: name,
-        showNotification: true,
-        onNotificationTap: () =>
-            Navigator.pushNamed(context, AppRoutes.notifications),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Doctor card (already updated to horizontal layout) ──
-              DoctorViewCard(
-                doctorName: name,
-                specialization: doctorSpecialization,
-                clinicName: 'Dar El-Hekma Clinic',
-                rating: displayRating,
-                reviewsCount: displayReviewsCount,
-                doctorImagePath: imagePath,
-                yearsOfExperience: 5,
-                patientsCount: 500,
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── About Me ────────────────────────────────────────────
-              _SectionTitle('About Me'),
-              const SizedBox(height: 8),
-              Text(
-                'Experienced Dental Consultant with 10+ years of practice in Egypt. '
-                'Expert in pediatric, restorative, and cosmetic dentistry, '
-                'specializing in patient-centered care verified by the Ministry of Health.',
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.6,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Clinic Information ──────────────────────────────────
-              _SectionTitle('Clinic Information'),
-              const SizedBox(height: 12),
-              _ClinicInfoCard(),
-
-              const SizedBox(height: 16),
-              _SectionTitle('Consultation Types'),
-              const SizedBox(height: 12),
-              _ConsultationTypeChips(types: enabledConsultationTypes),
-
-              const SizedBox(height: 24),
-
-              // ── Reviews ─────────────────────────────────────────────
-              _SectionTitle('Reviews'),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 155,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 2,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) =>
-                      _ReviewCard(_dummyReviews[index]),
-                ),
-              ),
-            ],
+        return Scaffold(
+          backgroundColor: AppColors.scaffoldBg,
+          appBar: CustomAppBar(
+            title: name,
+            showNotification: true,
+            onNotificationTap: () =>
+                Navigator.pushNamed(context, AppRoutes.notifications),
           ),
-        ),
-      ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Doctor card
+                  DoctorViewCard(
+                    doctorName: name,
+                    specialization: doctorSpecialization,
+                    clinicName: clinicName,
+                    rating: displayRating,
+                    reviewsCount: displayReviewsCount,
+                    doctorImagePath: imagePath,
+                    yearsOfExperience: yearsOfExperience,
+                    patientsCount: 0,
+                  ),
 
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(16),
-        child: SizedBox(
-          height: 54,
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.bookingDetails,
-                arguments: {
-                  'doctorId': name,
-                  'clinicId': 0,
-                  'name': name,
-                    'image': imagePath,
-                    'specialization': doctorSpecialization,
-                  'clinicName': 'Dar El-Hekma Clinic',
-                    'rating': displayRating,
-                    'reviewsCount': displayReviewsCount,
-                  'yearsOfExperience': 5,
-                  'patientsCount': 500,
-                  'enabledAppointmentTypes': enabledConsultationTypes.toList(),
+                  const SizedBox(height: 24),
+
+                  // ── About Me
+                  _SectionTitle('About Me'),
+                  const SizedBox(height: 8),
+                  Text(
+                    bio,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Clinic Information
+                  _SectionTitle('Clinic Information'),
+                  const SizedBox(height: 12),
+                  _ClinicInfoCard(
+                    clinicName: clinicName,
+                    clinicPhone: clinicPhone,
+                    clinicAddress: clinicAddress,
+                    clinicWorkingHours: clinicWorkingHours,
+                  ),
+
+                  const SizedBox(height: 16),
+                  _FeeInfoCard(
+                    clinicFee: clinicFee,
+                    onlineFee: onlineFee,
+                    homeVisitFee: homeVisitFee,
+                    followUpFee: followUpFee,
+                    emergencyFee: emergencyFee,
+                  ),
+
+                  const SizedBox(height: 16),
+                  _SectionTitle('Consultation Types'),
+                  const SizedBox(height: 12),
+                  _ConsultationTypeChips(
+                    types: widget.enabledConsultationTypes,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Reviews
+                  _SectionTitle('Reviews'),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 155,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 2,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) =>
+                          _ReviewCard(_dummyReviews[index]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          bottomNavigationBar: SafeArea(
+            minimum: const EdgeInsets.all(16),
+            child: SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.bookingDetails,
+                    arguments: {
+                      'doctorId': widget.doctorId ?? widget.doctorName,
+                      'clinicId': 0,
+                      'name': name,
+                      'image': imagePath,
+                      'specialization': doctorSpecialization,
+                      'rating': displayRating,
+                      'reviewsCount': displayReviewsCount,
+                      'yearsOfExperience': _profile?.yearsOfExperience ?? 0,
+                      'patientsCount': 0,
+                      'clinicFee': clinicFee,
+                      'onlineFee': onlineFee,
+                      'homeVisitFee': homeVisitFee,
+                      'followUpFee': followUpFee,
+                      'emergencyFee': emergencyFee,
+                      'clinicName': clinicName,
+                      'clinicAddress': clinicAddress,
+                      'clinicPhone': clinicPhone,
+                      'clinicWorkingHours': clinicWorkingHours,
+                      'enabledAppointmentTypes': widget.enabledConsultationTypes
+                          .toList(),
+                    },
+                  );
                 },
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Book Appointment',
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
             ),
-            child: const Text(
-              'Book Appointment',
-              style: TextStyle(fontSize: 16),
-            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+}
 
-  String _displayDoctorName(String value) {
-    final trimmed = value.trim();
-    if (trimmed.startsWith('Dr.')) {
-      return trimmed;
-    }
-    return 'Dr. $trimmed';
+String _displayDoctorName(String value) {
+  final normalized = _normalizeDoctorName(value);
+  if (normalized.startsWith('Dr.')) {
+    return normalized;
   }
+  return 'Dr. $normalized';
+}
+
+String _normalizeDoctorName(String value) {
+  var trimmed = value.trim();
+  while (trimmed.isNotEmpty) {
+    if (trimmed.startsWith('Dr.')) {
+      trimmed = trimmed.substring(3).trim();
+      continue;
+    }
+    if (trimmed.startsWith('Dr')) {
+      trimmed = trimmed.substring(2).trim();
+      continue;
+    }
+    if (trimmed.startsWith('د.')) {
+      trimmed = trimmed.substring(2).trim();
+      continue;
+    }
+    if (trimmed.startsWith('د')) {
+      trimmed = trimmed.substring(1).trim();
+      continue;
+    }
+    break;
+  }
+  return trimmed.isEmpty ? value.trim() : trimmed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,7 +354,17 @@ class _SectionTitle extends StatelessWidget {
 
 /// Clinic info white card with map thumbnail + detail rows
 class _ClinicInfoCard extends StatelessWidget {
-  const _ClinicInfoCard();
+  final String clinicName;
+  final String clinicPhone;
+  final String clinicAddress;
+  final String clinicWorkingHours;
+
+  const _ClinicInfoCard({
+    required this.clinicName,
+    required this.clinicPhone,
+    required this.clinicAddress,
+    required this.clinicWorkingHours,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -253,35 +400,116 @@ class _ClinicInfoCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 _ClinicInfoRow(
                   icon: Icons.local_hospital_outlined,
                   label: 'Name:',
-                  value: 'Dar El-Hekma Clinic',
+                  value: clinicName,
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 _ClinicInfoRow(
                   icon: Icons.phone_outlined,
                   label: 'Contact:',
-                  value: '01014256852',
+                  value: clinicPhone,
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 _ClinicInfoRow(
                   icon: Icons.location_on_outlined,
                   label: 'Address:',
-                  value: '51 Rabbaa Street, Cairo',
+                  value: clinicAddress,
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 _ClinicInfoRow(
                   icon: Icons.access_time_outlined,
                   label: 'Working Times:',
-                  value: 'Mon - Fri, 6:00 PM - 11:00 PM',
+                  value: clinicWorkingHours,
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FeeInfoCard extends StatelessWidget {
+  final double? clinicFee;
+  final double? onlineFee;
+  final double? homeVisitFee;
+  final double? followUpFee;
+  final double? emergencyFee;
+
+  const _FeeInfoCard({
+    this.clinicFee,
+    this.onlineFee,
+    this.homeVisitFee,
+    this.followUpFee,
+    this.emergencyFee,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fees = <String, double?>{
+      'Clinic Fee': clinicFee,
+      'Online Fee': onlineFee,
+      'Home Visit Fee': homeVisitFee,
+      'Follow Up Fee': followUpFee,
+      'Emergency Fee': emergencyFee,
+    };
+
+    final availableFees = fees.entries.where((entry) => entry.value != null);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: availableFees.isEmpty
+          ? Text(
+              'Fee details are not available yet.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: availableFees
+                  .map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.monetization_on_outlined,
+                            size: 16,
+                            color: AppColors.skyBlue,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${entry.key}: ${entry.value!.toStringAsFixed(0)} EGP',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.deepNavy,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 }

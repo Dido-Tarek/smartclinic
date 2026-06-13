@@ -32,7 +32,12 @@ class _ClinicOption {
 }
 
 class MedicalFacilityManagementPage extends StatefulWidget {
-  const MedicalFacilityManagementPage({super.key});
+  const MedicalFacilityManagementPage({
+    super.key,
+    this.redirectOnExistingClinics = true,
+  });
+
+  final bool redirectOnExistingClinics;
 
   @override
   State<MedicalFacilityManagementPage> createState() =>
@@ -107,6 +112,10 @@ class _MedicalFacilityManagementPageState
   }
 
   Future<void> _checkExistingClinics() async {
+    if (!widget.redirectOnExistingClinics) {
+      return;
+    }
+
     try {
       final repo = getIt<smartclinic_clinic_repo.ClinicManagementRepo>();
       final result = await repo.getMyClinics();
@@ -959,16 +968,36 @@ class _MedicalFacilityManagementPageState
   }
 
   void _onAddNewPressed() {
-    if (!_canContinue || _claimOwnershipFlow) {
+    if (!_canContinue) {
       _showUploadRequiredMessage();
+      return;
+    }
+
+    if (_claimOwnershipFlow) {
+      CherryToast.info(
+        title: const Text('Claim Submitted'),
+        description: const Text(
+          'Your ownership claim documents have been sent. We will notify you once verification is complete.',
+        ),
+      ).show(context);
+      return;
+    }
+
+    if (_staffFlow) {
+      CherryToast.info(
+        title: const Text('Request Sent'),
+        description: const Text(
+          'Your staff access request has been submitted. Please wait for approval.',
+        ),
+      ).show(context);
       return;
     }
 
     Navigator.pushNamed(
       context,
       AppRoutes.clinicDetails,
-      arguments: <String, dynamic>{
-        'isOwner': !_staffFlow,
+      arguments: {
+        'isOwner': true,
         'legalDocument1': _documentOne,
         'legalDocument2': _documentTwo,
         'legalDocument3': _documentThree,

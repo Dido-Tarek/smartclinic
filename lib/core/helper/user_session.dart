@@ -89,10 +89,7 @@ class UserSession {
     await SharedPrefsHelper.setData(key, true);
   }
 
-  bool isSetupCompleted({
-    required String role,
-    required String userId,
-  }) {
+  bool isSetupCompleted({required String role, required String userId}) {
     final key = _setupCompletedKey(role: role, userId: userId);
     return SharedPrefsHelper.getBool(key) ?? false;
   }
@@ -181,22 +178,6 @@ class UserSession {
     await SharedPrefsHelper.removeData(_genderKey);
     await SharedPrefsHelper.removeData(_bloodGroupKey);
     await SharedPrefsHelper.removeData(_profileImageKey);
-  }
-
-  Future<void> initMockSession({
-    required UserRole role,
-    required String userId,
-    required String token,
-  }) async {
-    await saveUserSession(
-      token: token,
-      userId: userId,
-      role: role
-          .name, // بيستخدم الـ name من الـ Enum اللي عملناه (Doctor, Patient, Hospital)
-    );
-
-    print("🚀 [DEBUG MODE]: Session Initialized as ${role.name}");
-    print("🆔 User ID: $userId");
   }
 
   String resolvePostLoginRoute({required String role, required String userId}) {

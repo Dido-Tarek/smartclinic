@@ -60,6 +60,18 @@ class WalletCubit extends Cubit<WalletState> {
     );
   }
 
+  // ── GET /api/Wallet/clinic-balance/{clinicId} ────────────────────────────
+  Future<void> getClinicBalance(int clinicId) async {
+    emit(const GetClinicBalanceLoading());
+
+    final result = await _repo.getClinicBalance(clinicId);
+
+    result.fold(
+      (error) => emit(GetClinicBalanceFailure(error)),
+      (response) => emit(GetClinicBalanceSuccess(response)),
+    );
+  }
+
   /// Loads balance and history together — use on wallet screen init.
   Future<void> initWallet() async {
     await getBalance();

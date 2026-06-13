@@ -14,20 +14,33 @@ class AppLocalizations {
 
   static const List<Locale> supportedLocales = [Locale('en'), Locale('ar')];
 
-  late Map<String, String> _localizedStrings;
+  late Map<String, dynamic> _localizedStrings;
 
   Future<bool> load() async {
     String jsonString = await rootBundle.loadString(
       'assets/lang/${locale.languageCode}.json',
     );
-    Map<String, dynamic> jsonMap = json.decode(jsonString);
-    _localizedStrings = jsonMap.map(
-      (key, value) => MapEntry(key, value.toString()),
-    );
+    _localizedStrings = json.decode(jsonString) as Map<String, dynamic>;
     return true;
   }
 
-  String translate(String key) => _localizedStrings[key] ?? key;
+  String translate(String key) {
+    final value = _localizedStrings[key];
+    return value is String ? value : key;
+  }
+
+  List<String> translateList(String key) {
+    final value = _localizedStrings[key];
+    if (value is Map<String, dynamic>) {
+      return value.values.map((item) => item.toString()).toList();
+    }
+    if (value is List) {
+      return value.map((item) => item.toString()).toList();
+    }
+    return const [];
+  }
+
+  List<String> get specialties => translateList('specialties');
 }
 
 class _AppLocalizationsDelegate

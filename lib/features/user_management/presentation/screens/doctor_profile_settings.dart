@@ -85,9 +85,33 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
     super.dispose();
   }
 
+  static String _normalizeDoctorFullName(String value) {
+    var trimmed = value.trim();
+    while (trimmed.isNotEmpty) {
+      if (trimmed.startsWith('Dr.')) {
+        trimmed = trimmed.substring(3).trim();
+        continue;
+      }
+      if (trimmed.startsWith('Dr')) {
+        trimmed = trimmed.substring(2).trim();
+        continue;
+      }
+      if (trimmed.startsWith('د.')) {
+        trimmed = trimmed.substring(2).trim();
+        continue;
+      }
+      if (trimmed.startsWith('د')) {
+        trimmed = trimmed.substring(1).trim();
+        continue;
+      }
+      break;
+    }
+    return trimmed.isEmpty ? value.trim() : trimmed;
+  }
+
   void _fillPatientFieldsFromSession() {
     if (_userSession.fullName != null) {
-      _nameController.text = _userSession.fullName!;
+      _nameController.text = _normalizeDoctorFullName(_userSession.fullName!);
     }
     if (_userSession.phone != null) {
       _phoneController.text = _userSession.phone!;
@@ -111,7 +135,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
 
   void _fillDoctorFields(DoctorProfileModel profile) {
     _doctorProfile = profile;
-    _nameController.text = profile.fullName;
+    _nameController.text = _normalizeDoctorFullName(profile.fullName);
     _phoneController.text = profile.phoneNumber ?? '';
     _specializationController.text = profile.specialization ?? '';
     _bioController.text = profile.bio ?? '';
@@ -138,7 +162,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final data = <String, dynamic>{
-      'FullName': _nameController.text.trim(),
+      'FullName': _normalizeDoctorFullName(_nameController.text.trim()),
       'PhoneNumber': _phoneController.text.trim(),
       'Specialization': _specializationController.text.trim(),
       'Bio': _bioController.text.trim(),
