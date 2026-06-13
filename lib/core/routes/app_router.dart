@@ -7,6 +7,7 @@ import 'package:smartclinic/features/clinic/presentation/screens/appointment_det
 import 'package:smartclinic/features/appointments/presentation/screens/appointments.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/clinic_details.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
+import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_schedule_management.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/family_member.dart';
 import 'package:smartclinic/features/family_members/presentation/screens/add_family_member.dart';
@@ -41,6 +42,8 @@ import 'package:smartclinic/features/appointments/presentation/screens/booking_c
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/screens/wallet_screen.dart';
+import 'package:smartclinic/features/invoices/presentation/manager/invoices_cubit.dart';
+import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_payment_settings.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -57,6 +60,7 @@ class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final routeName = settings.name ?? '';
     final uri = Uri.parse(routeName);
+    final data = settings.arguments;
 
     switch (uri.path) {
       case AppRoutes.splash:
@@ -233,55 +237,126 @@ class AppRouter {
       case AppRoutes.doctorProfileView:
         final args = settings.arguments;
         final data = args is Map ? args : null;
-        final enabledTypes =
-            data is Map && data['enabledConsultationTypes'] is Iterable
-            ? (data['enabledConsultationTypes'] as Iterable)
-                  .map((item) => item.toString())
-                  .where((item) => item.isNotEmpty)
-                  .toSet()
-            : const {'clinic', 'online', 'homeVisit', 'emergency'};
+        final enabledTypes = <String>{};
+
+        if (data is Map && data['enabledConsultationTypes'] is Iterable) {
+          enabledTypes.addAll(
+            (data['enabledConsultationTypes'] as Iterable)
+                .map((item) => item.toString())
+                .where((item) => item.isNotEmpty),
+          );
+        } else if (data is Map &&
+            (data['clinic'] is bool ||
+                data['online'] is bool ||
+                data['homeVisit'] is bool ||
+                data['emergency'] is bool)) {
+          if (data['clinic'] == true) enabledTypes.add('clinic');
+          if (data['online'] == true) enabledTypes.add('online');
+          if (data['homeVisit'] == true) enabledTypes.add('homeVisit');
+          if (data['emergency'] == true) enabledTypes.add('emergency');
+        }
+
+        if (enabledTypes.isEmpty) {
+          enabledTypes.addAll({'clinic', 'online', 'homeVisit', 'emergency'});
+        }
+
         return MaterialPageRoute(
-          builder: (_) => DoctorProfileView(
-            doctorName: data is Map && data['name'] != null
-                ? data['name'] as String
-                : null,
-            doctorImage: data is Map && data['doctorImage'] != null
-                ? data['doctorImage'] as String
-                : null,
-            specialization: data is Map && data['specialization'] != null
-                ? data['specialization'] as String
-                : null,
-            rating: data is Map && data['rating'] != null
-                ? (data['rating'] as num).toDouble()
-                : null,
-            reviewsCount: data is Map && data['reviewsCount'] != null
-                ? data['reviewsCount'] as int
-                : null,
-            enabledConsultationTypes: enabledTypes,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<UserManagementCubit>(),
+            child: DoctorProfileView(
+              doctorId: data is Map && data['doctorId'] != null
+                  ? data['doctorId'] as String
+                  : null,
+              doctorName: data is Map && data['name'] != null
+                  ? data['name'] as String
+                  : null,
+              doctorImage: data is Map && data['doctorImage'] != null
+                  ? data['doctorImage'] as String
+                  : null,
+              specialization: data is Map && data['specialization'] != null
+                  ? data['specialization'] as String
+                  : null,
+              rating: data is Map && data['rating'] != null
+                  ? (data['rating'] as num).toDouble()
+                  : null,
+              reviewsCount: data is Map && data['reviewsCount'] != null
+                  ? data['reviewsCount'] as int
+                  : null,
+              yearsOfExperience:
+                  data is Map && data['yearsOfExperience'] != null
+                  ? (data['yearsOfExperience'] as num).toInt()
+                  : null,
+              clinicFee: data is Map && data['clinicFee'] != null
+                  ? (data['clinicFee'] as num).toDouble()
+                  : null,
+              onlineFee: data is Map && data['onlineFee'] != null
+                  ? (data['onlineFee'] as num).toDouble()
+                  : null,
+              homeVisitFee: data is Map && data['homeVisitFee'] != null
+                  ? (data['homeVisitFee'] as num).toDouble()
+                  : null,
+              followUpFee: data is Map && data['followUpFee'] != null
+                  ? (data['followUpFee'] as num).toDouble()
+                  : null,
+              emergencyFee: data is Map && data['emergencyFee'] != null
+                  ? (data['emergencyFee'] as num).toDouble()
+                  : null,
+              clinicName: data is Map && data['clinicName'] != null
+                  ? data['clinicName'] as String
+                  : null,
+              clinicAddress: data is Map && data['clinicAddress'] != null
+                  ? data['clinicAddress'] as String
+                  : data is Map && data['address'] != null
+                  ? data['address'] as String
+                  : null,
+              clinicPhone: data is Map && data['clinicPhone'] != null
+                  ? data['clinicPhone'] as String
+                  : data is Map && data['phoneNumber'] != null
+                  ? data['phoneNumber'] as String
+                  : null,
+              clinicWorkingHours:
+                  data is Map && data['clinicWorkingHours'] != null
+                  ? data['clinicWorkingHours'] as String
+                  : null,
+              enabledConsultationTypes: enabledTypes,
+            ),
           ),
         );
       case AppRoutes.appointmentDetails:
         final args = settings.arguments;
-        final hasTypeFlags =
-            args is Map &&
-            (args['clinic'] is bool ||
-                args['online'] is bool ||
-                args['homeVisit'] is bool ||
-                args['emergency'] is bool);
-        final appointmentTypes = hasTypeFlags
-            ? {
-                if (args['clinic'] == true) 'clinic',
-                if (args['online'] == true) 'online',
-                if (args['homeVisit'] == true) 'homeVisit',
-                if (args['emergency'] == true) 'emergency',
-              }
-            : <String>{'clinic', 'online', 'homeVisit', 'emergency'};
+        final data = args is Map ? args : null;
+        final enabledTypes = <String>{};
+
+        if (data is Map && data['enabledAppointmentTypes'] is Iterable) {
+          enabledTypes.addAll(
+            (data['enabledAppointmentTypes'] as Iterable)
+                .map((item) => item.toString())
+                .where((item) => item.isNotEmpty),
+          );
+        } else if (data is Map &&
+            (data['clinic'] is bool ||
+                data['online'] is bool ||
+                data['homeVisit'] is bool ||
+                data['emergency'] is bool)) {
+          if (data['clinic'] == true) enabledTypes.add('clinic');
+          if (data['online'] == true) enabledTypes.add('online');
+          if (data['homeVisit'] == true) enabledTypes.add('homeVisit');
+          if (data['emergency'] == true) enabledTypes.add('emergency');
+        }
+
+        if (enabledTypes.isEmpty) {
+          enabledTypes.addAll({'clinic', 'online', 'homeVisit', 'emergency'});
+        }
+
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => BlocProvider(
-            create: (context) => getIt<AddClinicCubit>(),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (context) => getIt<AddClinicCubit>()),
+              BlocProvider(create: (context) => getIt<ClinicManagementCubit>()),
+            ],
             child: AppointmentDetailsPage(
-              enabledAppointmentTypes: appointmentTypes,
+              enabledAppointmentTypes: enabledTypes,
             ),
           ),
         );
@@ -481,7 +556,45 @@ class AppRouter {
           ),
         );
       case AppRoutes.clinicManagement:
-        return MaterialPageRoute(builder: (_) => const ClinicManagementPage());
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          builder: (_) => ClinicManagementPage(),
+          settings: settings,
+        );
+      case AppRoutes.clinicSchedule:
+        final args2 = settings.arguments;
+        final data2 = args2 is Map ? args2 : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<ClinicManagementCubit>(),
+            child: ClinicScheduleManagementView(
+              clinicId: data2 is Map && data2['clinicId'] != null
+                  ? data2['clinicId'] as int
+                  : null,
+              isOwner: data2 is Map && data2['isOwner'] != null
+                  ? data2['isOwner'] as bool
+                  : null,
+              currentDoctorId: data2 is Map && data2['currentDoctorId'] != null
+                  ? data2['currentDoctorId'] as String
+                  : null,
+            ),
+          ),
+        );
+      case AppRoutes.clinicPaymentSettings:
+        final args2 = settings.arguments;
+        final data2 = args2 is Map ? args2 : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => getIt<WalletCubit>()),
+              BlocProvider(create: (_) => getIt<InvoicesCubit>()),
+            ],
+            child: const ClinicPaymentSettingsView(),
+          ),
+        );
       case AppRoutes.bookingConfirmation:
         final args = settings.arguments;
         final data = args is Map ? args : null;
@@ -530,10 +643,14 @@ class AppRouter {
           ),
         );
       case AppRoutes.medicalFacilityManagement:
+        final args = data is Map<String, dynamic> ? data : <String, dynamic>{};
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (context) => getIt<UploadCredentialsCubit>(),
-            child: const MedicalFacilityManagementPage(),
+            child: MedicalFacilityManagementPage(
+              redirectOnExistingClinics:
+                  args['redirectOnExistingClinics'] as bool? ?? true,
+            ),
           ),
         );
       case AppRoutes.search:

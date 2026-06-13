@@ -119,10 +119,16 @@ class _SearchPageState extends State<SearchPage> {
                           AppRoutes.doctorProfileView,
                           arguments: {
                             'name': doctor.name,
+                            'doctorId': doctor.id,
                             'doctorImage': doctor.resolvedImageUrl,
                             'specialization': doctor.specialization,
                             'rating': rating,
                             'reviewsCount': doctor.reviewsCount,
+                            'clinicFee': doctor.consultationPrice,
+                            'clinicName': doctor.clinicName,
+                            'clinicAddress': doctor.clinicAddress,
+                            'clinicPhone': doctor.clinicPhone,
+                            'clinicWorkingHours': doctor.clinicWorkingHours,
                           },
                         ),
                         onFavoriteChanged: (_) {},
@@ -155,12 +161,7 @@ List<DoctorModel> _resolveDoctors(DoctorsState state) {
 }
 
 double _resolveDoctorRating(DoctorModel doctor) {
-  final reviewsCount = doctor.reviewsCount;
-  if (reviewsCount != null && reviewsCount > 0) {
-    return (reviewsCount / 100).clamp(0.0, 5.0).toDouble();
-  }
-
-  return doctor.rating ?? 0;
+  return doctor.rating ?? 0.0;
 }
 
 String _fallbackDoctorImage(DoctorModel doctor) {

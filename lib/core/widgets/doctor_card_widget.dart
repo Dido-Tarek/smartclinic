@@ -1,11 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/constants/assets.dart';
 
 class DoctorCardWidget extends StatefulWidget {
   final String doctorName;
   final String specialization;
   final double rating;
   final int? reviewsCount;
+  final double? consultationPrice;
   final String imagePath;
   final String? imageUrl;
   final VoidCallback onTap;
@@ -18,6 +22,7 @@ class DoctorCardWidget extends StatefulWidget {
     required this.specialization,
     required this.rating,
     this.reviewsCount,
+    this.consultationPrice,
     required this.imagePath,
     this.imageUrl,
     required this.onTap,
@@ -41,18 +46,17 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
   @override
   Widget build(BuildContext context) {
     final displayName = widget.doctorName.trim().startsWith('Dr.')
-      ? widget.doctorName.trim()
-      : 'Dr. ${widget.doctorName.trim()}';
-    final displayRating = widget.reviewsCount != null &&
-        widget.reviewsCount! > 0
-      ? (widget.reviewsCount! / 100).clamp(0.0, 5.0).toDouble()
-      : widget.rating;
-    final imageSource = (widget.imageUrl ?? widget.imagePath).trim();
-    final isNetworkImage = imageSource.startsWith('http://') ||
-      imageSource.startsWith('https://') ||
-      (widget.imageUrl != null &&
-        widget.imageUrl!.trim().isNotEmpty &&
-        !imageSource.startsWith('assets/'));
+        ? widget.doctorName.trim()
+        : 'Dr. ${widget.doctorName.trim()}';
+    final displayRating = widget.rating;
+    final fallbackAsset = AppImages.imagesDoctorDRMaiElKady;
+    final imageSource = (widget.imageUrl != null && widget.imageUrl!.trim().isNotEmpty)
+        ? widget.imageUrl!.trim()
+        : widget.imagePath.trim();
+    final isNetworkImage =
+        imageSource.startsWith('http://') || imageSource.startsWith('https://');
+    final isLocalFile =
+        imageSource.isNotEmpty && File(imageSource).existsSync();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -89,16 +93,18 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                   width: double.infinity,
                   child: isNetworkImage
                       ? Image.network(
-                          imageSource.startsWith('http')
-                              ? imageSource
-                              : 'http://smartclinicccc.runasp.net/$imageSource',
+                          imageSource,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Image.asset(
-                            widget.imagePath,
-                            fit: BoxFit.cover,
-                          ),
+                          errorBuilder: (_, __, ___) =>
+                              Image.asset(fallbackAsset, fit: BoxFit.cover),
                         )
-                      : Image.asset(widget.imagePath, fit: BoxFit.cover),
+                      : isLocalFile
+                          ? Image.file(File(imageSource), fit: BoxFit.cover)
+                          : Image.asset(
+                              imageSource.isNotEmpty ? imageSource : fallbackAsset,
+                              fit: BoxFit.cover,
+                              colorBlendMode: BlendMode.srcOver,
+                            ),
                 ),
               ),
             ),
@@ -113,7 +119,7 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  displayRating.toStringAsFixed(1),
+                  (displayRating).toStringAsFixed(1),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.darkSlate,
@@ -179,6 +185,17 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 ),
               ],
             ),
+            if (widget.consultationPrice != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${widget.consultationPrice!.toStringAsFixed(0)} EGP',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.deepNavy,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
         ),
       ),

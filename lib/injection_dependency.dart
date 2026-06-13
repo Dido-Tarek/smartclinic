@@ -44,6 +44,9 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/wallet/data/api/wallet_api_service.dart';
 import 'package:smartclinic/features/wallet/data/repo/wallet_repo.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
+import 'package:smartclinic/features/invoices/data/api/invoices_api_service.dart';
+import 'package:smartclinic/features/invoices/data/repo/invoices_repo.dart';
+import 'package:smartclinic/features/invoices/presentation/manager/invoices_cubit.dart';
 import 'package:smartclinic/features/appointments/data/api/appointment_api_service.dart';
 import 'package:smartclinic/features/appointments/data/repo/appointment_repo.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
@@ -138,6 +141,13 @@ Future<void> setupGetIt() async {
   getIt.registerLazySingleton<WalletRepo>(
     () => WalletRepoImpl(getIt<WalletApiService>()),
   );
+  // Invoices
+  getIt.registerLazySingleton<InvoicesApiService>(
+    () => InvoicesApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<InvoicesRepo>(
+    () => InvoicesRepoImpl(getIt<InvoicesApiService>()),
+  );
 
   // 5. Cubits (Factory لضمان حالة جديدة مع كل شاشة)
   getIt.registerFactory<RegisterCubit>(() => RegisterCubit(getIt<AuthRepo>()));
@@ -167,6 +177,7 @@ Future<void> setupGetIt() async {
     () => UserManagementCubit(getIt<UserManagementRepo>()),
   );
   getIt.registerFactory<WalletCubit>(() => WalletCubit(getIt<WalletRepo>()));
+  getIt.registerFactory<InvoicesCubit>(() => InvoicesCubit(getIt<InvoicesRepo>()));
   // Clinic management
   getIt.registerLazySingleton<ClinicManagementApiService>(
     () => ClinicManagementApiService(getIt<Dio>()),

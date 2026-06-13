@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
-import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/auth_header.dart';
 import 'package:smartclinic/core/widgets/custom_button.dart';
 import 'package:smartclinic/core/widgets/custom_small_text_field.dart';
+import 'package:smartclinic/core/widgets/type_card.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/features/clinic/data/model/add_clinic_request_model.dart';
+import 'package:smartclinic/features/clinic_management/data/model/clinic_request_model.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_state.dart';
-import 'package:smartclinic/core/widgets/type_card.dart';
+import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_state.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class AppointmentDetailsPage extends StatefulWidget {
@@ -46,8 +49,10 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
   late bool _homeVisitSelected;
   late bool _emergencySelected;
   bool _argsLoaded = false;
+  bool _clinicFinancialTermsTriggered = false;
   bool _isOwner = true;
   String _name = '';
+  String _doctorId = '';
   String _address = '';
   String _phoneNumber = '';
   String _city = '';
@@ -55,10 +60,17 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
   String? _specialization;
   double? _latitude;
   double? _longitude;
+  double? _clinicFee;
+  double? _onlineFee;
+  double? _homeVisitFee;
+  double? _followUpFee;
+  double? _emergencyFee;
+  int? _sessionDuration;
   File? _clinicImage;
   File? _legalDocument1;
   File? _legalDocument2;
   File? _legalDocument3;
+  late final UserSession _userSession = getIt<UserSession>();
 
   @override
   void dispose() {
@@ -94,23 +106,34 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
         (key, value) => MapEntry(key.toString(), value),
       );
       _isOwner = normalized['isOwner'] as bool? ?? true;
+      _doctorId = (normalized['doctorId'] as String? ?? '').trim();
       _name = (normalized['name'] as String? ?? '').trim();
       _address = (normalized['address'] as String? ?? '').trim();
-      _phoneNumber = (normalized['phoneNumber'] as String? ?? '').trim();
+      _phoneNumber =
+          ((normalized['phoneNumber'] as String?) ??
+                  (normalized['clinicPhone'] as String?))
+              ?.trim() ??
+          '';
       _city = (normalized['city'] as String? ?? '').trim();
       _area = (normalized['area'] as String? ?? '').trim();
       _specialization = (normalized['specialization'] as String?)?.trim();
       _latitude = normalized['latitude'] as double?;
       _longitude = normalized['longitude'] as double?;
+      _clinicFee = (normalized['clinicFee'] as num?)?.toDouble();
+      _onlineFee = (normalized['onlineFee'] as num?)?.toDouble();
+      _homeVisitFee = (normalized['homeVisitFee'] as num?)?.toDouble();
+      _followUpFee = (normalized['followUpFee'] as num?)?.toDouble();
+      _emergencyFee = (normalized['emergencyFee'] as num?)?.toDouble();
+      _sessionDuration = normalized['sessionDuration'] as int?;
       _clinicImage = normalized['clinicImage'] as File?;
       _legalDocument1 = normalized['legalDocument1'] as File?;
       _legalDocument2 = normalized['legalDocument2'] as File?;
       _legalDocument3 = normalized['legalDocument3'] as File?;
-        _prefillFee(_clinicFeeController, normalized['clinicFee']);
-        _prefillFee(_onlineFeeController, normalized['onlineFee']);
-        _prefillFee(_homeVisitFeeController, normalized['homeVisitFee']);
-        _prefillFee(_followUpFeeController, normalized['followUpFee']);
-        _prefillFee(_emergencyFeeController, normalized['emergencyFee']);
+      _prefillFee(_clinicFeeController, _clinicFee);
+      _prefillFee(_onlineFeeController, _onlineFee);
+      _prefillFee(_homeVisitFeeController, _homeVisitFee);
+      _prefillFee(_followUpFeeController, _followUpFee);
+      _prefillFee(_emergencyFeeController, _emergencyFee);
 
       if (normalized['clinic'] is bool ||
           normalized['online'] is bool ||
@@ -124,6 +147,9 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     }
 
     _argsLoaded = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeTriggerInitialFinancialUpdate();
+    });
   }
 
   void _prefillFee(TextEditingController controller, Object? value) {
@@ -139,199 +165,269 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     controller.text = text;
   }
 
+  void _maybeTriggerInitialFinancialUpdate() {
+    if (_clinicFinancialTermsTriggered) {
+      return;
+    }
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is! Map) {
+      return;
+    }
+
+    final clinicId = args['clinicId'] as int?;
+    if (clinicId == null) {
+      return;
+    }
+
+    final doctorId = _doctorId.isNotEmpty
+        ? _doctorId
+        : _userSession.userId?.trim() ?? '';
+    if (doctorId.isEmpty) {
+      return;
+    }
+
+    final request = UpdateFinancialTermsRequestModel(
+      doctorId: doctorId,
+      clinicId: clinicId,
+      examinationFee: _clinicSelected
+          ? (_parseFee(_clinicFeeController) ?? 0)
+          : 0,
+      followUpFee: _parseFee(_followUpFeeController) ?? 0,
+      onlineFee: _onlineSelected ? (_parseFee(_onlineFeeController) ?? 0) : 0,
+      homeVisitFee: _homeVisitSelected
+          ? (_parseFee(_homeVisitFeeController) ?? 0)
+          : 0,
+      emergencyFee: _emergencySelected
+          ? (_parseFee(_emergencyFeeController) ?? 0)
+          : 0,
+      sessionDuration: _sessionDuration ?? 0,
+    );
+
+    _clinicFinancialTermsTriggered = true;
+    context.read<ClinicManagementCubit>().updateFinancialTerms(request);
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    return BlocConsumer<AddClinicCubit, AddClinicState>(
-      listener: (context, state) async {
-        state.whenOrNull(
-          success: (_) async {
-            CherryToast.success(
-              title: Text(localizations.translate('clinic_added_success')),
-            ).show(context);
-
-            final userSession = getIt<UserSession>();
-            final userId = userSession.userId?.trim() ?? '';
-            final roleString = userSession.roleString ?? 'Doctor';
-            
-            if (userId.isNotEmpty) {
-              await userSession.markSetupCompleted(
-                role: roleString,
-                userId: userId,
-              );
-            }
-
-            final role = getRoleEnum(roleString);
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              role.isDoctor
-                  ? AppRoutes.home
-                  : role.isHospital
-                  ? AppRoutes.hospitalhome
-                  : AppRoutes.home,
-              (route) => false,
-            );
-          },
-          error: (error) {
-            CherryToast.error(
-              title: const Text('Error'),
-              description: Text(error),
-            ).show(context);
-          },
-        );
+    return BlocListener<ClinicManagementCubit, ClinicManagementState>(
+      listener: (context, state) {
+        if (state is UpdateFinancialTermsLoading) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Updating financial terms...')),
+          );
+        } else if (state is UpdateFinancialTermsSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Financial terms updated')),
+          );
+        } else if (state is UpdateFinancialTermsFailure) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.errorMessage)));
+        }
       },
-      builder: (context, state) {
-        final isSubmitting = state.maybeWhen(
-          loading: () => true,
-          orElse: () => false,
-        );
+      child: BlocConsumer<AddClinicCubit, AddClinicState>(
+        listener: (context, state) async {
+          state.whenOrNull(
+            success: (_) async {
+              CherryToast.success(
+                title: Text(localizations.translate('clinic_added_success')),
+              ).show(context);
 
-        return Scaffold(
-          backgroundColor: AppColors.scaffoldBg,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AuthHeader(
-                          title: localizations.translate(
-                            'appointment_details_title',
+              final userId = _userSession.userId?.trim() ?? '';
+              final roleString = _userSession.roleString ?? 'Doctor';
+
+              if (userId.isNotEmpty) {
+                await _userSession.markSetupCompleted(
+                  role: roleString,
+                  userId: userId,
+                );
+              }
+
+              final role = getRoleEnum(roleString);
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                role.isDoctor
+                    ? AppRoutes.home
+                    : role.isHospital
+                    ? AppRoutes.hospitalhome
+                    : AppRoutes.home,
+                (route) => false,
+              );
+            },
+            error: (error) {
+              CherryToast.error(
+                title: const Text('Error'),
+                description: Text(error),
+              ).show(context);
+            },
+          );
+        },
+        builder: (context, state) {
+          final isSubmitting = state.maybeWhen(
+            loading: () => true,
+            orElse: () => false,
+          );
+
+          return Scaffold(
+            backgroundColor: AppColors.scaffoldBg,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AuthHeader(
+                            title: localizations.translate(
+                              'appointment_details_title',
+                            ),
+                            subTitle: localizations.translate(
+                              "appointment_details_subtitle",
+                            ),
                           ),
-                          subTitle: localizations.translate(
-                            "appointment_details_subtitle",
+                          const SizedBox(height: 18),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final cardWidth = (constraints.maxWidth - 10) / 2;
+                              return Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: TypeCard(
+                                      title: localizations.translate(
+                                        'clinic_appointment_title',
+                                      ),
+                                      icon: Icons.local_hospital_outlined,
+                                      isSelected: _clinicSelected,
+                                      onTap: () => setState(
+                                        () =>
+                                            _clinicSelected = !_clinicSelected,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: TypeCard(
+                                      title: localizations.translate(
+                                        'online_appointment_title',
+                                      ),
+                                      icon: Icons.videocam_outlined,
+                                      isSelected: _onlineSelected,
+                                      onTap: () => setState(
+                                        () =>
+                                            _onlineSelected = !_onlineSelected,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: TypeCard(
+                                      title: localizations.translate(
+                                        'home_visit_title',
+                                      ),
+                                      icon: Icons.home_outlined,
+                                      isSelected: _homeVisitSelected,
+                                      onTap: () => setState(
+                                        () => _homeVisitSelected =
+                                            !_homeVisitSelected,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: cardWidth,
+                                    child: TypeCard(
+                                      title: 'Emergency Case',
+                                      icon: Icons.emergency_outlined,
+                                      isSelected: _emergencySelected,
+                                      onTap: () => setState(
+                                        () => _emergencySelected =
+                                            !_emergencySelected,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final cardWidth = (constraints.maxWidth - 10) / 2;
-                            return Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: TypeCard(
-                                    title: localizations.translate(
-                                      'clinic_appointment_title',
-                                    ),
-                                    icon: Icons.local_hospital_outlined,
-                                    isSelected: _clinicSelected,
-                                    onTap: () => setState(
-                                      () => _clinicSelected = !_clinicSelected,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: TypeCard(
-                                    title: localizations.translate(
-                                      'online_appointment_title',
-                                    ),
-                                    icon: Icons.videocam_outlined,
-                                    isSelected: _onlineSelected,
-                                    onTap: () => setState(
-                                      () => _onlineSelected = !_onlineSelected,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: TypeCard(
-                                    title: localizations.translate(
-                                      'home_visit_title',
-                                    ),
-                                    icon: Icons.home_outlined,
-                                    isSelected: _homeVisitSelected,
-                                    onTap: () => setState(
-                                      () => _homeVisitSelected =
-                                          !_homeVisitSelected,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: cardWidth,
-                                  child: TypeCard(
-                                    title: 'Emergency Case',
-                                    icon: Icons.emergency_outlined,
-                                    isSelected: _emergencySelected,
-                                    onTap: () => setState(
-                                      () => _emergencySelected =
-                                          !_emergencySelected,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 18),
-                        _buildFeeCard(
-                          title: localizations.translate('clinic_fee_title'),
-                          controller: _clinicFeeController,
-                          enabled: _isEnabled('clinic'),
-                          helperText: localizations.translate('fee_help_text'),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeeCard(
-                          title: localizations.translate('online_fee_title'),
-                          controller: _onlineFeeController,
-                          enabled: _isEnabled('online'),
-                          helperText: localizations.translate('fee_help_text'),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeeCard(
-                          title: localizations.translate(
-                            'home_visit_fee_title',
+                          const SizedBox(height: 18),
+                          _buildFeeCard(
+                            title: localizations.translate('clinic_fee_title'),
+                            controller: _clinicFeeController,
+                            enabled: _isEnabled('clinic'),
+                            helperText: localizations.translate(
+                              'fee_help_text',
+                            ),
                           ),
-                          controller: _homeVisitFeeController,
-                          enabled: _isEnabled('homeVisit'),
-                          helperText: localizations.translate('fee_help_text'),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeeCard(
-                          title: localizations.translate('follow_up_fee_title'),
-                          controller: _followUpFeeController,
-                          enabled: _isEnabled([
-                            'clinic',
-                            'online',
-                            'homeVisit',
-                          ]),
-                          helperText: localizations.translate('fee_help_text'),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFeeCard(
-                          title: localizations.translate('emergency_fee_title'),
-                          controller: _emergencyFeeController,
-                          enabled: _isEnabled([
-                            'clinic',
-                            'online',
-                            'homeVisit',
-                            'emergency',
-                          ]),
-                          helperText: localizations.translate('fee_help_text'),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          _buildFeeCard(
+                            title: localizations.translate('online_fee_title'),
+                            controller: _onlineFeeController,
+                            enabled: _isEnabled('online'),
+                            helperText: localizations.translate(
+                              'fee_help_text',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildFeeCard(
+                            title: localizations.translate(
+                              'home_visit_fee_title',
+                            ),
+                            controller: _homeVisitFeeController,
+                            enabled: _isEnabled('homeVisit'),
+                            helperText: localizations.translate(
+                              'fee_help_text',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildFeeCard(
+                            title: localizations.translate(
+                              'follow_up_fee_title',
+                            ),
+                            controller: _followUpFeeController,
+                            enabled: _isEnabled([
+                              'clinic',
+                              'online',
+                              'homeVisit',
+                            ]),
+                            helperText: localizations.translate(
+                              'fee_help_text',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildFeeCard(
+                            title: localizations.translate(
+                              'emergency_fee_title',
+                            ),
+                            controller: _emergencyFeeController,
+                            enabled: _isEnabled('emergency'),
+                            helperText: localizations.translate(
+                              'fee_help_text',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-                  child: CustomButton(
-                    text: localizations.translate('launch_facility'),
-                    width: double.infinity,
-                    onPressed: isSubmitting ? () {} : _onLaunchFacility,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                    child: CustomButton(
+                      text: localizations.translate('launch_facility'),
+                      width: double.infinity,
+                      onPressed: isSubmitting ? () {} : _onLaunchFacility,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -465,6 +561,43 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
   }
 
   Future<void> _onLaunchFacility() async {
+    final clinicId = (ModalRoute.of(context)?.settings.arguments is Map)
+        ? (ModalRoute.of(context)?.settings.arguments as Map)['clinicId']
+              as int?
+        : null;
+
+    if (clinicId != null) {
+      final doctorId = _doctorId.isNotEmpty
+          ? _doctorId
+          : _userSession.userId?.trim() ?? '';
+      if (doctorId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to determine doctor id.')),
+        );
+        return;
+      }
+
+      final request = UpdateFinancialTermsRequestModel(
+        doctorId: doctorId,
+        clinicId: clinicId,
+        examinationFee: _clinicSelected
+            ? (_parseFee(_clinicFeeController) ?? 0)
+            : 0,
+        followUpFee: _parseFee(_followUpFeeController) ?? 0,
+        onlineFee: _onlineSelected ? (_parseFee(_onlineFeeController) ?? 0) : 0,
+        homeVisitFee: _homeVisitSelected
+            ? (_parseFee(_homeVisitFeeController) ?? 0)
+            : 0,
+        emergencyFee: _emergencySelected
+            ? (_parseFee(_emergencyFeeController) ?? 0)
+            : 0,
+        sessionDuration: _sessionDuration ?? 0,
+      );
+
+      context.read<ClinicManagementCubit>().updateFinancialTerms(request);
+      return;
+    }
+
     final request = AddClinicRequestModel(
       name: _name,
       address: _address,
@@ -487,7 +620,9 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
           ? _parseFee(_homeVisitFeeController)
           : null,
       followUpFee: _parseFee(_followUpFeeController),
-      emergencyFee: _parseFee(_emergencyFeeController),
+      emergencyFee: _isEnabled('emergency')
+          ? _parseFee(_emergencyFeeController)
+          : null,
     );
 
     await context.read<AddClinicCubit>().emitAddClinicStates(request);

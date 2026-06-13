@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 
@@ -28,6 +30,7 @@ class DoctorViewCard extends StatelessWidget {
     final imageSource = doctorImagePath.trim();
     final isNetworkImage = imageSource.startsWith('http://') ||
         imageSource.startsWith('https://');
+    final isLocalFile = imageSource.isNotEmpty && File(imageSource).existsSync();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -64,11 +67,13 @@ class DoctorViewCard extends StatelessWidget {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : Image.asset(
-                          doctorImagePath,
-                          fit: BoxFit.cover,
-                          colorBlendMode: BlendMode.srcOver,
-                        ),
+                      : isLocalFile
+                          ? Image.file(File(imageSource), fit: BoxFit.cover)
+                          : Image.asset(
+                              doctorImagePath,
+                              fit: BoxFit.cover,
+                              colorBlendMode: BlendMode.srcOver,
+                            ),
                 ),
               ),
             ),

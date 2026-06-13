@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
@@ -90,6 +92,9 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                         Navigator.pushNamed(
                           context,
                           AppRoutes.medicalFacilityManagement,
+                          arguments: <String, dynamic>{
+                            'redirectOnExistingClinics': false,
+                          },
                         );
                       },
                     ),
@@ -414,7 +419,24 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                     icon: Icons.calendar_month_rounded,
                     title: 'Shift Control',
                     subtitle: '',
-                    onTap: () {},
+                    onTap: () {
+                      if (_selectedClinic == null) return;
+                      final userSession = getIt<UserSession>();
+                      final isOwner = userSession.userRole.isHospital;
+                      final currentDoctorId = userSession.userRole.isDoctor
+                          ? userSession.userId
+                          : null;
+
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.clinicSchedule,
+                        arguments: {
+                          'clinicId': _selectedClinic!.id,
+                          'isOwner': isOwner,
+                          'currentDoctorId': currentDoctorId,
+                        },
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -423,7 +445,19 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                     icon: Icons.receipt_long_rounded,
                     title: 'Billing',
                     subtitle: '',
-                    onTap: () {},
+                    onTap: () {
+                      // navigate to clinic payment settings with clinicId if available
+                      final selected = _selectedClinic;
+                      if (selected != null) {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.clinicPaymentSettings,
+                          arguments: {'clinicId': selected.id},
+                        );
+                      } else {
+                        Navigator.pushNamed(context, AppRoutes.wallet);
+                      }
+                    },
                   ),
                 ),
               ],
