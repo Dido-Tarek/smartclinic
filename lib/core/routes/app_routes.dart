@@ -46,4 +46,7 @@ class AppRoutes {
   static const String userManagement = '/userManagement';
   static const String emergencySearch = '/emergencySearch';
   static const String employment = '/employment';
+  static const String prescriptions = '/prescriptions';
+  static const String prescriptionDetail = '/prescriptionDetail';
+  static const String addPrescription = '/addPrescription';
 }

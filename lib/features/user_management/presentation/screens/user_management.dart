@@ -139,8 +139,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
                               'Medical Records' =>
                                 AppRoutes.uploadMedicalRecords,
                               'Health Issues' => AppRoutes.healthIssues,
-                              // 'Prescriptions' =>
-                              //   AppRoutes.search,
+                              'Prescriptions' => AppRoutes.prescriptions,
                               // 'Help Center' => AppRoutes.search,
                               String() => throw UnimplementedError(
                                 'No route defined for ${item.label}',

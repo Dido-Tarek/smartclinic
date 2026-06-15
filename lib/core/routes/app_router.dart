@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_summary.dart';
+import 'package:smartclinic/features/prescriptions/presentation/manager/prescriptions_cubit.dart';
+import 'package:smartclinic/features/prescriptions/presentation/screens/add_prescription_screen.dart';
+import 'package:smartclinic/features/prescriptions/presentation/screens/prescription_detail_screen.dart';
+import 'package:smartclinic/features/prescriptions/presentation/screens/prescriptions_screen.dart';
 import 'package:smartclinic/features/auth/presentation/manager/upload_credentials_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/manager/add_clinic_cubit.dart';
 import 'package:smartclinic/features/clinic/presentation/screens/appointment_details.dart';
@@ -653,6 +657,10 @@ class AppRouter {
           ),
         );
       case AppRoutes.clinicPaymentSettings:
+        final billingArgs = settings.arguments;
+        final billingClinicId = billingArgs is Map && billingArgs['clinicId'] != null
+            ? (billingArgs['clinicId'] as num).toInt()
+            : 0;
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => MultiBlocProvider(
@@ -660,7 +668,7 @@ class AppRouter {
               BlocProvider(create: (_) => getIt<WalletCubit>()),
               BlocProvider(create: (_) => getIt<InvoicesCubit>()),
             ],
-            child: const ClinicPaymentSettingsView(),
+            child: ClinicPaymentSettingsView(clinicId: billingClinicId),
           ),
         );
       case AppRoutes.bookingConfirmation:
@@ -791,6 +799,31 @@ class AppRouter {
         );
       case AppRoutes.userManagement:
         return MaterialPageRoute(builder: (_) => const UserManagementPage());
+      case AppRoutes.prescriptions:
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => getIt<PrescriptionsCubit>()),
+              BlocProvider(create: (_) => getIt<AppointmentsCubit>()),
+            ],
+            child: const PrescriptionsScreen(),
+          ),
+        );
+      case AppRoutes.prescriptionDetail:
+        final args = settings.arguments;
+        final prescId = args is Map && args['id'] != null
+            ? (args['id'] as num).toInt()
+            : 0;
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<PrescriptionsCubit>(),
+            child: PrescriptionDetailScreen(prescriptionId: prescId),
+          ),
+        );
+      case AppRoutes.addPrescription:
+        return MaterialPageRoute(
+          builder: (_) => const AddPrescriptionScreen(),
+        );
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

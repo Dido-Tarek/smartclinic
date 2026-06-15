@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
@@ -25,10 +27,12 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
 
   ClinicModel? _selectedClinic;
   late final ClinicManagementCubit _cubit;
+  late final UserSession _userSession;
 
   @override
   void initState() {
     super.initState();
+    _userSession = getIt<UserSession>();
     _cubit = getIt<ClinicManagementCubit>();
     _cubit.getMyClinics();
     _cubit.getMyEmploymentRequests();
@@ -49,9 +53,14 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
       child: BlocConsumer<ClinicManagementCubit, ClinicManagementState>(
         listener: (context, state) {
           if (state is GetMyClinicsSuccess) {
+            final fetched = List<ClinicModel>.from(state.response.clinics)
+              ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+            final ids = fetched.map((c) => c.id).whereType<int>().toList();
+            unawaited(_userSession.saveClinicIds(ids));
             setState(() {
-              _clinics.clear();
-              _clinics.addAll(state.response.clinics);
+              _clinics
+                ..clear()
+                ..addAll(fetched);
               if (_selectedClinic == null && _clinics.isNotEmpty) {
                 _selectedClinic = _clinics.first;
               }
@@ -111,6 +120,18 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                       isDestructive: true,
                       onTap: () async {
                         if (_selectedClinic == null) return;
+                        // Capture context-derived values before any await
+                        final overlay = Overlay.of(context);
+                        final renderBox =
+                            context.findRenderObject() as RenderBox?;
+                        final screenSize = MediaQuery.of(context).size;
+                        final size = renderBox?.size ?? screenSize;
+                        final center =
+                            renderBox?.localToGlobal(
+                              renderBox.size.center(Offset.zero),
+                            ) ??
+                            screenSize.center(Offset.zero);
+
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -131,18 +152,7 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                           ),
                         );
                         if (confirm == true) {
-                          // creative delete animation: pulse overlay
-                          final overlay = Overlay.of(context);
-                          final renderBox =
-                              context.findRenderObject() as RenderBox?;
-                          final size =
-                              renderBox?.size ?? MediaQuery.of(context).size;
-                          final center =
-                              renderBox?.localToGlobal(
-                                renderBox.size.center(Offset.zero),
-                              ) ??
-                              MediaQuery.of(context).size.center(Offset.zero);
-
+                          if (!mounted) return;
                           final entry = OverlayEntry(
                             builder: (ctx) {
                               return Positioned.fill(
@@ -412,13 +422,15 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
               large: true,
               showBadge: true,
               badgeCount: _receivedEmploymentCount,
-              onTap: () => Navigator.pushNamed(
-                context,
-                AppRoutes.employment,
-                arguments: <String, dynamic>{
-                  'clinicId': _selectedClinic?.id,
-                },
-              ),
+              onTap: () {
+                final clinicId = _selectedClinic?.id;
+                if (clinicId == null) return;
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.employment,
+                  arguments: <String, dynamic>{'clinicId': clinicId},
+                );
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -431,18 +443,18 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                     title: 'Shift Control',
                     subtitle: '',
                     onTap: () {
-                      if (_selectedClinic == null) return;
-                      final userSession = getIt<UserSession>();
-                      final isOwner = userSession.userRole.isHospital;
-                      final currentDoctorId = userSession.userRole.isDoctor
-                          ? userSession.userId
+                      final clinicId = _selectedClinic?.id;
+                      if (clinicId == null) return;
+                      final isOwner = _userSession.userRole.isHospital;
+                      final currentDoctorId = _userSession.userRole.isDoctor
+                          ? _userSession.doctorId
                           : null;
 
                       Navigator.pushNamed(
                         context,
                         AppRoutes.clinicSchedule,
                         arguments: {
-                          'clinicId': _selectedClinic!.id,
+                          'clinicId': clinicId,
                           'isOwner': isOwner,
                           'currentDoctorId': currentDoctorId,
                         },
@@ -457,13 +469,12 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                     title: 'Billing',
                     subtitle: '',
                     onTap: () {
-                      // navigate to clinic payment settings with clinicId if available
-                      final selected = _selectedClinic;
-                      if (selected != null) {
+                      final clinicId = _selectedClinic?.id;
+                      if (clinicId != null) {
                         Navigator.pushNamed(
                           context,
                           AppRoutes.clinicPaymentSettings,
-                          arguments: {'clinicId': selected.id},
+                          arguments: {'clinicId': clinicId},
                         );
                       } else {
                         Navigator.pushNamed(context, AppRoutes.wallet);

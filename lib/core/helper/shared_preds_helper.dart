@@ -9,6 +9,7 @@ class SharedPrefsHelper {
   static const String userFullNameKey = 'user_full_name';
   static const String userEmailKey = 'user_email';
   static const String fcmTokenKey = 'fcm_token';
+  static const String clinicIdsKey = 'clinic_ids'; // comma-separated clinic IDs
 
   // كائن الـ SharedPreferences الحقيقي
   static SharedPreferences? _sharedPreferences;

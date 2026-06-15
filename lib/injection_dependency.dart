@@ -50,6 +50,9 @@ import 'package:smartclinic/features/invoices/presentation/manager/invoices_cubi
 import 'package:smartclinic/features/appointments/data/api/appointment_api_service.dart';
 import 'package:smartclinic/features/appointments/data/repo/appointment_repo.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
+import 'package:smartclinic/features/prescriptions/data/api/prescription_api_service.dart';
+import 'package:smartclinic/features/prescriptions/data/repo/prescription_repo.dart';
+import 'package:smartclinic/features/prescriptions/presentation/manager/prescriptions_cubit.dart';
 import 'package:smartclinic/features/clinic_management/data/api/clinic_management_api_service.dart';
 import 'package:smartclinic/features/clinic_management/data/repo/clinic_management_repo.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
@@ -196,4 +199,14 @@ Future<void> setupGetIt() async {
     () => AppointmentsRepoImpl(getIt<AppointmentsApiService>()),
   );
   getIt.registerFactory<AppointmentsCubit>(() => AppointmentsCubit(getIt<AppointmentsRepo>()));
+  // Prescriptions
+  getIt.registerLazySingleton<PrescriptionsApiService>(
+    () => PrescriptionsApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<PrescriptionsRepo>(
+    () => PrescriptionsRepoImpl(getIt<PrescriptionsApiService>()),
+  );
+  getIt.registerFactory<PrescriptionsCubit>(
+    () => PrescriptionsCubit(getIt<PrescriptionsRepo>()),
+  );
 }
