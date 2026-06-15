@@ -39,7 +39,7 @@ class ClinicModel {
   });
 
   factory ClinicModel.fromJson(Map<String, dynamic> json) => ClinicModel(
-    id: json['id'] as int?,
+    id: (json['clinicId'] ?? json['id']) as int?,
     name: json['name'] as String?,
     address: (json['address'] ?? json['location']) as String?,
     phoneNumber: json['phoneNumber'] as String?,

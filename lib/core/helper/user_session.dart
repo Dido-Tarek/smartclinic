@@ -10,6 +10,7 @@ class UserSession {
   static const String _fullNameKey = SharedPrefsHelper.userFullNameKey;
   static const String _emailKey = SharedPrefsHelper.userEmailKey;
   static const String _fcmTokenKey = SharedPrefsHelper.fcmTokenKey;
+  static const String _clinicIdsKey = SharedPrefsHelper.clinicIdsKey;
   static const String _phoneKey = 'user_phone';
   static const String _birthDateKey = 'user_birth_date';
   static const String _addressKey = 'user_address';
@@ -81,6 +82,16 @@ class UserSession {
     await SharedPrefsHelper.setData(_roleKey, role);
   }
 
+  /// حفظ قائمة العيادات (مرتبة تصاعدياً حسب الـ ID)
+  Future<void> saveClinicIds(List<int> ids) async {
+    final sorted = List<int>.from(ids)..sort();
+    await SharedPrefsHelper.setData(_clinicIdsKey, sorted.join(','));
+  }
+
+  Future<void> clearClinicIds() async {
+    await SharedPrefsHelper.removeData(_clinicIdsKey);
+  }
+
   Future<void> markSetupCompleted({
     required String role,
     required String userId,
@@ -124,6 +135,29 @@ class UserSession {
 
   /// استرجاع الـ ID (سواء كان لمريض، دكتور، أو مستشفى)
   String? get userId => SharedPrefsHelper.getString(_userIdKey);
+
+  /// Doctor ID — only meaningful when role is Doctor
+  String? get doctorId => userRole.isDoctor ? userId : null;
+
+  /// Patient ID — only meaningful when role is Patient
+  String? get patientId => userRole.isPatient ? userId : null;
+
+  /// All clinic IDs the doctor/hospital owns (sorted ascending)
+  List<int> get clinicIds {
+    final raw = SharedPrefsHelper.getString(_clinicIdsKey);
+    if (raw == null || raw.isEmpty) return [];
+    return raw
+        .split(',')
+        .map((s) => int.tryParse(s.trim()))
+        .whereType<int>()
+        .toList();
+  }
+
+  /// The primary (lowest-ID) clinic for this doctor/hospital, or null
+  int? get primaryClinicId {
+    final ids = clinicIds;
+    return ids.isEmpty ? null : ids.first;
+  }
 
   /// استرجاع الـ Role كـ String
   String? get roleString => SharedPrefsHelper.getString(_roleKey);
@@ -178,6 +212,7 @@ class UserSession {
     await SharedPrefsHelper.removeData(_genderKey);
     await SharedPrefsHelper.removeData(_bloodGroupKey);
     await SharedPrefsHelper.removeData(_profileImageKey);
+    await SharedPrefsHelper.removeData(_clinicIdsKey);
   }
 
   String resolvePostLoginRoute({required String role, required String userId}) {

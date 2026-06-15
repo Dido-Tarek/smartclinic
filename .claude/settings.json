@@ -5,7 +5,9 @@
       "PowerShell(Get-Command node -ErrorAction SilentlyContinue; Get-Command npm -ErrorAction SilentlyContinue; [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) -split \";\" | Where-Object { $_ -match \"node\" })",
       "Read(//c/Program Files/**)",
       "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:APPDATA\\\\npm\\\\node.exe\" -ErrorAction SilentlyContinue; where.exe node 2>$null; [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) -split \";\" | Where-Object { $_ -match \"node|npm\" })",
-      "Bash(flutter pub *)"
+      "Bash(flutter pub *)",
+      "Bash(find /c/Users -name \"dotted_border.dart\" 2>/dev/null | head -5; find /d -path \"*dotted_border*lib*dotted_border.dart\" 2>/dev/null | head -5)",
+      "Read(//c/Users/**)"
     ]
   }
 }

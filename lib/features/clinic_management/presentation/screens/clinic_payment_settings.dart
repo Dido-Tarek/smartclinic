@@ -10,7 +10,9 @@ import 'package:smartclinic/features/invoices/presentation/manager/invoices_stat
 import 'package:cherry_toast/cherry_toast.dart';
 
 class ClinicPaymentSettingsView extends StatefulWidget {
-  const ClinicPaymentSettingsView({super.key});
+  const ClinicPaymentSettingsView({super.key, required this.clinicId});
+
+  final int clinicId;
 
   @override
   State<ClinicPaymentSettingsView> createState() =>
@@ -59,28 +61,19 @@ class _ClinicPayLogoPainter extends CustomPainter {
 }
 
 class _ClinicPaymentSettingsViewState extends State<ClinicPaymentSettingsView> {
-  bool _argsLoaded = false;
-  int? _clinicId;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<WalletCubit>().getClinicBalance(widget.clinicId);
+      context.read<InvoicesCubit>().getClinicReport(widget.clinicId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-
-    // read route args once
-    if (!_argsLoaded) {
-      final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map) {
-        _clinicId = args['clinicId'] as int?;
-      }
-      _argsLoaded = true;
-      // trigger initial loads
-      if (_clinicId != null) {
-        // ignore: cascade_invocations
-        context.read<WalletCubit>().getClinicBalance(_clinicId!);
-        // ignore: cascade_invocations
-        context.read<InvoicesCubit>().getClinicReport(_clinicId!);
-      }
-    }
 
     return MultiBlocListener(
       listeners: [
@@ -108,9 +101,7 @@ class _ClinicPaymentSettingsViewState extends State<ClinicPaymentSettingsView> {
                 ),
               ).show(context);
               // refresh report
-              if (_clinicId != null) {
-                context.read<InvoicesCubit>().getClinicReport(_clinicId!);
-              }
+              context.read<InvoicesCubit>().getClinicReport(widget.clinicId);
             } else if (state is MarkAsPaidFailure) {
               CherryToast.error(
                 title: const Text('Error'),

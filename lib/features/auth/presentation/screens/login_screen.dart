@@ -64,6 +64,9 @@ class _LoginScreenState extends State<LoginScreen> {
               final fullName = _extractFullName(data);
               final email = _emailController.text.trim();
 
+              // Clear any clinic IDs from a previous session before saving new ones
+              await userSession.clearClinicIds();
+
               if (token != null && token.trim().isNotEmpty) {
                 await userSession.saveToken(token.trim());
               }
