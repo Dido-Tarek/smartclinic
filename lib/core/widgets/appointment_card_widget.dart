@@ -7,8 +7,10 @@ class AppointmentCardWidget extends StatelessWidget {
   final String appointmentDate;
   final String appointmentTime;
   final String imagePath;
+  final String? imageUrl;
   final VoidCallback onTap;
   final bool showArrow;
+  final VoidCallback? onCancel;
 
   const AppointmentCardWidget({
     super.key,
@@ -17,9 +19,26 @@ class AppointmentCardWidget extends StatelessWidget {
     required this.appointmentDate,
     required this.appointmentTime,
     required this.imagePath,
+    this.imageUrl,
     required this.onTap,
     this.showArrow = true,
+    this.onCancel,
   });
+
+  Widget _buildDoctorImage() {
+    final url = imageUrl;
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        width: 70,
+        height: 70,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Image.asset(imagePath, width: 70, height: 70, fit: BoxFit.cover),
+      );
+    }
+    return Image.asset(imagePath, width: 70, height: 70, fit: BoxFit.cover);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +52,6 @@ class AppointmentCardWidget extends StatelessWidget {
             // ─── Main white card ───────────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              // right padding leaves room so content doesn't go under the button
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -51,12 +69,7 @@ class AppointmentCardWidget extends StatelessWidget {
                   // ── Doctor image ──────────────────────────────────────
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      imagePath,
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                    ),
+                    child: _buildDoctorImage(),
                   ),
                   const SizedBox(width: 14),
 
@@ -98,7 +111,7 @@ class AppointmentCardWidget extends StatelessWidget {
               ),
             ),
 
-            // ─── Time badge — top-right, sitting ON the card edge ──────────
+            // ─── Time badge ────────────────────────────────────────────────
             Positioned(
               top: 14,
               right: 14,
@@ -122,8 +135,38 @@ class AppointmentCardWidget extends StatelessWidget {
               ),
             ),
 
-            // ─── Arrow button — bottom-right, overflowing the card ─────────
-            if (showArrow)
+            // ─── Cancel button (bottom-right, overflows the card) ──────────
+            if (onCancel != null)
+              Positioned(
+                right: -10,
+                bottom: -10,
+                child: GestureDetector(
+                  onTap: onCancel,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade400,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+
+            // ─── Arrow button ──────────────────────────────────────────────
+            if (showArrow && onCancel == null)
               Positioned(
                 right: -10,
                 bottom: -10,
@@ -137,7 +180,7 @@ class AppointmentCardWidget extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.skyBlue.withOpacity(0.4),
+                          color: AppColors.skyBlue.withValues(alpha: 0.4),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),

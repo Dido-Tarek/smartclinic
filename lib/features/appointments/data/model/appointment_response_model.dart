@@ -6,6 +6,7 @@ class AppointmentModel {
   final String? patientPhone;
   final String? doctorId;
   final String? doctorName;
+  final String? doctorImage;
   final int? clinicId;
   final String? clinicName;
   final String? date;
@@ -17,6 +18,8 @@ class AppointmentModel {
   final int? familyMemberId;
   final String? notes;
   final String? createdAt;
+  final String? meetingLink;
+  final double? consultationFee;
 
   const AppointmentModel({
     this.id,
@@ -25,6 +28,7 @@ class AppointmentModel {
     this.patientPhone,
     this.doctorId,
     this.doctorName,
+    this.doctorImage,
     this.clinicId,
     this.clinicName,
     this.date,
@@ -36,28 +40,106 @@ class AppointmentModel {
     this.familyMemberId,
     this.notes,
     this.createdAt,
+    this.meetingLink,
+    this.consultationFee,
   });
 
-  factory AppointmentModel.fromJson(Map<String, dynamic> json) =>
-      AppointmentModel(
-        id: json['id'] as int?,
-        patientId: json['patientId'] as String?,
-        patientName: json['patientName'] as String?,
-        patientPhone: json['patientPhone'] as String?,
-        doctorId: json['doctorId'] as String?,
-        doctorName: json['doctorName'] as String?,
-        clinicId: json['clinicId'] as int?,
-        clinicName: json['clinicName'] as String?,
-        date: json['date'] as String?,
-        time: json['time'] as String?,
-        type: json['type'] as String?,
-        status: json['status'] as String?,
-        adminMessage: json['adminMessage'] as String?,
-        payFromWallet: json['payFromWallet'] as bool?,
-        familyMemberId: json['familyMemberId'] as int?,
-        notes: json['notes'] as String?,
-        createdAt: json['createdAt'] as String?,
-      );
+  static const _baseUrl = 'http://smartclinicccc.runasp.net';
+
+  static String? _resolveUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final t = raw.trim();
+    return t.startsWith('http') ? t : '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
+  }
+
+  static String _generateMeetingLink(int id) {
+    final h = ((id ^ (id << 13)) * 1540483477) & 0xFFFFFFFF;
+    return 'https://meet.jit.si/SmartClinic-${h.toRadixString(16).padLeft(8, '0')}';
+  }
+
+  /// Returns just the date portion of the ISO datetime string (e.g. "2026-06-18").
+  String get displayDate {
+    final d = date?.trim() ?? '';
+    if (d.isEmpty) return 'Date pending';
+    final idx = d.indexOf('T');
+    return idx > 0 ? d.substring(0, idx) : d;
+  }
+
+  /// Returns HH:mm extracted from the ISO datetime string or the explicit time field.
+  String get displayTime {
+    final t = time?.trim() ?? '';
+    if (t.isNotEmpty) return t.length > 5 ? t.substring(0, 5) : t;
+    final d = date?.trim() ?? '';
+    final idx = d.indexOf('T');
+    if (idx > 0 && idx + 1 < d.length) {
+      final tp = d.substring(idx + 1);
+      return tp.length > 5 ? tp.substring(0, 5) : tp;
+    }
+    return 'Time pending';
+  }
+
+  static bool _isVideoCallType(String? type) {
+    final t = (type ?? '').toLowerCase();
+    return t.contains('video') || t.contains('online') || t == 'videocall';
+  }
+
+  static double? _readFee(Map<String, dynamic> json) {
+    for (final key in const [
+      'consultationFee', 'ConsultationFee',
+      'fee', 'Fee',
+      'price', 'Price',
+      'amount', 'Amount',
+      'totalFee', 'TotalFee',
+      'totalAmount', 'TotalAmount',
+    ]) {
+      final v = json[key];
+      if (v is num) return v.toDouble();
+      if (v is String) {
+        final parsed = double.tryParse(v.trim());
+        if (parsed != null) return parsed;
+      }
+    }
+    return null;
+  }
+
+  factory AppointmentModel.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as int?;
+    final type = json['type'] as String?;
+    final apiLink = (json['meetingLink'] ??
+            json['meetingUrl'] ??
+            json['videoCallLink'] ??
+            json['videoLink'] ??
+            json['joinUrl']) as String?;
+    final meetingLink = apiLink ??
+        (id != null && _isVideoCallType(type)
+            ? _generateMeetingLink(id)
+            : null);
+
+    return AppointmentModel(
+      id: id,
+      patientId: json['patientId'] as String?,
+      patientName: json['patientName'] as String?,
+      patientPhone: json['patientPhone'] as String?,
+      doctorId: json['doctorId'] as String?,
+      doctorName: json['doctorName'] as String?,
+      doctorImage: _resolveUrl(
+        (json['doctorImage'] ?? json['doctorPhoto'] ?? json['photoUrl']) as String?,
+      ),
+      clinicId: json['clinicId'] as int?,
+      clinicName: json['clinicName'] as String?,
+      date: json['date'] as String?,
+      time: json['time'] as String?,
+      type: type,
+      status: json['status'] as String?,
+      adminMessage: json['adminMessage'] as String?,
+      payFromWallet: json['payFromWallet'] as bool?,
+      familyMemberId: json['familyMemberId'] as int?,
+      notes: json['notes'] as String?,
+      createdAt: json['createdAt'] as String?,
+      meetingLink: meetingLink,
+      consultationFee: _readFee(json),
+    );
+  }
 }
 
 // ── POST /api/Appointments/book response ──────────────────────────────────────

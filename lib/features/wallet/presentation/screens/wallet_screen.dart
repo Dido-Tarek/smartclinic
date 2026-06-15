@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cherry_toast/cherry_toast.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/features/wallet/data/model/wallet_response_model.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_cubit.dart';
 import 'package:smartclinic/features/wallet/presentation/manager/wallet_state.dart';
 
@@ -16,12 +16,13 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   double? _cachedBalance;
   String _currency = 'EGP';
+  List<WalletTransactionModel> _cachedTransactions = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<WalletCubit>().getBalance();
+      context.read<WalletCubit>().initWallet();
     });
   }
 
@@ -49,6 +50,12 @@ class _WalletScreenState extends State<WalletScreen> {
             setState(() {
               _cachedBalance = (state.response.balance ?? 0).toDouble();
               _currency = state.response.currency ?? 'EGP';
+            });
+          }
+
+          if (state is GetHistorySuccess) {
+            setState(() {
+              _cachedTransactions = state.response.transactions;
             });
           }
 
@@ -90,9 +97,18 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildActionButtons(context),
+                  _buildTopUpButton(context),
                   const SizedBox(height: 30),
-                  if (kDebugMode) _buildDebugSection(context),
+                  const Text(
+                    'Payment History',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPaymentHistory(state),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -186,106 +202,165 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        _actionItem(
-          context: context,
-          icon: Icons.add_circle_outline_rounded,
-          label: 'Top Up',
-          onTap: () => _showTopUpDialog(context),
+  Widget _buildTopUpButton(BuildContext context) {
+    return InkWell(
+      onTap: () => _showTopUpDialog(context),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: AppColors.accentBlue.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.35)),
         ),
-        const SizedBox(width: 16),
-        _actionItem(
-          context: context,
-          icon: Icons.receipt_long_outlined,
-          label: 'History',
-          onTap: () {
-            // Navigate to history screen
-          },
+        child: const Column(
+          children: [
+            Icon(Icons.add_circle_outline_rounded, color: AppColors.blueAction, size: 28),
+            SizedBox(height: 8),
+            Text(
+              'Top Up',
+              style: TextStyle(
+                color: AppColors.blueAction,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _actionItem({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+  Widget _buildPaymentHistory(WalletState state) {
+    if (state is GetHistoryLoading && _cachedTransactions.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_cachedTransactions.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        decoration: BoxDecoration(
+          color: AppColors.accentBlue.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Column(
+          children: [
+            Icon(Icons.receipt_long_outlined, color: AppColors.skyBlue, size: 40),
+            SizedBox(height: 12),
+            Text(
+              'No transactions yet',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _cachedTransactions.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        return _buildTransactionTile(_cachedTransactions[index]);
+      },
+    );
+  }
+
+  Widget _buildTransactionTile(WalletTransactionModel tx) {
+    final double amount = (tx.amount ?? 0).toDouble();
+    final bool isCredit = amount >= 0;
+    final Color amountColor = isCredit ? AppColors.success : Colors.red;
+    final String amountPrefix = isCredit ? '+' : '-';
+    final String formattedDate = _formatDate(tx.date);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: AppColors.accentBlue.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.35)),
+            color: amountColor.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
           ),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.blueAction, size: 28),
-              const SizedBox(height: 8),
+          child: Icon(
+            isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+            color: amountColor,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          _formatType(tx.type),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (tx.description != null && tx.description!.isNotEmpty)
               Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.blueAction,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                tx.description!,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
+            Text(
+              formattedDate,
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        trailing: Text(
+          '$amountPrefix$_currency ${amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: amountColor,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDebugSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        const SizedBox(height: 10),
-        const Text(
-          'Developer Options',
-          style: TextStyle(
-            color: AppColors.warning,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: () => context.read<WalletCubit>().topUp(500),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Fake Recharge (+500 EGP)',
-                  style: TextStyle(color: AppColors.warning),
-                ),
-                Icon(
-                  Icons.bug_report_outlined,
-                  color: AppColors.warning,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
+  String _formatType(String? type) {
+    if (type == null || type.isEmpty) return 'Transaction';
+    return type
+        .split(RegExp(r'[-_\s]'))
+        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+      final minute = dt.minute.toString().padLeft(2, '0');
+      final period = dt.hour >= 12 ? 'PM' : 'AM';
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}  $hour:$minute $period';
+    } catch (_) {
+      return dateStr;
+    }
   }
 
   void _showTopUpDialog(BuildContext context) {

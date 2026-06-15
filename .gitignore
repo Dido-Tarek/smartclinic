@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Notification service
+notification-service/node_modules/
+notification-service/serviceAccountKey.json

@@ -4,6 +4,8 @@ class PatientProfileModel {
   final String? address;
   final String? bloodGroup;
   final String? profilePicture;
+  final String? gender;
+  final String? birthDate;
 
   PatientProfileModel({
     required this.fullName,
@@ -11,6 +13,8 @@ class PatientProfileModel {
     this.address,
     this.bloodGroup,
     this.profilePicture,
+    this.gender,
+    this.birthDate,
   });
 
   factory PatientProfileModel.fromJson(Map<String, dynamic> json) {
@@ -23,8 +27,11 @@ class PatientProfileModel {
       bloodGroup: _readString(payload, ['bloodGroup', 'BloodGroup']),
       profilePicture: _readString(
         payload,
-        ['profilePicture', 'ProfilePicture', 'profileImage', 'ProfileImage'],
+        ['profilePicture', 'ProfilePicture', 'profileImage', 'ProfileImage',
+         'profileImageUrl', 'ProfileImageUrl'],
       ),
+      gender: _readString(payload, ['gender', 'Gender']),
+      birthDate: _readString(payload, ['birthDate', 'BirthDate']),
     );
   }
 

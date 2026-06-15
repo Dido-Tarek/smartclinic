@@ -11,6 +11,7 @@ class DoctorModel {
   final String? profileImage;
   final int? reviewsCount;
   final double? rating;
+  final int? clinicId;
   final String? clinicName;
   final String? clinicAddress;
   final String? clinicPhone;
@@ -28,11 +29,36 @@ class DoctorModel {
     this.profileImage,
     this.reviewsCount,
     this.rating,
+    this.clinicId,
     this.clinicName,
     this.clinicAddress,
     this.clinicPhone,
     this.clinicWorkingHours,
   });
+
+  static const _baseUrl = 'http://smartclinicccc.runasp.net';
+
+  static String? _resolveUrl(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final t = raw.trim();
+    if (t.startsWith('http')) return t;
+    return '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
+  }
+
+  static String? _formatSchedules(Map<String, dynamic>? clinic) {
+    if (clinic == null) return null;
+    final list = clinic['schedules'] as List<dynamic>?;
+    if (list == null || list.isEmpty) return null;
+    final lines = list.map((s) {
+      if (s is! Map<String, dynamic>) return null;
+      final day = (s['day'] ?? s['Day']) as String? ?? '';
+      final from = (s['from'] ?? s['From']) as String? ?? '';
+      final to = (s['to'] ?? s['To']) as String? ?? '';
+      if (day.isEmpty) return null;
+      return from.isNotEmpty ? '$day: $from – $to' : day;
+    }).whereType<String>().toList();
+    return lines.isEmpty ? null : lines.join('\n');
+  }
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
     final pricing = json['pricing'] as Map<String, dynamic>?;
@@ -58,9 +84,32 @@ class DoctorModel {
       }
     }
 
+    // Resolve photo: API returns relative photoUrl — prepend base URL
+    final resolvedPhoto = _resolveUrl(
+      (json['photoUrl'] as String?) ??
+      (json['PhotoUrl'] as String?) ??
+      (json['imageUrl'] as String?) ??
+      (json['profileImage'] as String?),
+    );
+
+    // Working hours from schedules if no explicit field
+    final workingHours = clinic == null
+        ? null
+        : (clinic['workingHours'] as String?) ??
+          (clinic['workingTimes'] as String?) ??
+          _formatSchedules(clinic);
+
+    // Contact: doctorPhone lives at top level, not inside clinic
+    final phone = (json['doctorPhone'] as String?) ??
+        (json['phoneNumber'] as String?) ??
+        (clinic == null ? null :
+          (clinic['phone'] as String?) ??
+          (clinic['phoneNumber'] as String?) ??
+          (clinic['contact'] as String?));
+
     return DoctorModel(
-      id: json['doctorId'] as String?,
-      name: json['fullName'] as String?,
+      id: (json['doctorId'] ?? json['id']) as String?,
+      name: (json['fullName'] ?? json['name']) as String?,
       specialization: json['specialization'] as String?,
       city: city ?? json['city'] as String?,
       area: area ?? json['area'] as String?,
@@ -68,27 +117,22 @@ class DoctorModel {
       consultationPrice: (pricing == null)
           ? null
           : (pricing['clinicFee'] as num?)?.toDouble(),
-      imageUrl: json['imageUrl'] as String?,
-      profileImage: json['profileImage'] as String?,
+      imageUrl: resolvedPhoto,
+      profileImage: resolvedPhoto,
       reviewsCount: (json['reviewCount'] as num?)?.toInt(),
       rating: (json['averageRating'] as num?)?.toDouble(),
+      clinicId: clinic == null
+          ? null
+          : (clinic['id'] as num?)?.toInt() ??
+            (clinic['clinicId'] as num?)?.toInt(),
       clinicName: clinic == null
           ? null
-          : (clinic['name'] as String?) ??
-              (clinic['clinicName'] as String?),
+          : (clinic['name'] as String?) ?? (clinic['clinicName'] as String?),
       clinicAddress: clinic == null
           ? null
-          : (clinic['address'] as String?) ??
-              (clinic['location'] as String?),
-      clinicPhone: clinic == null
-          ? null
-          : (clinic['phone'] as String?) ??
-              (clinic['phoneNumber'] as String?) ??
-              (clinic['contact'] as String?),
-      clinicWorkingHours: clinic == null
-          ? null
-          : (clinic['workingHours'] as String?) ??
-              (clinic['workingTimes'] as String?),
+          : (clinic['address'] as String?) ?? (clinic['location'] as String?),
+      clinicPhone: phone,
+      clinicWorkingHours: workingHours,
     );
   }
 

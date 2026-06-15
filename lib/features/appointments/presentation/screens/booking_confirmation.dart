@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
@@ -7,8 +9,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:cherry_toast/cherry_toast.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:android_intent_plus/android_intent.dart';
 
 class BookingConfirmationPage extends StatefulWidget {
+  final int? appointmentId;
   final String? doctorName;
   final String? specialization;
   final String? clinicName;
@@ -22,9 +27,12 @@ class BookingConfirmationPage extends StatefulWidget {
   final String? selectedTime;
   final String? patientName;
   final String? paymentMethod;
+  final double? consultationFee;
+  final String? meetingLink;
 
   const BookingConfirmationPage({
     super.key,
+    this.appointmentId,
     this.doctorName,
     this.specialization,
     this.clinicName,
@@ -38,6 +46,8 @@ class BookingConfirmationPage extends StatefulWidget {
     this.selectedTime,
     this.patientName,
     this.paymentMethod,
+    this.consultationFee,
+    this.meetingLink,
   });
 
   @override
@@ -59,6 +69,44 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
       _paymentMethodRaw == 'cash' ? 'Cash' : 'Wallet';
   String get _paymentStatus => _paymentMethodRaw == 'cash' ? 'Unpaid' : 'Paid';
   bool get _isPaid => _paymentStatus == 'Paid';
+
+  bool get _isOnlineConsultation {
+    final t = (widget.consultationType ?? '').toLowerCase();
+    return t.contains('video') || t.contains('online') || t == 'videocall';
+  }
+
+  Future<void> _joinMeeting() async {
+    final link = widget.meetingLink;
+    if (link == null || link.isEmpty) return;
+    try {
+      if (Platform.isAndroid) {
+        final intent = AndroidIntent(
+          action: 'action_view',
+          data: link,
+        );
+        await intent.launchChooser('Open meeting with');
+      } else {
+        await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      CherryToast.error(
+        title: const Text('Cannot open link'),
+        description: const Text('No browser found to open the meeting link.'),
+      ).show(context);
+    }
+  }
+
+  Future<void> _copyMeetingLink() async {
+    final link = widget.meetingLink;
+    if (link == null || link.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    CherryToast.success(
+      title: const Text('Copied'),
+      description: const Text('Meeting link copied to clipboard.'),
+    ).show(context);
+  }
 
   // ── PDF colours ──────────────────────────────────────────────────────────
   static final _pdfDeepNavy = PdfColor.fromInt(AppColors.deepNavy.value);
@@ -206,16 +254,45 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
               _pdfSectionTitle('BOOKING INFORMATION'),
               _gap(8),
               _pdfCard([
+                if (widget.appointmentId != null) ...[
+                  _pdfRow('Appointment ID', '#${widget.appointmentId}'),
+                  _pdfDivider(),
+                ],
                 _pdfRow(
                   'Consultation Type',
                   _consultationType,
-                  boldValue: true, // bold on screen
+                  boldValue: true,
                 ),
                 _pdfDivider(),
                 _pdfRow('Date', _selectedDate),
                 _pdfDivider(),
                 _pdfRow('Time', _selectedTime),
               ]),
+
+              if (_isOnlineConsultation && widget.meetingLink != null) ...[
+                _gap(16),
+                _pdfSectionTitle('ONLINE MEETING'),
+                _gap(8),
+                _pdfCard([
+                  _pdfRow('Meeting Link', ''),
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: _pdfScaffoldBg,
+                      borderRadius: pw.BorderRadius.circular(6),
+                    ),
+                    child: pw.Text(
+                      widget.meetingLink!,
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        color: _pdfSkyBlue,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
 
               _gap(16),
 
@@ -306,11 +383,13 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
               _pdfSectionTitle('PAYMENT SUMMARY'),
               _gap(8),
               _pdfCard([
-                _pdfRow('Amount', 'EGP 20.00'),
+                _pdfRow(
+                  'Amount',
+                  widget.consultationFee != null
+                      ? 'EGP ${widget.consultationFee!.toStringAsFixed(2)}'
+                      : 'N/A',
+                ),
                 _pdfDivider(),
-                _pdfRow('Duration (30 mins)', r'1 x EGP 20.00'),
-                _pdfDivider(),
-                // Total — both label AND value are bold + slightly larger
                 pw.Row(
                   children: [
                     pw.Expanded(
@@ -325,7 +404,9 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     ),
                     pw.SizedBox(width: 12),
                     pw.Text(
-                      'EGP 20.00',
+                      widget.consultationFee != null
+                          ? 'EGP ${widget.consultationFee!.toStringAsFixed(2)}'
+                          : 'N/A',
                       style: pw.TextStyle(
                         fontSize: 15,
                         fontWeight: pw.FontWeight.bold,
@@ -509,6 +590,18 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     const SizedBox(height: 8),
                     _InfoCard(
                       children: [
+                        if (widget.appointmentId != null) ...[
+                          _InfoRow(
+                            label: 'Appointment ID',
+                            value: '#${widget.appointmentId}',
+                            valueStyle: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.skyBlue,
+                            ),
+                          ),
+                          const Divider(height: 20),
+                        ],
                         _InfoRow(
                           label: 'Consultation Type',
                           value: consultationTypeValue,
@@ -524,6 +617,16 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                         _InfoRow(label: 'Time', value: selectedTimeValue),
                       ],
                     ),
+                    if (_isOnlineConsultation && widget.meetingLink != null) ...[
+                      const SizedBox(height: 16),
+                      const _SectionTitle('ONLINE MEETING'),
+                      const SizedBox(height: 8),
+                      _MeetingLinkCard(
+                        meetingLink: widget.meetingLink!,
+                        onJoin: _joinMeeting,
+                        onCopy: _copyMeetingLink,
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     const _SectionTitle('PAYMENT INFORMATION'),
                     const SizedBox(height: 8),
@@ -573,16 +676,18 @@ class _BookingConfirmationPageState extends State<BookingConfirmationPage> {
                     const SizedBox(height: 8),
                     _InfoCard(
                       children: [
-                        _InfoRow(label: 'Amount', value: r'$20.00'),
-                        const Divider(height: 20),
                         _InfoRow(
-                          label: 'Duration (30 mins)',
-                          value: r'1 x $20.00',
+                          label: 'Amount',
+                          value: widget.consultationFee != null
+                              ? 'EGP ${widget.consultationFee!.toStringAsFixed(2)}'
+                              : 'N/A',
                         ),
                         const Divider(height: 20),
                         _InfoRow(
                           label: 'Total',
-                          value: 'EGP 20.00',
+                          value: widget.consultationFee != null
+                              ? 'EGP ${widget.consultationFee!.toStringAsFixed(2)}'
+                              : 'N/A',
                           labelStyle: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -831,6 +936,127 @@ class _PaymentMethodMark extends StatelessWidget {
             color: AppColors.skyBlue,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MeetingLinkCard extends StatelessWidget {
+  final String meetingLink;
+  final VoidCallback onJoin;
+  final VoidCallback onCopy;
+
+  const _MeetingLinkCard({
+    required this.meetingLink,
+    required this.onJoin,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.skyBlue.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.videocam_rounded,
+                  size: 18,
+                  color: AppColors.skyBlue,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Your meeting link is ready',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.deepNavy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF3F8),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Text(
+              meetingLink,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.skyBlue,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onCopy,
+                  icon: const Icon(Icons.copy_rounded, size: 15),
+                  label: const Text('Copy Link'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.deepNavy,
+                    side: BorderSide(
+                      color: AppColors.deepNavy.withValues(alpha: 0.25),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onJoin,
+                  icon: const Icon(Icons.video_call_rounded, size: 17),
+                  label: const Text('Join Meeting'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.skyBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

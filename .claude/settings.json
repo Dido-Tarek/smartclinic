@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; Get-Command npm -ErrorAction SilentlyContinue; [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) -split \";\" | Where-Object { $_ -match \"node\" })",
+      "Read(//c/Program Files/**)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:APPDATA\\\\npm\\\\node.exe\" -ErrorAction SilentlyContinue; where.exe node 2>$null; [System.Environment]::GetEnvironmentVariable\\(\"PATH\",\"Machine\"\\) -split \";\" | Where-Object { $_ -match \"node|npm\" })",
+      "Bash(flutter pub *)"
+    ]
+  }
+}
