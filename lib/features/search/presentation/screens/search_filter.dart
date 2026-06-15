@@ -262,6 +262,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
                             arguments: {
                               'name': doctor.name,
                               'doctorId': doctor.id,
+                              'clinicId': doctor.clinicId,
                               'doctorImage': doctor.resolvedImageUrl,
                               'specialization': doctor.specialization,
                               'rating': _resolveDoctorRating(doctor),

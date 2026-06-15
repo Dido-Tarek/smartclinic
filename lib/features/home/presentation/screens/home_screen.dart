@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
@@ -10,6 +11,11 @@ import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/home_header.dart';
 import 'package:smartclinic/core/widgets/search_engine.dart';
+import 'package:smartclinic/core/network/api_result.dart';
+import 'package:smartclinic/features/appointments/data/model/appointment_response_model.dart';
+import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
+import 'package:smartclinic/features/appointments/presentation/manager/appointment_state.dart';
+import 'package:smartclinic/features/user_management/data/repo/user_management_repo.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
@@ -30,17 +36,19 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _autoSwipeTimer;
   late final AnimationController _shineController;
   late final Animation<double> _shadowAnim;
+  int _appointmentPageCount = 1;
+  final Map<String, String?> _doctorPhotoCache = {};
 
   @override
   void initState() {
     super.initState();
     _userSession = getIt<UserSession>();
     _appointmentsController = PageController(viewportFraction: 0.96);
+    _fetchCurrentUserPhoto();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       context.read<DoctorsCubit>().searchDoctors(pageSize: 12, pageNumber: 1);
+      context.read<AppointmentsCubit>().getMyAppointments();
     });
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
@@ -49,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
                     _appointmentsController.initialPage)
                 .round()
           : _appointmentsController.initialPage;
-      final nextPage = (currentPage + 1) % 2;
+      final nextPage = (currentPage + 1) % _appointmentPageCount;
       _appointmentsController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 500),
@@ -72,6 +80,58 @@ class _HomeScreenState extends State<HomeScreen>
     _appointmentsController.dispose();
     _shineController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchCurrentUserPhoto() async {
+    final userId = _userSession.userId?.trim();
+    if (userId == null || userId.isEmpty) return;
+
+    if (_userSession.userRole.isDoctor) {
+      final result = await getIt<UserManagementRepo>().getProfile(userId);
+      result.when(
+        success: (profile) async {
+          final image = profile.profileImage;
+          if (image != null && image.isNotEmpty) {
+            await _userSession.saveProfileImage(image);
+            if (mounted) setState(() {});
+          }
+        },
+        failure: (_) {},
+      );
+    } else {
+      final result = await getIt<UserManagementRepo>().getPatientProfile();
+      result.when(
+        success: (profile) async {
+          final image = profile.profilePicture;
+          if (image != null && image.isNotEmpty) {
+            await _userSession.saveProfileImage(image);
+            if (mounted) setState(() {});
+          }
+        },
+        failure: (_) {},
+      );
+    }
+  }
+
+  Future<void> _fetchDoctorPhoto(String doctorId) async {
+    if (_doctorPhotoCache.containsKey(doctorId)) return;
+    _doctorPhotoCache[doctorId] = null;
+    final result = await getIt<UserManagementRepo>().getProfile(doctorId);
+    result.when(
+      success: (profile) {
+        if (mounted) setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+      },
+      failure: (_) { if (mounted) setState(() {}); },
+    );
+  }
+
+  void _prefetchDoctorPhotos(List<AppointmentModel> appointments) {
+    for (final appt in appointments) {
+      final id = appt.doctorId;
+      if (id != null && id.isNotEmpty && appt.doctorImage == null) {
+        _fetchDoctorPhoto(id);
+      }
+    }
   }
 
   Future<void> _openNotifications() async {
@@ -116,57 +176,54 @@ class _HomeScreenState extends State<HomeScreen>
                 onNotificationTap: _openNotifications,
               ),
               SizedBox(height: 16),
-              const SearchEngineBar(),
-              SizedBox(height: 16),
               _buildSectionTitle(
                 'My Appointments',
                 onSeeAllTap: () =>
                     Navigator.pushNamed(context, AppRoutes.appointments),
               ),
               SizedBox(height: 10),
-              SizedBox(
-                height: 130,
-                child: PageView.builder(
-                  controller: _appointmentsController,
-                  itemCount: 2,
-                  padEnds: true,
-                  itemBuilder: (context, index) {
-                    final data = index == 0
-                        ? {
-                            'doctorName': 'Dr. Mahmoud Abo Leila',
-                            'specialization': 'Dentist',
-                            'appointmentDate': 'June 13 2056',
-                            'appointmentTime': '3:30 PM',
-                            'imagePath':
-                                AppImages.imagesDoctorDRMahmoudAboLeila,
-                          }
-                        : {
-                            'doctorName': 'Dr. Sara Hassan',
-                            'specialization': 'Cardiologist',
-                            'appointmentDate': 'June 14 2056',
-                            'appointmentTime': '5:00 PM',
-                            'imagePath': AppImages.imagesDoctorDRSaraHassan,
-                          };
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: AppointmentCardWidget(
-                        doctorName: data['doctorName']!,
-                        specialization: data['specialization']!,
-                        appointmentDate: data['appointmentDate']!,
-                        appointmentTime: data['appointmentTime']!,
-                        imagePath: data['imagePath']!,
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.doctorProfileView,
-                            arguments: {'name': data['doctorName']},
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+              BlocConsumer<AppointmentsCubit, AppointmentsState>(
+                listener: (context, apptState) {
+                  if (apptState is GetMyAppointmentsSuccess) {
+                    _prefetchDoctorPhotos(apptState.response.appointments);
+                  }
+                },
+                builder: (context, apptState) {
+                  final upcoming = _resolveUpcomingAppointments(apptState);
+                  final itemCount = upcoming.isEmpty ? 1 : upcoming.length;
+                  _appointmentPageCount = itemCount;
+                  return SizedBox(
+                    height: 130,
+                    child: PageView.builder(
+                      controller: _appointmentsController,
+                      itemCount: itemCount,
+                      padEnds: true,
+                      itemBuilder: (context, index) {
+                        if (upcoming.isEmpty) {
+                          return _buildBookingAdCard(context);
+                        }
+                        final appt = upcoming[index];
+                        final resolvedPhoto = _doctorPhotoCache[appt.doctorId] ?? appt.doctorImage;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: AppointmentCardWidget(
+                            doctorName: appt.doctorName ?? '',
+                            specialization: appt.type ?? appt.clinicName ?? '',
+                            appointmentDate: appt.displayDate,
+                            appointmentTime: appt.displayTime,
+                            imagePath: AppImages.imagesIconsDoctor,
+                            imageUrl: resolvedPhoto,
+                            showArrow: true,
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.appointments,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
               SizedBox(height: 20),
               _buildSectionTitle('Emergency', showSeeAll: false),
@@ -227,7 +284,10 @@ class _HomeScreenState extends State<HomeScreen>
                               ],
                             ),
                             child: ElevatedButton(
-                              onPressed: () {},
+                              onPressed: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.emergencySearch,
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.error,
                                 shape: RoundedRectangleBorder(
@@ -375,6 +435,103 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return doctor.rating ?? 0;
+  }
+
+  List<AppointmentModel> _resolveUpcomingAppointments(AppointmentsState state) {
+    if (state is! GetMyAppointmentsSuccess) return const [];
+    return state.response.appointments.where((a) {
+      final s = (a.status ?? '').trim().toLowerCase();
+      return s.isEmpty ||
+          s.contains('upcoming') ||
+          s.contains('scheduled') ||
+          s.contains('pending') ||
+          s.contains('confirmed') ||
+          s.contains('booked') ||
+          s.contains('accepted');
+    }).toList();
+  }
+
+  Widget _buildBookingAdCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.search),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.deepNavy, AppColors.skyBlue],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.deepNavy.withValues(alpha: 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text(
+                        'No upcoming appointments',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Find & Book\nYour Doctor',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Search top-rated specialists near you',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Search',
+                    style: TextStyle(
+                      color: AppColors.deepNavy,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _fallbackDoctorImage(DoctorModel doctor) {

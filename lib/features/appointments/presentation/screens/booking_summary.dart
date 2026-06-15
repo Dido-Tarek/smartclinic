@@ -28,6 +28,7 @@ class BookingSummaryPage extends StatefulWidget {
   final int? familyMemberId;
   final String? notes;
   final String? paymentMethod;
+  final double? consultationFee;
 
   const BookingSummaryPage({
     super.key,
@@ -48,6 +49,7 @@ class BookingSummaryPage extends StatefulWidget {
     this.familyMemberId,
     this.notes,
     this.paymentMethod,
+    this.consultationFee,
   });
 
   @override
@@ -57,7 +59,8 @@ class BookingSummaryPage extends StatefulWidget {
 class _BookingSummaryPageState extends State<BookingSummaryPage> {
   late String _selectedPaymentMethod;
   bool _isSubmitting = false;
-  final double _appointmentAmount = 20.0;
+
+  double get _appointmentAmount => widget.consultationFee ?? 0.0;
   final int _durationMinutes = 30;
 
   DateTime? _parseBookingDate(String value) {
@@ -156,10 +159,11 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
 
   String _getConsultationTypeLabel(String? type) {
     const labels = {
-      'clinic': 'Clinic Consultation',
-      'online': 'Online Consultation',
-      'homeVisit': 'Home Visit',
-      'emergency': 'Emergency Case',
+      'InClinic': 'Clinic Consultation',
+      'VideoCall': 'Online Consultation',
+      'HomeVisit': 'Home Visit',
+      'FollowUp': 'Follow Up',
+      'Emergency': 'Emergency Case',
     };
     return labels[type] ?? type ?? 'N/A';
   }
@@ -169,22 +173,22 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
   }
 
   bool _isOnlineConsultation(String? type) {
-    final normalized = (type ?? '').toLowerCase();
-    return normalized.contains('online');
+    return type == 'VideoCall';
   }
 
   Future<void> _onConfirmAppointment() async {
     final patientId = getIt<UserSession>().userId?.trim();
-    final doctorId = (widget.doctorId?.trim().isNotEmpty ?? false)
-        ? widget.doctorId!.trim()
-        : '5fe5c967-3797-4dac-a1a8-3faba1265e32';
-    final clinicId = widget.clinicId ?? 2;
+    final doctorId = widget.doctorId?.trim();
+    final clinicId = widget.clinicId;
     final selectedDate = widget.selectedDate;
     final selectedTime = widget.selectedTime;
-    final consultationType = widget.consultationType ?? 'clinic';
+    final consultationType = widget.consultationType ?? 'InClinic';
 
     if (patientId == null ||
         patientId.isEmpty ||
+        doctorId == null ||
+        doctorId.isEmpty ||
+        clinicId == null ||
         selectedDate == null ||
         selectedTime == null) {
       CherryToast.error(
@@ -199,6 +203,8 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
     final normalizedDate = _normalizeDateForApi(selectedDate);
     final normalizedTime = _normalizeTimeForApi(selectedTime);
 
+    final patientPhone = getIt<UserSession>().phone;
+
     final request = BookAppointmentRequestModel(
       patientId: patientId,
       doctorId: doctorId,
@@ -209,8 +215,16 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
       familyMemberId: widget.familyMemberId,
       notes: widget.notes,
       patientName: widget.patientName,
+      patientPhone: patientPhone,
       payFromWallet: _selectedPaymentMethod == 'wallet',
     );
+
+    // ignore: avoid_print
+    print('=== BOOK APPOINTMENT REQUEST ===');
+    // ignore: avoid_print
+    print(request.toJson());
+    // ignore: avoid_print
+    print('================================');
 
     final result = await getIt<AppointmentsRepo>().bookAppointment(request);
 
@@ -225,7 +239,7 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
           description: Text(error),
         ).show(context);
       },
-      (_) {
+      (appointment) {
         CherryToast.success(
           title: const Text('Appointment booked'),
           description: const Text(
@@ -233,20 +247,11 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
           ),
         ).show(context);
 
-        if (_selectedPaymentMethod == 'wallet') {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.appointments,
-            (route) => false,
-            arguments: {'initialIndex': 0},
-          );
-          return;
-        }
-
         Navigator.pushNamed(
           context,
           AppRoutes.bookingConfirmation,
           arguments: {
+            'appointmentId': appointment.id,
             'doctorName': widget.doctorName,
             'specialization': widget.specialization,
             'clinicName': widget.clinicName,
@@ -260,6 +265,7 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
             'selectedTime': selectedTime,
             'patientName': widget.patientName,
             'paymentMethod': _selectedPaymentMethod,
+            'consultationFee': widget.consultationFee,
           },
         );
       },

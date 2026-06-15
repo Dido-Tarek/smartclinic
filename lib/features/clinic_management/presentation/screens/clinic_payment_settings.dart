@@ -17,9 +17,48 @@ class ClinicPaymentSettingsView extends StatefulWidget {
       _ClinicPaymentSettingsViewState();
 }
 
+class _ClinicPayLogo extends StatelessWidget {
+  const _ClinicPayLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFF243548),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: CustomPaint(painter: _ClinicPayLogoPainter()),
+    );
+  }
+}
+
+class _ClinicPayLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final arcPaint = Paint()
+      ..color = const Color(0xFF6B8EAA)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+
+    final arcRect = Rect.fromCircle(center: center, radius: size.width * 0.3);
+    canvas.drawArc(arcRect, -0.55, 5.55, false, arcPaint);
+
+    final dotPaint = Paint()
+      ..color = const Color(0xFF6B8EAA)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 4.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _ClinicPaymentSettingsViewState extends State<ClinicPaymentSettingsView> {
-  final TextEditingController _amountController = TextEditingController();
-  String? _selectedPaymentMethod;
   bool _argsLoaded = false;
   int? _clinicId;
 
@@ -90,118 +129,91 @@ class _ClinicPaymentSettingsViewState extends State<ClinicPaymentSettingsView> {
               CustomAppBar(
                 title: localizations.translate('clinic_payment_settings'),
                 showBackButton: true,
-                showNotification: true,
               ),
 
-              // Fixed Input Section
+              // Clinic Wallet Balance Card
               Padding(
                 padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    // Amount to Charge input
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            localizations.translate('amount_to_charge'),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: TextField(
-                            controller: _amountController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: '500 EGP',
-                              hintStyle: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                              border: const OutlineInputBorder(),
-                              isDense: true,
-                              contentPadding: const EdgeInsets.all(8.0),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Payment Method Select
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            "Payment Method",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                              contentPadding: EdgeInsets.all(8.0),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                hint: const Text(
-                                  'Visa',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                value: _selectedPaymentMethod,
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedPaymentMethod = newValue;
-                                  });
-                                },
-                                items:
-                                    [
-                                      'Visa',
-                                      'MasterCard',
-                                      'Cash',
-                                      'Insurance',
-                                    ].map((String method) {
-                                      return DropdownMenuItem<String>(
-                                        value: method,
-                                        child: Text(method),
-                                      );
-                                    }).toList(),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Charge Button — top up (dev/testing)
-                    SizedBox(
+                child: BlocBuilder<WalletCubit, WalletState>(
+                  builder: (context, state) {
+                    String balanceText = '0.00';
+                    String currency = '';
+                    final bool isLoading = state is GetClinicBalanceLoading;
+                    if (state is GetClinicBalanceSuccess) {
+                      balanceText = '${state.response.balance ?? 0}';
+                      currency = state.response.currency ?? '';
+                    }
+                    return Container(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final val = num.tryParse(_amountController.text) ?? 0;
-                          if (val > 0) {
-                            context.read<WalletCubit>().topUp(val);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentBlue,
-                          foregroundColor: AppColors.deepNavy,
-                        ),
-                        child: Text(localizations.translate('charge')),
+                      padding: const EdgeInsets.all(24.0),
+                      decoration: BoxDecoration(
+                        color: AppColors.deepNavy,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ),
-                  ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    localizations.translate('clinic_balance'),
+                                    style: const TextStyle(
+                                      color: Color(0xFF8BA5C2),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  isLoading
+                                      ? const SizedBox(
+                                          height: 32,
+                                          width: 32,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          '\$$balanceText $currency',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ],
+                              ),
+                              const _ClinicPayLogo(),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.verified_user_rounded,
+                                color: Color(0xFF8BA5C2),
+                                size: 16,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Funds secured and verified by ClinicPay System',
+                                style: TextStyle(
+                                  color: Color(0xFF8BA5C2),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ),
-
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Divider(),
               ),
 
               // Info cards and report + history placeholder
@@ -211,102 +223,52 @@ class _ClinicPaymentSettingsViewState extends State<ClinicPaymentSettingsView> {
                   child: Column(
                     children: [
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Card(
-                              color: AppColors.cardBg,
-                              child: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      localizations.translate('clinic_balance'),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    BlocBuilder<WalletCubit, WalletState>(
-                                      builder: (context, state) {
-                                        if (state is GetClinicBalanceSuccess) {
-                                          return Text(
-                                            '${state.response.balance ?? 0} ${state.response.currency ?? ''}',
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          );
-                                        }
-                                        if (state is GetClinicBalanceLoading) {
-                                          return const SizedBox(
-                                            height: 18,
-                                            width: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          );
-                                        }
-                                        return Text('-');
-                                      },
-                                    ),
-                                  ],
+                      Card(
+                        color: AppColors.cardBg,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                localizations.translate('invoices_total'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Card(
-                              color: AppColors.cardBg,
-                              child: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      localizations.translate('invoices_total'),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
+                              const SizedBox(height: 6),
+                              BlocBuilder<InvoicesCubit, InvoicesState>(
+                                builder: (context, state) {
+                                  if (state is GetClinicReportSuccess) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${localizations.translate('total_revenue')}: ${state.response.totalRevenue ?? 0}',
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${localizations.translate('payment_history')}: ${state.response.totalInvoices ?? 0}',
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  if (state is GetClinicReportLoading) {
+                                    return const SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    BlocBuilder<InvoicesCubit, InvoicesState>(
-                                      builder: (context, state) {
-                                        if (state is GetClinicReportSuccess) {
-                                          return Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${localizations.translate('total_revenue')}: ${state.response.totalRevenue ?? 0}',
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                '${localizations.translate('payment_history')}: ${state.response.totalInvoices ?? 0}',
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                        if (state is GetClinicReportLoading) {
-                                          return const SizedBox(
-                                            height: 18,
-                                            width: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          );
-                                        }
-                                        return Text('-');
-                                      },
-                                    ),
-                                  ],
-                                ),
+                                    );
+                                  }
+                                  return const Text('-');
+                                },
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 12),
 

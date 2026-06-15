@@ -13,6 +13,7 @@ import 'package:smartclinic/injection_dependency.dart';
 
 class DoctorProfileView extends StatefulWidget {
   final String? doctorId;
+  final int? clinicId;
   final String? doctorName;
   final String? doctorImage;
   final String? specialization;
@@ -33,6 +34,7 @@ class DoctorProfileView extends StatefulWidget {
   const DoctorProfileView({
     super.key,
     this.doctorId,
+    this.clinicId,
     this.doctorName,
     this.doctorImage,
     this.specialization,
@@ -49,10 +51,11 @@ class DoctorProfileView extends StatefulWidget {
     this.clinicWorkingHours,
     this.yearsOfExperience,
     this.enabledConsultationTypes = const {
-      'clinic',
-      'online',
-      'homeVisit',
-      'emergency',
+      'InClinic',
+      'VideoCall',
+      'HomeVisit',
+      'FollowUp',
+      'Emergency',
     },
   });
 
@@ -190,7 +193,14 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
                   _SectionTitle('Consultation Types'),
                   const SizedBox(height: 12),
                   _ConsultationTypeChips(
-                    types: widget.enabledConsultationTypes,
+                    types: _resolveConsultationTypes(
+                      profile: _profile,
+                      fallback: widget.enabledConsultationTypes,
+                      clinicFee: clinicFee,
+                      onlineFee: onlineFee,
+                      homeVisitFee: homeVisitFee,
+                      emergencyFee: emergencyFee,
+                    ),
                   ),
 
                   const SizedBox(height: 24),
@@ -224,7 +234,7 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
                     AppRoutes.bookingDetails,
                     arguments: {
                       'doctorId': widget.doctorId ?? widget.doctorName,
-                      'clinicId': 0,
+                      'clinicId': _profile?.clinicId ?? widget.clinicId,
                       'name': name,
                       'image': imagePath,
                       'specialization': doctorSpecialization,
@@ -262,6 +272,25 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
       },
     );
   }
+}
+
+Set<String> _resolveConsultationTypes({
+  required DoctorProfileModel? profile,
+  required Set<String> fallback,
+  double? clinicFee,
+  double? onlineFee,
+  double? homeVisitFee,
+  double? emergencyFee,
+}) {
+  if (profile == null) return fallback;
+  final types = <String>{};
+  if ((clinicFee ?? 0) > 0) types.add('InClinic');
+  if ((onlineFee ?? 0) > 0) types.add('VideoCall');
+  if ((homeVisitFee ?? 0) > 0) types.add('HomeVisit');
+  if ((emergencyFee ?? 0) > 0) types.add('Emergency');
+  // If the profile loaded but all fees are 0 we cannot determine which types
+  // are enabled — show the fallback (passed in from the navigation arguments).
+  return types.isEmpty ? fallback : types;
 }
 
 String _displayDoctorName(String value) {
@@ -548,7 +577,7 @@ class _ClinicInfoRow extends StatelessWidget {
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w400,
             ),
-            maxLines: 2,
+            maxLines: 6,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -602,10 +631,11 @@ class _ConsultationTypeChips extends StatelessWidget {
 }
 
 const Map<String, String> _consultationLabels = {
-  'clinic': 'Clinic',
-  'online': 'Online',
-  'homeVisit': 'Home Visit',
-  'emergency': 'Emergency',
+  'InClinic': 'Clinic',
+  'VideoCall': 'Online',
+  'HomeVisit': 'Home Visit',
+  'FollowUp': 'Follow Up',
+  'Emergency': 'Emergency',
 };
 
 /// Horizontal review card

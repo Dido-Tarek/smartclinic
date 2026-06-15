@@ -50,7 +50,8 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
         : 'Dr. ${widget.doctorName.trim()}';
     final displayRating = widget.rating;
     final fallbackAsset = AppImages.imagesDoctorDRMaiElKady;
-    final imageSource = (widget.imageUrl != null && widget.imageUrl!.trim().isNotEmpty)
+    final imageSource =
+        (widget.imageUrl != null && widget.imageUrl!.trim().isNotEmpty)
         ? widget.imageUrl!.trim()
         : widget.imagePath.trim();
     final isNetworkImage =
@@ -99,12 +100,12 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                               Image.asset(fallbackAsset, fit: BoxFit.cover),
                         )
                       : isLocalFile
-                          ? Image.file(File(imageSource), fit: BoxFit.cover)
-                          : Image.asset(
-                              imageSource.isNotEmpty ? imageSource : fallbackAsset,
-                              fit: BoxFit.cover,
-                              colorBlendMode: BlendMode.srcOver,
-                            ),
+                      ? Image.file(File(imageSource), fit: BoxFit.cover)
+                      : Image.asset(
+                          imageSource.isNotEmpty ? imageSource : fallbackAsset,
+                          fit: BoxFit.cover,
+                          colorBlendMode: BlendMode.srcOver,
+                        ),
                 ),
               ),
             ),

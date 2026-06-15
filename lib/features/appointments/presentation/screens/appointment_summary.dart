@@ -52,15 +52,15 @@ class _AppointmentSummaryPageState extends State<AppointmentSummaryPage> {
   int get _yearsOfExperience => widget.yearsOfExperience ?? 5;
   int get _patientsCount => widget.patientsCount ?? 500;
   int get _reviewsCount => widget.reviewsCount ?? 425;
-  bool get _isOnlineConsultation =>
-      (widget.consultationType ?? '').toLowerCase().contains('online');
+  bool get _isOnlineConsultation => widget.consultationType == 'VideoCall';
 
   String get _appointmentTypeLabel {
     const labels = {
-      'clinic': 'Clinic Consultation',
-      'online': 'Online Consultation',
-      'homeVisit': 'Home Visit',
-      'emergency': 'Emergency Case',
+      'InClinic': 'Clinic Consultation',
+      'VideoCall': 'Online Consultation',
+      'HomeVisit': 'Home Visit',
+      'FollowUp': 'Follow Up',
+      'Emergency': 'Emergency Case',
     };
 
     return labels[widget.consultationType] ?? widget.consultationType ?? 'N/A';

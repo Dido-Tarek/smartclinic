@@ -44,4 +44,6 @@ class AppRoutes {
   static const String nouga = '/chatbot';
   static const String inbox = '/inbox';
   static const String userManagement = '/userManagement';
+  static const String emergencySearch = '/emergencySearch';
+  static const String employment = '/employment';
 }

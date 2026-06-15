@@ -106,23 +106,18 @@ class PushNotificationService {
       return;
     }
     await getIt<UserSession>().saveDeviceToken(normalizedToken);
-    // If the user is logged in, register this device token on the backend
     final userSession = getIt<UserSession>();
-    final userId = userSession.userId;
-    if (userId != null && userId.trim().isNotEmpty) {
+    if (userSession.isLoggedIn) {
       try {
         final dio = getIt<Dio>();
         await dio.post(
-          '/api/Devices/register',
-          data: {
-            'userId': userId.trim(),
-            'deviceToken': normalizedToken,
-            'platform': 'android',
-          },
+          '/api/DeviceToken/save-token',
+          data: normalizedToken,
+          options: Options(contentType: 'application/json'),
         );
-        if (kDebugMode) debugPrint('Device registered on backend for user $userId');
+        if (kDebugMode) debugPrint('Device token saved on backend');
       } catch (e) {
-        if (kDebugMode) debugPrint('Failed to register device token on backend: $e');
+        if (kDebugMode) debugPrint('Failed to save device token on backend: $e');
       }
     }
     if (kDebugMode) {

@@ -46,11 +46,11 @@ class WalletBalanceResponseModel {
 
 // ── GET /api/Wallet/history — single transaction ──────────────────────────────
 class WalletTransactionModel {
-  final String? id;
-  final String? type; // e.g. 'top-up', 'payment', 'refund'
-  final num? amount;
+  final int? id;
+  final String? type; // e.g. 'Deposit', 'Withdraw'
+  final num? amount; // signed: positive = credit, negative = debit
   final String? description;
-  final String? createdAt;
+  final String? date;
   final String? status;
 
   const WalletTransactionModel({
@@ -58,17 +58,17 @@ class WalletTransactionModel {
     this.type,
     this.amount,
     this.description,
-    this.createdAt,
+    this.date,
     this.status,
   });
 
   factory WalletTransactionModel.fromJson(Map<String, dynamic> json) =>
       WalletTransactionModel(
-        id: json['id'] as String?,
+        id: json['id'] as int?,
         type: json['type'] as String?,
         amount: json['amount'] as num?,
         description: json['description'] as String?,
-        createdAt: json['createdAt'] as String?,
+        date: json['date'] as String? ?? json['createdAt'] as String?,
         status: json['status'] as String?,
       );
 }
@@ -82,7 +82,8 @@ class WalletHistoryResponseModel {
   factory WalletHistoryResponseModel.fromJson(Map<String, dynamic> json) =>
       WalletHistoryResponseModel(
         transactions:
-            (json['transactions'] as List<dynamic>? ??
+            (json['history'] as List<dynamic>? ??
+                    json['transactions'] as List<dynamic>? ??
                     json['data'] as List<dynamic>? ??
                     [])
                 .map(

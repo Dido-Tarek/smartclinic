@@ -20,9 +20,8 @@ class ClinicManagementPage extends StatefulWidget {
 }
 
 class _ClinicManagementPageState extends State<ClinicManagementPage> {
-  static const int _hardcodedNewEmploymentCount = 3;
-
   final List<ClinicModel> _clinics = <ClinicModel>[];
+  int _receivedEmploymentCount = 0;
 
   ClinicModel? _selectedClinic;
   late final ClinicManagementCubit _cubit;
@@ -31,8 +30,8 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
   void initState() {
     super.initState();
     _cubit = getIt<ClinicManagementCubit>();
-    // fetch clinics once
     _cubit.getMyClinics();
+    _cubit.getMyEmploymentRequests();
   }
 
   @override
@@ -56,6 +55,12 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
               if (_selectedClinic == null && _clinics.isNotEmpty) {
                 _selectedClinic = _clinics.first;
               }
+            });
+          } else if (state is GetMyEmploymentRequestsSuccess) {
+            setState(() {
+              _receivedEmploymentCount = state.response.requests
+                  .where((r) => r.roleInRequest?.toLowerCase() == 'receiver')
+                  .length;
             });
           } else if (state is RemoveClinicSuccess) {
             // Refresh handled in cubit; show a brief message
@@ -406,8 +411,14 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
               subtitle: 'Recruit medical specialists and staff',
               large: true,
               showBadge: true,
-              badgeCount: _hardcodedNewEmploymentCount,
-              onTap: () {},
+              badgeCount: _receivedEmploymentCount,
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.employment,
+                arguments: <String, dynamic>{
+                  'clinicId': _selectedClinic?.id,
+                },
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -834,7 +845,7 @@ class _DeletePulseOverlayState extends State<_DeletePulseOverlay>
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.red.withOpacity(0.9 * opacity),
+                      color: Colors.red.withValues(alpha: 0.9 * opacity),
                     ),
                   ),
                 ),

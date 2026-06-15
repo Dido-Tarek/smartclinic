@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/helper/user_roles.dart';
+import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_text_field.dart';
 import 'package:smartclinic/features/family_members/data/models/family_member_response_model.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_cubit.dart';
 import 'package:smartclinic/features/family_members/presentation/manager/family_member_state.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_cubit.dart';
+import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
+import 'package:smartclinic/injection_dependency.dart';
 import 'package:cherry_toast/cherry_toast.dart';
 
 class BookingInformationPage extends StatefulWidget {
@@ -16,6 +21,14 @@ class BookingInformationPage extends StatefulWidget {
   final String? doctorId;
   final int? clinicId;
   final String? doctorName;
+  final String? doctorImage;
+  final String? specialization;
+  final String? clinicName;
+  final double? rating;
+  final int? reviewsCount;
+  final int? yearsOfExperience;
+  final int? patientsCount;
+  final double? consultationFee;
   final String? consultationType;
   final String? selectedDate;
   final String? selectedTime;
@@ -28,6 +41,14 @@ class BookingInformationPage extends StatefulWidget {
     this.doctorId,
     this.clinicId,
     this.doctorName,
+    this.doctorImage,
+    this.specialization,
+    this.clinicName,
+    this.rating,
+    this.reviewsCount,
+    this.yearsOfExperience,
+    this.patientsCount,
+    this.consultationFee,
     this.consultationType,
     this.selectedDate,
     this.selectedTime,
@@ -39,6 +60,7 @@ class BookingInformationPage extends StatefulWidget {
 
 class _BookingInformationPageState extends State<BookingInformationPage> {
   late TextEditingController _nameController;
+  late TextEditingController _phoneController;
   late TextEditingController _genderController;
   late TextEditingController _ageController;
   late TextEditingController _relationshipController;
@@ -47,32 +69,50 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
   String? _selectedRelationship;
   List<FamilyMemberModel> _familyMembers = [];
 
+  // Cached "me" values — updated when the API response arrives
+  String _myName = '';
+  String _myPhone = '';
+  String _myGender = '';
+  String _myAge = '';
+
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.patientName ?? '');
-    _genderController = TextEditingController(text: widget.patientGender ?? '');
-    _ageController = TextEditingController(text: widget.patientAge ?? '');
-    _relationshipController = TextEditingController();
+
+    final userSession = getIt<UserSession>();
+    _myName = widget.patientName ?? userSession.fullName ?? '';
+    _myGender = widget.patientGender ?? userSession.gender ?? '';
+    _myPhone = userSession.phone ?? '';
+    _myAge = widget.patientAge ?? _calculateAge(userSession.birthDate ?? '');
+
+    _nameController = TextEditingController(text: _myName);
+    _phoneController = TextEditingController(text: _myPhone);
+    _genderController = TextEditingController(text: _myGender);
+    _ageController = TextEditingController(text: _myAge);
+    _relationshipController = TextEditingController(text: 'Me');
     _problemController = TextEditingController();
-
     _selectedRelationship = 'me';
-    _relationshipController.text = 'Me';
 
-    // Fetch family members
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<FamilyCubit>().getMyFamily();
+      if (!mounted) return;
+      context.read<FamilyCubit>().getMyFamily();
+
+      final role = userSession.userRole;
+      if (role.isPatient) {
+        context.read<UserManagementCubit>().getPatientProfile();
+      } else if (role.isDoctor) {
+        final userId = userSession.userId;
+        if (userId != null) {
+          context.read<UserManagementCubit>().getDoctorProfile(userId);
+        }
       }
     });
-    _selectedRelationship = 'me';
-    _relationshipController.text = 'Me';
-    _problemController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     _genderController.dispose();
     _ageController.dispose();
     _relationshipController.dispose();
@@ -86,19 +126,19 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
     setState(() {
       _selectedRelationship = value;
       if (value == 'me') {
-        _nameController.text = widget.patientName ?? '';
-        _genderController.text = widget.patientGender ?? '';
-        _ageController.text = widget.patientAge ?? '';
+        _nameController.text = _myName;
+        _phoneController.text = _myPhone;
+        _genderController.text = _myGender;
+        _ageController.text = _myAge;
         _relationshipController.text = 'Me';
       } else {
-        // Find the family member
         final familyMember = _familyMembers.firstWhere(
           (member) => member.id.toString() == value,
           orElse: () => _familyMembers.first,
         );
         _nameController.text = familyMember.name ?? '';
+        _phoneController.text = '';
         _genderController.text = familyMember.gender ?? '';
-        // Calculate age from birth date
         _ageController.text = _calculateAge(familyMember.birthDate ?? '');
         _relationshipController.text = familyMember.relation ?? '';
       }
@@ -129,7 +169,6 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
       return;
     }
 
-    // Navigate to booking summary with all booking details
     Navigator.pushNamed(
       context,
       AppRoutes.bookingSummary,
@@ -137,6 +176,14 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
         'doctorId': widget.doctorId,
         'clinicId': widget.clinicId,
         'doctorName': widget.doctorName,
+        'doctorImage': widget.doctorImage,
+        'specialization': widget.specialization,
+        'clinicName': widget.clinicName,
+        'rating': widget.rating,
+        'reviewsCount': widget.reviewsCount,
+        'yearsOfExperience': widget.yearsOfExperience,
+        'patientsCount': widget.patientsCount,
+        'consultationFee': widget.consultationFee,
         'consultationType': widget.consultationType,
         'selectedDate': widget.selectedDate,
         'selectedTime': widget.selectedTime,
@@ -159,88 +206,130 @@ class _BookingInformationPageState extends State<BookingInformationPage> {
         showNotification: false,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-          child: BlocBuilder<FamilyCubit, FamilyState>(
-            builder: (context, state) {
-              if (state is GetMyFamilySuccess) {
-                _familyMembers = state.response.members;
-              }
+        child: BlocListener<UserManagementCubit, UserManagementState>(
+          listener: (context, state) {
+            if (state is PatientProfileLoaded) {
+              setState(() {
+                _myName = state.profile.fullName;
+                _myPhone = state.profile.phoneNumber ?? '';
+                _myGender = state.profile.gender ?? _myGender;
+                _myAge = _calculateAge(state.profile.birthDate ?? '') != ''
+                    ? _calculateAge(state.profile.birthDate ?? '')
+                    : _myAge;
+                if (_selectedRelationship == 'me') {
+                  _nameController.text = _myName;
+                  _phoneController.text = _myPhone;
+                  _genderController.text = _myGender;
+                  _ageController.text = _myAge;
+                }
+              });
+            } else if (state is ProfileLoaded) {
+              setState(() {
+                _myName = state.profile.fullName;
+                _myPhone = state.profile.phoneNumber ?? '';
+                if (_selectedRelationship == 'me') {
+                  _nameController.text = _myName;
+                  _phoneController.text = _myPhone;
+                }
+              });
+            }
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+            child: BlocBuilder<FamilyCubit, FamilyState>(
+              builder: (context, state) {
+                if (state is GetMyFamilySuccess) {
+                  _familyMembers = state.response.members;
+                }
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Full Name
-                  _buildLabel('Full Name'),
-                  const SizedBox(height: 8),
-                  AppTextFormField(
-                    hintText: 'Full Name',
-                    controller: _nameController,
-                    type: TextFormFieldType.text,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Gender
-                  _buildLabel('Gender'),
-                  const SizedBox(height: 8),
-                  AppTextFormField(
-                    hintText: 'Gender',
-                    controller: _genderController,
-                    type: TextFormFieldType.text,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Age
-                  _buildLabel('Your Age'),
-                  const SizedBox(height: 8),
-                  AppTextFormField(
-                    hintText: 'Your Age',
-                    controller: _ageController,
-                    type: TextFormFieldType.text,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Relationship
-                  _buildLabel('Relationship'),
-                  const SizedBox(height: 8),
-                  _buildRelationshipDropdown(),
-                  const SizedBox(height: 20),
-
-                  // Write Your Problem
-                  _buildLabel('Write Your Problem'),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _problemController,
-                    maxLines: 5,
-                    minLines: 4,
-                    decoration: InputDecoration(
-                      hintText: 'Describe your problem here...',
-                      hintStyle: TextStyle(
-                        color: AppColors.textSecondary.withValues(alpha: 0.5),
-                      ),
-                      filled: true,
-                      fillColor: AppColors.cardBg,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 14,
-                        horizontal: 16,
-                      ),
-                      border: _buildBorder(),
-                      enabledBorder: _buildBorder(color: AppColors.textPrimary),
-                      focusedBorder: _buildBorder(
-                        color: AppColors.skyBlue,
-                        width: 1.5,
-                      ),
-                      errorBorder: _buildBorder(color: Colors.redAccent),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Full Name
+                    _buildLabel('Full Name'),
+                    const SizedBox(height: 8),
+                    AppTextFormField(
+                      hintText: 'Full Name',
+                      controller: _nameController,
+                      type: TextFormFieldType.text,
                     ),
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
+                    const SizedBox(height: 20),
+
+                    // Phone Number
+                    _buildLabel('Phone Number'),
+                    const SizedBox(height: 8),
+                    AppTextFormField(
+                      hintText: 'Phone Number',
+                      controller: _phoneController,
+                      type: TextFormFieldType.text,
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              );
-            },
+                    const SizedBox(height: 20),
+
+                    // Gender
+                    _buildLabel('Gender'),
+                    const SizedBox(height: 8),
+                    AppTextFormField(
+                      hintText: 'Gender',
+                      controller: _genderController,
+                      type: TextFormFieldType.text,
+                      readOnly: true,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Age
+                    _buildLabel('Your Age'),
+                    const SizedBox(height: 8),
+                    AppTextFormField(
+                      hintText: 'Your Age',
+                      controller: _ageController,
+                      type: TextFormFieldType.text,
+                      readOnly: true,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Relationship
+                    _buildLabel('Relationship'),
+                    const SizedBox(height: 8),
+                    _buildRelationshipDropdown(),
+                    const SizedBox(height: 20),
+
+                    // Write Your Problem
+                    _buildLabel('Write Your Problem'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _problemController,
+                      maxLines: 5,
+                      minLines: 4,
+                      decoration: InputDecoration(
+                        hintText: 'Describe your problem here...',
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.cardBg,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 16,
+                        ),
+                        border: _buildBorder(),
+                        enabledBorder:
+                            _buildBorder(color: AppColors.textPrimary),
+                        focusedBorder: _buildBorder(
+                          color: AppColors.skyBlue,
+                          width: 1.5,
+                        ),
+                        errorBorder: _buildBorder(color: Colors.redAccent),
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

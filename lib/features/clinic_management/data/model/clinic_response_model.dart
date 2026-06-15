@@ -41,7 +41,7 @@ class ClinicModel {
   factory ClinicModel.fromJson(Map<String, dynamic> json) => ClinicModel(
     id: json['id'] as int?,
     name: json['name'] as String?,
-    address: json['address'] as String?,
+    address: (json['address'] ?? json['location']) as String?,
     phoneNumber: json['phoneNumber'] as String?,
     city: json['city'] as String?,
     area: json['area'] as String?,
@@ -66,6 +66,7 @@ class EmploymentRequestModel {
   final int? clinicId;
   final String? clinicName;
   final String? status;
+  final String? roleInRequest; // "Sender" | "Receiver"
   final String? feedback;
   final num? examinationFee;
   final num? homeVisitFee;
@@ -83,6 +84,7 @@ class EmploymentRequestModel {
     this.clinicId,
     this.clinicName,
     this.status,
+    this.roleInRequest,
     this.feedback,
     this.examinationFee,
     this.homeVisitFee,
@@ -94,26 +96,29 @@ class EmploymentRequestModel {
     this.createdAt,
   });
 
-  factory EmploymentRequestModel.fromJson(Map<String, dynamic> json) =>
-      EmploymentRequestModel(
-        id: json['id'] as int?,
-        doctorId: json['doctorId'] as String?,
-        doctorName: json['doctorName'] as String?,
-        clinicId: json['clinicId'] as int?,
-        clinicName: json['clinicName'] as String?,
-        status: json['status'] as String?,
-        feedback: json['feedback'] as String?,
-        examinationFee: json['examinationFee'] as num?,
-        homeVisitFee: json['homeVisitFee'] as num?,
-        onlineFee: json['onlineFee'] as num?,
-        followUpFee: json['followUpFee'] as num?,
-        emergencyFee: json['emergencyFee'] as num?,
-        sessionDuration: json['sessionDuration'] as int?,
-        schedules: (json['schedules'] as List<dynamic>? ?? [])
-            .map((e) => ScheduleSlotModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        createdAt: json['createdAt'] as String?,
-      );
+  factory EmploymentRequestModel.fromJson(Map<String, dynamic> json) {
+    final fees = json['fees'] as Map<String, dynamic>?;
+    return EmploymentRequestModel(
+      id: (json['requestId'] ?? json['id']) as int?,
+      doctorId: json['doctorId'] as String?,
+      doctorName: json['doctorName'] as String?,
+      clinicId: json['clinicId'] as int?,
+      clinicName: json['clinicName'] as String?,
+      status: json['status'] as String?,
+      roleInRequest: json['roleInRequest'] as String?,
+      feedback: (json['lastFeedback'] ?? json['feedback']) as String?,
+      examinationFee: (fees?['examinationFee'] ?? json['examinationFee']) as num?,
+      homeVisitFee: (fees?['homeVisitFee'] ?? json['homeVisitFee']) as num?,
+      onlineFee: (fees?['onlineFee'] ?? json['onlineFee']) as num?,
+      followUpFee: (fees?['followUpFee'] ?? json['followUpFee']) as num?,
+      emergencyFee: (fees?['emergencyFee'] ?? json['emergencyFee']) as num?,
+      sessionDuration: json['sessionDuration'] as int?,
+      schedules: (json['schedules'] as List<dynamic>? ?? [])
+          .map((e) => ScheduleSlotModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      createdAt: (json['date'] ?? json['createdAt']) as String?,
+    );
+  }
 }
 
 // ── Core schedule entity ──────────────────────────────────────────────────────
@@ -124,6 +129,9 @@ class ScheduleModel {
   final String? startTime;
   final String? endTime;
   final int? maxPatientsPerShift;
+  final double? price;
+  // Client-side only — not from API. Set after loading from getDoctorAvailability.
+  final String? doctorName;
 
   const ScheduleModel({
     this.id,
@@ -132,16 +140,63 @@ class ScheduleModel {
     this.startTime,
     this.endTime,
     this.maxPatientsPerShift,
+    this.price,
+    this.doctorName,
   });
 
-  factory ScheduleModel.fromJson(Map<String, dynamic> json) => ScheduleModel(
-    id: json['id'] as int?,
-    clinicId: json['clinicId'] as int?,
-    dayOfWeek: json['dayOfWeek'] as String?,
-    startTime: json['startTime'] as String?,
-    endTime: json['endTime'] as String?,
-    maxPatientsPerShift: json['maxPatientsPerShift'] as int?,
+  ScheduleModel copyWith({
+    int? id,
+    int? clinicId,
+    String? dayOfWeek,
+    String? startTime,
+    String? endTime,
+    int? maxPatientsPerShift,
+    double? price,
+    String? doctorName,
+  }) => ScheduleModel(
+    id: id ?? this.id,
+    clinicId: clinicId ?? this.clinicId,
+    dayOfWeek: dayOfWeek ?? this.dayOfWeek,
+    startTime: startTime ?? this.startTime,
+    endTime: endTime ?? this.endTime,
+    maxPatientsPerShift: maxPatientsPerShift ?? this.maxPatientsPerShift,
+    price: price ?? this.price,
+    doctorName: doctorName ?? this.doctorName,
   );
+
+  factory ScheduleModel.fromJson(Map<String, dynamic> json) {
+    // The getDoctorAvailability endpoint returns combined time as "HH:mm - HH:mm"
+    // under the key "time". Split it into startTime / endTime.
+    String? startTime;
+    String? endTime;
+    final timeStr = (json['time'] ?? json['Time']) as String?;
+    if (timeStr != null) {
+      if (timeStr.contains(' - ')) {
+        final parts = timeStr.split(' - ');
+        startTime = parts[0].trim();
+        endTime = parts.length > 1 ? parts[1].trim() : null;
+      } else {
+        startTime = timeStr.trim();
+      }
+    } else {
+      // Fallback for endpoints that return separate start/end fields
+      startTime = (json['startTime'] ?? json['StartTime'] ?? json['start_time']) as String?;
+      endTime = (json['endTime'] ?? json['EndTime'] ?? json['end_time']) as String?;
+    }
+
+    return ScheduleModel(
+      id: (json['scheduleId'] ?? json['ScheduleId'] ?? json['id'] ?? json['Id']) as int?,
+      clinicId: (json['clinicId'] ?? json['ClinicId']) as int?,
+      dayOfWeek: (json['day'] ?? json['Day'] ?? json['dayOfWeek'] ?? json['DayOfWeek']) as String?,
+      startTime: startTime,
+      endTime: endTime,
+      maxPatientsPerShift: (json['maxPatientsPerShift'] ?? json['MaxPatientsPerShift']
+          ?? json['maxPatients'] ?? json['MaxPatients']) as int?,
+      price: (json['price'] ?? json['Price'] ?? json['fee'] ?? json['Fee']) != null
+          ? (json['price'] ?? json['Price'] ?? json['fee'] ?? json['Fee'] as num).toDouble()
+          : null,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

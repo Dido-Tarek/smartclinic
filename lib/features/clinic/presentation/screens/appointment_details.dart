@@ -24,10 +24,11 @@ class AppointmentDetailsPage extends StatefulWidget {
   const AppointmentDetailsPage({
     super.key,
     this.enabledAppointmentTypes = const {
-      'clinic',
-      'online',
-      'homeVisit',
-      'emergency',
+      'InClinic',
+      'VideoCall',
+      'HomeVisit',
+      'FollowUp',
+      'Emergency',
     },
   });
 
@@ -87,10 +88,10 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     super.initState();
     final types = widget.enabledAppointmentTypes;
     // initialize selected flags from incoming enabled types
-    _clinicSelected = types.contains('clinic');
-    _onlineSelected = types.contains('online');
-    _homeVisitSelected = types.contains('homeVisit');
-    _emergencySelected = types.contains('emergency');
+    _clinicSelected = types.contains('InClinic');
+    _onlineSelected = types.contains('VideoCall');
+    _homeVisitSelected = types.contains('HomeVisit');
+    _emergencySelected = types.contains('Emergency');
   }
 
   @override
@@ -143,6 +144,15 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
         _onlineSelected = normalized['online'] == true;
         _homeVisitSelected = normalized['homeVisit'] == true;
         _emergencySelected = normalized['emergency'] == true;
+      }
+      if (normalized['InClinic'] is bool ||
+          normalized['VideoCall'] is bool ||
+          normalized['HomeVisit'] is bool ||
+          normalized['Emergency'] is bool) {
+        _clinicSelected = normalized['InClinic'] == true;
+        _onlineSelected = normalized['VideoCall'] == true;
+        _homeVisitSelected = normalized['HomeVisit'] == true;
+        _emergencySelected = normalized['Emergency'] == true;
       }
     }
 
@@ -359,7 +369,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                           _buildFeeCard(
                             title: localizations.translate('clinic_fee_title'),
                             controller: _clinicFeeController,
-                            enabled: _isEnabled('clinic'),
+                            enabled: _isEnabled('InClinic'),
                             helperText: localizations.translate(
                               'fee_help_text',
                             ),
@@ -368,7 +378,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                           _buildFeeCard(
                             title: localizations.translate('online_fee_title'),
                             controller: _onlineFeeController,
-                            enabled: _isEnabled('online'),
+                            enabled: _isEnabled('VideoCall'),
                             helperText: localizations.translate(
                               'fee_help_text',
                             ),
@@ -379,7 +389,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                               'home_visit_fee_title',
                             ),
                             controller: _homeVisitFeeController,
-                            enabled: _isEnabled('homeVisit'),
+                            enabled: _isEnabled('HomeVisit'),
                             helperText: localizations.translate(
                               'fee_help_text',
                             ),
@@ -391,9 +401,9 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                             ),
                             controller: _followUpFeeController,
                             enabled: _isEnabled([
-                              'clinic',
-                              'online',
-                              'homeVisit',
+                              'InClinic',
+                              'VideoCall',
+                              'HomeVisit',
                             ]),
                             helperText: localizations.translate(
                               'fee_help_text',
@@ -405,7 +415,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
                               'emergency_fee_title',
                             ),
                             controller: _emergencyFeeController,
-                            enabled: _isEnabled('emergency'),
+                            enabled: _isEnabled('Emergency'),
                             helperText: localizations.translate(
                               'fee_help_text',
                             ),
@@ -446,13 +456,13 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     // `enabledAppointmentTypes` and currently selected in the UI.
     return checkTypes.any((t) {
       final allowed = widget.enabledAppointmentTypes.contains(t);
-      final selected = (t == 'clinic')
+      final selected = (t == 'InClinic' || t == 'clinic')
           ? _clinicSelected
-          : (t == 'online')
+          : (t == 'VideoCall' || t == 'online')
           ? _onlineSelected
-          : (t == 'homeVisit')
+          : (t == 'HomeVisit' || t == 'homeVisit')
           ? _homeVisitSelected
-          : (t == 'emergency')
+          : (t == 'Emergency' || t == 'emergency')
           ? _emergencySelected
           : false;
       return allowed && selected;
@@ -614,13 +624,13 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
       legalDocument1: _legalDocument1,
       legalDocument2: _legalDocument2,
       legalDocument3: _legalDocument3,
-      clinicFee: _isEnabled('clinic') ? _parseFee(_clinicFeeController) : null,
-      onlineFee: _isEnabled('online') ? _parseFee(_onlineFeeController) : null,
-      homeVisitFee: _isEnabled('homeVisit')
+      clinicFee: _isEnabled('InClinic') ? _parseFee(_clinicFeeController) : null,
+      onlineFee: _isEnabled('VideoCall') ? _parseFee(_onlineFeeController) : null,
+      homeVisitFee: _isEnabled('HomeVisit')
           ? _parseFee(_homeVisitFeeController)
           : null,
       followUpFee: _parseFee(_followUpFeeController),
-      emergencyFee: _isEnabled('emergency')
+      emergencyFee: _isEnabled('Emergency')
           ? _parseFee(_emergencyFeeController)
           : null,
     );

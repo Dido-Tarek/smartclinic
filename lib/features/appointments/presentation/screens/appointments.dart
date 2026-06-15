@@ -15,6 +15,8 @@ import 'package:smartclinic/features/appointments/presentation/manager/appointme
 import 'package:smartclinic/features/clinic_management/data/model/clinic_response_model.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_state.dart';
+import 'package:smartclinic/core/network/api_result.dart';
+import 'package:smartclinic/features/user_management/data/repo/user_management_repo.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   ClinicManagementCubit? _clinicManagementCubit;
   final List<ClinicModel> _doctorClinics = <ClinicModel>[];
   ClinicModel? _selectedDoctorClinic;
+  final Map<String, String?> _doctorPhotoCache = {};
 
   @override
   void initState() {
@@ -61,6 +64,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchDoctorPhoto(String doctorId) async {
+    if (_doctorPhotoCache.containsKey(doctorId)) return;
+    _doctorPhotoCache[doctorId] = null; // mark in-flight
+    final result = await getIt<UserManagementRepo>().getProfile(doctorId);
+    result.when(
+      success: (profile) {
+        if (mounted) setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+      },
+      failure: (_) { if (mounted) setState(() {}); },
+    );
+  }
+
+  void _prefetchDoctorPhotos(List<AppointmentModel> appointments) {
+    for (final appt in appointments) {
+      final id = appt.doctorId;
+      if (id != null && id.isNotEmpty && appt.doctorImage == null) {
+        _fetchDoctorPhoto(id);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_userSession.userRole.isDoctor) {
@@ -69,9 +93,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
     return BlocConsumer<AppointmentsCubit, AppointmentsState>(
       listener: (context, state) {
+        if (state is GetMyAppointmentsSuccess) {
+          _prefetchDoctorPhotos(state.response.appointments);
+        }
         if (state is GetMyAppointmentsFailure) {
           CherryToast.error(
             title: const Text('Error'),
+            description: Text(state.errorMessage),
+          ).show(context);
+        }
+        if (state is CancelAppointmentSuccess) {
+          CherryToast.success(
+            title: const Text('Appointment cancelled'),
+            description: Text(state.response.message ?? 'Your appointment has been cancelled.'),
+          ).show(context);
+          _myAppointmentsCubit.getMyAppointments();
+        }
+        if (state is CancelAppointmentFailure) {
+          CherryToast.error(
+            title: const Text('Cancellation failed'),
             description: Text(state.errorMessage),
           ).show(context);
         }
@@ -148,29 +188,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     const SizedBox(height: 12),
                                 itemBuilder: (context, index) {
                                   final item = upcomingAppointments[index];
+                                  final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                                   return AppointmentCardWidget(
                                     doctorName: item.doctorName,
                                     specialization: item.specialization,
                                     appointmentDate: item.appointmentDate,
                                     appointmentTime: item.appointmentTime,
                                     imagePath: item.imagePath,
+                                    imageUrl: resolvedPhoto,
                                     showArrow: false,
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        AppRoutes.bookingSummary,
-                                        arguments: {
-                                          'doctorName': item.doctorName,
-                                          'specialization': item.specialization,
-                                          'clinicName': item.clinicName,
-                                          'doctorImage': item.imagePath,
-                                          'consultationType':
-                                              item.consultationType,
-                                          'selectedDate': item.appointmentDate,
-                                          'selectedTime': item.appointmentTime,
-                                        },
-                                      );
-                                    },
+                                    onCancel: () => _showCancelDialog(context, item.appointmentId),
+                                    onTap: () => Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.bookingConfirmation,
+                                      arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                    ),
                                   );
                                 },
                               ),
@@ -211,32 +243,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         const SizedBox(height: 12),
                                     itemBuilder: (context, index) {
                                       final item = cancelledAppointments[index];
+                                      final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                                       return AppointmentCardWidget(
                                         doctorName: item.doctorName,
                                         specialization: item.specialization,
                                         appointmentDate: item.appointmentDate,
                                         appointmentTime: item.appointmentTime,
                                         imagePath: item.imagePath,
+                                        imageUrl: resolvedPhoto,
                                         showArrow: false,
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            AppRoutes.bookingSummary,
-                                            arguments: {
-                                              'doctorName': item.doctorName,
-                                              'specialization':
-                                                  item.specialization,
-                                              'clinicName': item.clinicName,
-                                              'doctorImage': item.imagePath,
-                                              'consultationType':
-                                                  item.consultationType,
-                                              'selectedDate':
-                                                  item.appointmentDate,
-                                              'selectedTime':
-                                                  item.appointmentTime,
-                                            },
-                                          );
-                                        },
+                                        onTap: () => Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.bookingConfirmation,
+                                          arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                        ),
                                       );
                                     },
                                   ),
@@ -280,32 +300,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         const SizedBox(height: 12),
                                     itemBuilder: (context, index) {
                                       final item = completedAppointments[index];
+                                      final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                                       return AppointmentCardWidget(
                                         doctorName: item.doctorName,
                                         specialization: item.specialization,
                                         appointmentDate: item.appointmentDate,
                                         appointmentTime: item.appointmentTime,
                                         imagePath: item.imagePath,
+                                        imageUrl: resolvedPhoto,
                                         showArrow: false,
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            AppRoutes.bookingSummary,
-                                            arguments: {
-                                              'doctorName': item.doctorName,
-                                              'specialization':
-                                                  item.specialization,
-                                              'clinicName': item.clinicName,
-                                              'doctorImage': item.imagePath,
-                                              'consultationType':
-                                                  item.consultationType,
-                                              'selectedDate':
-                                                  item.appointmentDate,
-                                              'selectedTime':
-                                                  item.appointmentTime,
-                                            },
-                                          );
-                                        },
+                                        onTap: () => Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.bookingConfirmation,
+                                          arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                        ),
                                       );
                                     },
                                   ),
@@ -509,22 +517,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               appointmentDate: item.appointmentDate,
                               appointmentTime: item.appointmentTime,
                               imagePath: item.imagePath,
+                              imageUrl: item.imageUrl,
                               showArrow: false,
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.bookingSummary,
-                                  arguments: {
-                                    'doctorName': item.doctorName,
-                                    'specialization': item.specialization,
-                                    'clinicName': item.clinicName,
-                                    'doctorImage': item.imagePath,
-                                    'consultationType': item.consultationType,
-                                    'selectedDate': item.appointmentDate,
-                                    'selectedTime': item.appointmentTime,
-                                  },
-                                );
-                              },
+                              onCancel: () => _showCancelDialog(context, item.appointmentId),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.bookingConfirmation,
+                                arguments: _buildConfirmationArgs(item),
+                              ),
                             );
                           },
                         ),
@@ -559,22 +559,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   appointmentTime: item.appointmentTime,
                                   imagePath: item.imagePath,
                                   showArrow: false,
-                                  onTap: () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      AppRoutes.bookingSummary,
-                                      arguments: {
-                                        'doctorName': item.doctorName,
-                                        'specialization': item.specialization,
-                                        'clinicName': item.clinicName,
-                                        'doctorImage': item.imagePath,
-                                        'consultationType':
-                                            item.consultationType,
-                                        'selectedDate': item.appointmentDate,
-                                        'selectedTime': item.appointmentTime,
-                                      },
-                                    );
-                                  },
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.bookingConfirmation,
+                                    arguments: _buildConfirmationArgs(item),
+                                  ),
                                 );
                               },
                             ),
@@ -611,22 +600,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   appointmentTime: item.appointmentTime,
                                   imagePath: item.imagePath,
                                   showArrow: false,
-                                  onTap: () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      AppRoutes.bookingSummary,
-                                      arguments: {
-                                        'doctorName': item.doctorName,
-                                        'specialization': item.specialization,
-                                        'clinicName': item.clinicName,
-                                        'doctorImage': item.imagePath,
-                                        'consultationType':
-                                            item.consultationType,
-                                        'selectedDate': item.appointmentDate,
-                                        'selectedTime': item.appointmentTime,
-                                      },
-                                    );
-                                  },
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.bookingConfirmation,
+                                    arguments: _buildConfirmationArgs(item),
+                                  ),
                                 );
                               },
                             ),
@@ -707,30 +685,54 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
+  Future<void> _showCancelDialog(BuildContext context, int? appointmentId) async {
+    if (appointmentId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Cancel Appointment',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text(
+          'Are you sure you want to cancel this appointment? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Keep it',
+              style: TextStyle(color: AppColors.deepNavy, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade400,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Cancel Appointment', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      _myAppointmentsCubit.cancelMyAppointment(appointmentId);
+    }
+  }
+
   List<_AppointmentCardData> _resolveUpcomingAppointments(
     AppointmentsState state,
   ) {
-    if (state is! GetMyAppointmentsSuccess) {
-      return _demoAppointments;
-    }
+    if (state is! GetMyAppointmentsSuccess) return const [];
 
-    final filtered = state.response.appointments
+    return state.response.appointments
         .where(_isUpcomingAppointment)
-        .toList();
-
-    if (filtered.isEmpty) {
-      return _demoAppointments;
-    }
-
-    return filtered
+        .toList()
         .asMap()
         .entries
-        .map(
-          (entry) => _AppointmentCardData.fromModel(
-            entry.value,
-            fallbackIndex: entry.key,
-          ),
-        )
+        .map((e) => _AppointmentCardData.fromModel(e.value, fallbackIndex: e.key))
         .toList();
   }
 
@@ -816,26 +818,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         status.contains('attended');
   }
 
-  static const List<_AppointmentCardData> _demoAppointments = [
-    _AppointmentCardData(
-      doctorName: 'Dr. Mahmoud Abo Leila',
-      specialization: 'Dentist',
-      clinicName: 'Dar El-Hekma Clinic',
-      appointmentDate: 'June 13 2056',
-      appointmentTime: '3:30 PM',
-      imagePath: AppImages.imagesDoctorDRMahmoudAboLeila,
-      consultationType: 'clinic',
-    ),
-    _AppointmentCardData(
-      doctorName: 'Dr. Sara Hassan',
-      specialization: 'Cardiologist',
-      clinicName: 'Dar El-Hekma Clinic',
-      appointmentDate: 'June 14 2056',
-      appointmentTime: '5:00 PM',
-      imagePath: AppImages.imagesDoctorDRSaraHassan,
-      consultationType: 'online',
-    ),
-  ];
+  Map<String, dynamic> _buildConfirmationArgs(_AppointmentCardData item, {String? resolvedPhoto}) {
+    final patientName = item.patientName?.trim().isNotEmpty == true
+        ? item.patientName
+        : _userSession.fullName;
+    return {
+      if (item.appointmentId != null) 'appointmentId': item.appointmentId,
+      'doctorName': item.doctorName,
+      'specialization': item.specialization,
+      'clinicName': item.clinicName,
+      'doctorImage': resolvedPhoto ?? item.imageUrl ?? item.imagePath,
+      'consultationType': item.consultationType,
+      'selectedDate': item.appointmentDate,
+      'selectedTime': item.appointmentTime,
+      if (patientName != null) 'patientName': patientName,
+      if (item.paymentMethod != null) 'paymentMethod': item.paymentMethod,
+      if (item.consultationFee != null) 'consultationFee': item.consultationFee,
+      if (item.meetingLink != null) 'meetingLink': item.meetingLink,
+    };
+  }
+
 }
 
 class _EmptyAppointmentsView extends StatelessWidget {
@@ -917,22 +919,36 @@ class _EmptyAppointmentsView extends StatelessWidget {
 }
 
 class _AppointmentCardData {
+  final int? appointmentId;
+  final String? doctorId;
   final String doctorName;
   final String specialization;
   final String clinicName;
   final String appointmentDate;
   final String appointmentTime;
   final String imagePath;
+  final String? imageUrl;
   final String consultationType;
+  final String? patientName;
+  final String? paymentMethod;
+  final String? meetingLink;
+  final double? consultationFee;
 
   const _AppointmentCardData({
+    this.appointmentId,
+    this.doctorId,
     required this.doctorName,
     required this.specialization,
     required this.clinicName,
     required this.appointmentDate,
     required this.appointmentTime,
     required this.imagePath,
+    this.imageUrl,
     required this.consultationType,
+    this.patientName,
+    this.paymentMethod,
+    this.meetingLink,
+    this.consultationFee,
   });
 
   factory _AppointmentCardData.fromModel(
@@ -940,16 +956,23 @@ class _AppointmentCardData {
     required int fallbackIndex,
   }) {
     return _AppointmentCardData(
+      appointmentId: model.id,
+      doctorId: model.doctorId,
       doctorName: _resolveText(model.doctorName, 'Upcoming appointment'),
       specialization: _resolveText(
         model.type ?? model.clinicName,
         'General appointment',
       ),
       clinicName: _resolveText(model.clinicName, 'Dar El-Hekma Clinic'),
-      appointmentDate: _resolveText(model.date, 'Date pending'),
-      appointmentTime: _resolveText(model.time, 'Time pending'),
-      imagePath: _resolveImagePath(model.doctorName, fallbackIndex),
-      consultationType: _resolveText(model.type, 'clinic'),
+      appointmentDate: model.displayDate,
+      appointmentTime: model.displayTime,
+      imagePath: _resolveFallbackImage(fallbackIndex),
+      imageUrl: model.doctorImage,
+      consultationType: _resolveText(model.type, 'InClinic'),
+      patientName: model.patientName,
+      paymentMethod: model.payFromWallet == true ? 'wallet' : 'cash',
+      meetingLink: model.meetingLink,
+      consultationFee: model.consultationFee,
     );
   }
 
@@ -958,18 +981,7 @@ class _AppointmentCardData {
     return text.isEmpty ? fallback : text;
   }
 
-  static String _resolveImagePath(String? doctorName, int fallbackIndex) {
-    final normalized = (doctorName ?? '').toLowerCase();
-    if (normalized.contains('sara')) {
-      return AppImages.imagesDoctorDRSaraHassan;
-    }
-
-    if (normalized.contains('mahmoud')) {
-      return AppImages.imagesDoctorDRMahmoudAboLeila;
-    }
-
-    return fallbackIndex.isEven
-        ? AppImages.imagesDoctorDRMahmoudAboLeila
-        : AppImages.imagesDoctorDRSaraHassan;
+  static String _resolveFallbackImage(int fallbackIndex) {
+    return AppImages.imagesIconsDoctor;
   }
 }
