@@ -52,7 +52,6 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
   PlatformFile? _syndicateCardFile;
   PlatformFile? _professionalPhotoFile;
   PlatformFile? _specializationCertificateFile;
-  LicenseReviewStatus _currentReviewStatus = LicenseReviewStatus.pending;
   bool _isSubmitting = false;
   final UserSession _userSession = getIt<UserSession>();
 
@@ -77,7 +76,6 @@ class _LicenseVerificationPageState extends State<LicenseVerificationPage> {
   @override
   void initState() {
     super.initState();
-    _currentReviewStatus = widget.reviewStatus;
     final initialRegistrationNumber = _doctorId;
     if (initialRegistrationNumber != null) {
       _syndicateCardController.text = initialRegistrationNumber;

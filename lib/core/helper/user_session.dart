@@ -20,8 +20,12 @@ class UserSession {
   static const String _setupCompletedPrefix = 'setup_completed';
   static const String _facilityVerificationPendingPrefix =
       'facility_verification_pending';
+  static const String _loginTimestampKey = SharedPrefsHelper.loginTimestampKey;
 
-  /// حفظ بيانات الجلسة بالكامل (تستخدم بعد Login أو Register ناجح)
+  /// Session lifetime: 3 hours in milliseconds
+  static const int _sessionDurationMs = 3 * 60 * 60 * 1000;
+
+  /// حفظ بيانات الجلسة بالكامل (تستدعى بعد Login أو Register ناجح)
   Future<void> saveUserSession({
     required String token,
     required String userId,
@@ -30,6 +34,13 @@ class UserSession {
     await SharedPrefsHelper.setData(_tokenKey, token);
     await SharedPrefsHelper.setData(_userIdKey, userId);
     await SharedPrefsHelper.setData(_roleKey, role);
+    await saveLoginTimestamp();
+  }
+
+  /// حفظ وقت تسجيل الدخول (epoch milliseconds)
+  Future<void> saveLoginTimestamp() async {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    await SharedPrefsHelper.setData(_loginTimestampKey, nowMs);
   }
 
   Future<void> saveToken(String token) async {
@@ -183,8 +194,17 @@ class UserSession {
   /// استرجاع الـ Role كـ Enum لسهولة التعامل في الـ Logic
   UserRole get userRole => getRoleEnum(roleString);
 
-  /// التحقق هل المستخدم مسجل دخول أم لا
-  bool get isLoggedIn => token != null && userId != null;
+  /// التحقق هل انتهت صلاحية الجلسة (أكثر من 3 ساعات)
+  bool get isSessionExpired {
+    final timestampMs = SharedPrefsHelper.getInt(_loginTimestampKey);
+    if (timestampMs == null) return true; // no timestamp → treat as expired
+    final loginTime = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+    return DateTime.now().difference(loginTime).inMilliseconds >
+        _sessionDurationMs;
+  }
+
+  /// التحقق هل المستخدم مسجل دخول أم لا (ويأخذ انتهاء الصلاحية بعين الاعتبار)
+  bool get isLoggedIn => token != null && userId != null && !isSessionExpired;
 
   // --- Methods ---
 
@@ -213,6 +233,7 @@ class UserSession {
     await SharedPrefsHelper.removeData(_bloodGroupKey);
     await SharedPrefsHelper.removeData(_profileImageKey);
     await SharedPrefsHelper.removeData(_clinicIdsKey);
+    await SharedPrefsHelper.removeData(_loginTimestampKey);
   }
 
   String resolvePostLoginRoute({required String role, required String userId}) {

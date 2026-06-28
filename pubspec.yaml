@@ -48,6 +48,7 @@ dependencies:
   android_intent_plus: ^5.1.0
   # google_maps_flutter: ^2.11.0
   # geolocator: ^14.0.2
+  image_background_remover: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -98,9 +99,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/logo/logo.png"
+  image_path: "assets/images/logo/Logo_Without_Text.png"
   adaptive_icon_background: "#1A2D42" # يفضل استخدام لون للخلفية في الـ Adaptive
-  adaptive_icon_foreground: "assets/images/logo/logo.png"
+  adaptive_icon_foreground: "assets/images/logo/Logo_Without_Text.png"
 
 flutter_native_splash:
   color: "#1A2D42"

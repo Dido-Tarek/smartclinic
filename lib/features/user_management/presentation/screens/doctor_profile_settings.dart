@@ -390,7 +390,7 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
                   child: ClipOval(
                     child: imageIsNetwork
                         ? Image.network(
-                            profileImage!.trim(),
+                            profileImage.trim(),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Image.asset(
                               AppImages.imagesIconsPatient,
@@ -516,24 +516,21 @@ class _DoctorProfileSettingsPageState extends State<DoctorProfileSettingsPage> {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(
-          fallbackAsset,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) =>
+            Image.asset(fallbackAsset, fit: BoxFit.cover),
       );
     }
 
-    final remoteUrl = source.startsWith('http://') || source.startsWith('https://')
+    final remoteUrl =
+        source.startsWith('http://') || source.startsWith('https://')
         ? source
         : '${_remoteImageBaseUrl}${source.startsWith('/') ? source.substring(1) : source}';
 
     return Image.network(
       remoteUrl,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Image.asset(
-        fallbackAsset,
-        fit: BoxFit.cover,
-      ),
+      errorBuilder: (_, __, ___) =>
+          Image.asset(fallbackAsset, fit: BoxFit.cover),
     );
   }
 }

@@ -30,6 +30,9 @@ class DoctorProfileView extends StatefulWidget {
   final String? clinicWorkingHours;
   final int? yearsOfExperience;
   final Set<String> enabledConsultationTypes;
+  /// When false the "Book Appointment" button is hidden.
+  /// Set to false when the doctor is previewing their own profile.
+  final bool showBookButton;
 
   const DoctorProfileView({
     super.key,
@@ -57,6 +60,7 @@ class DoctorProfileView extends StatefulWidget {
       'FollowUp',
       'Emergency',
     },
+    this.showBookButton = true,
   });
 
   @override
@@ -223,51 +227,54 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
             ),
           ),
 
-          bottomNavigationBar: SafeArea(
-            minimum: const EdgeInsets.all(16),
-            child: SizedBox(
-              height: 54,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.bookingDetails,
-                    arguments: {
-                      'doctorId': widget.doctorId ?? widget.doctorName,
-                      'clinicId': _profile?.clinicId ?? widget.clinicId,
-                      'name': name,
-                      'image': imagePath,
-                      'specialization': doctorSpecialization,
-                      'rating': displayRating,
-                      'reviewsCount': displayReviewsCount,
-                      'yearsOfExperience': _profile?.yearsOfExperience ?? 0,
-                      'patientsCount': 0,
-                      'clinicFee': clinicFee,
-                      'onlineFee': onlineFee,
-                      'homeVisitFee': homeVisitFee,
-                      'followUpFee': followUpFee,
-                      'emergencyFee': emergencyFee,
-                      'clinicName': clinicName,
-                      'clinicAddress': clinicAddress,
-                      'clinicPhone': clinicPhone,
-                      'clinicWorkingHours': clinicWorkingHours,
-                      'enabledAppointmentTypes': widget.enabledConsultationTypes
-                          .toList(),
-                    },
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+          bottomNavigationBar: widget.showBookButton
+              ? SafeArea(
+                  minimum: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.bookingDetails,
+                          arguments: {
+                            'doctorId': widget.doctorId ?? widget.doctorName,
+                            'clinicId': _profile?.clinicId ?? widget.clinicId,
+                            'name': name,
+                            'image': imagePath,
+                            'specialization': doctorSpecialization,
+                            'rating': displayRating,
+                            'reviewsCount': displayReviewsCount,
+                            'yearsOfExperience':
+                                _profile?.yearsOfExperience ?? 0,
+                            'patientsCount': 0,
+                            'clinicFee': clinicFee,
+                            'onlineFee': onlineFee,
+                            'homeVisitFee': homeVisitFee,
+                            'followUpFee': followUpFee,
+                            'emergencyFee': emergencyFee,
+                            'clinicName': clinicName,
+                            'clinicAddress': clinicAddress,
+                            'clinicPhone': clinicPhone,
+                            'clinicWorkingHours': clinicWorkingHours,
+                            'enabledAppointmentTypes':
+                                widget.enabledConsultationTypes.toList(),
+                          },
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Book Appointment',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'Book Appointment',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
-          ),
+                )
+              : null,
         );
       },
     );

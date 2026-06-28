@@ -196,10 +196,12 @@ class _MedicalFacilityManagementPageState
                 description: Text(
                   localizations.translate("clinic_claim_success_message"),
                 ),
+                // ignore: use_build_context_synchronously
               ).show(context);
               CherryToast.info(
                 title: const Text('Review pending'),
                 description: const Text('Your profile is under review.'),
+                // ignore: use_build_context_synchronously
               ).show(context);
               navigator.pushReplacementNamed(_resolveHomeRoute(role));
               return;
@@ -533,61 +535,6 @@ class _MedicalFacilityManagementPageState
             ),
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip() {
-    final statusText = _claimOwnershipFlow
-        ? (_credentialsUploaded
-              ? AppLocalizations.of(
-                      context,
-                    )?.translate('status_claim_submitted') ??
-                    'Status: Claim Submitted'
-              : AppLocalizations.of(
-                      context,
-                    )?.translate('status_claim_pending') ??
-                    'Status: Claim Pending')
-        : (_staffFlow
-              ? (_credentialsUploaded
-                    ? AppLocalizations.of(
-                            context,
-                          )?.translate('status_staff_sent') ??
-                          'Status: Staff Request Sent'
-                    : AppLocalizations.of(
-                            context,
-                          )?.translate('status_staff_pending') ??
-                          'Status: Staff Pending')
-              : (_credentialsUploaded
-                    ? AppLocalizations.of(
-                            context,
-                          )?.translate('status_owner_sent') ??
-                          'Status: Owner Docs Uploaded'
-                    : AppLocalizations.of(
-                            context,
-                          )?.translate('status_pending_review') ??
-                          'Status: Pending Review'));
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.circle, color: AppColors.warning, size: 8),
-          const SizedBox(width: 8),
-          Text(
-            statusText,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),
@@ -1002,38 +949,6 @@ class _MedicalFacilityManagementPageState
         'legalDocument2': _documentTwo,
         'legalDocument3': _documentThree,
       },
-    );
-  }
-
-  Future<void> _onGetStartedPressed() async {
-    if (!_canContinue) {
-      _showUploadRequiredMessage();
-      return;
-    }
-
-    if (!_claimOwnershipFlow && !_staffFlow) {
-      CherryToast.info(
-        title: const Text('Add new clinic'),
-        description: const Text('Please add a new clinic first.'),
-      ).show(context);
-      return;
-    }
-
-    if (_claimOwnershipFlow || _staffFlow) {
-      return;
-    }
-
-    final userId = _userSession.userId?.trim() ?? '';
-    if (userId.isNotEmpty) {
-      await _userSession.markSetupCompleted(
-        role: _userSession.roleString ?? 'Doctor',
-        userId: userId,
-      );
-    }
-
-    Navigator.pushReplacementNamed(
-      context,
-      _resolveHomeRoute(getRoleEnum(_userSession.roleString)),
     );
   }
 

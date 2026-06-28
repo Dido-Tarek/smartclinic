@@ -464,6 +464,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final isLoading =
         state is GetMyAppointmentsLoading || state is GetDoctorRequestsLoading;
 
+    // Proactively prefetch photos for any appointments whose doctorId we have
+    // but whose image hasn't been resolved yet.
+    _prefetchDoctorPhotos(
+      state is GetMyAppointmentsSuccess
+          ? state.response.appointments
+          : state is GetDoctorRequestsSuccess
+          ? state.response.appointments
+          : const [],
+    );
+
     return DefaultTabController(
       length: 3,
       child: Column(
@@ -511,19 +521,27 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final item = upcomingAppointments[index];
+                            final resolvedPhoto =
+                                _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                             return AppointmentCardWidget(
                               doctorName: item.doctorName,
                               specialization: item.specialization,
                               appointmentDate: item.appointmentDate,
                               appointmentTime: item.appointmentTime,
                               imagePath: item.imagePath,
-                              imageUrl: item.imageUrl,
+                              imageUrl: resolvedPhoto,
                               showArrow: false,
+                              rawAppointmentDate: item.rawDate,
                               onCancel: () => _showCancelDialog(context, item.appointmentId),
+                              onChat: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.doctorChatRoom,
+                                arguments: _buildChatArgs(item, resolvedPhoto: resolvedPhoto),
+                              ),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.bookingConfirmation,
-                                arguments: _buildConfirmationArgs(item),
+                                arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
                               ),
                             );
                           },
@@ -552,17 +570,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final item = cancelledAppointments[index];
+                                final resolvedPhoto =
+                                    _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                                 return AppointmentCardWidget(
                                   doctorName: item.doctorName,
                                   specialization: item.specialization,
                                   appointmentDate: item.appointmentDate,
                                   appointmentTime: item.appointmentTime,
                                   imagePath: item.imagePath,
+                                  imageUrl: resolvedPhoto,
                                   showArrow: false,
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.bookingConfirmation,
-                                    arguments: _buildConfirmationArgs(item),
+                                    arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
                                   ),
                                 );
                               },
@@ -593,17 +614,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final item = completedAppointments[index];
+                                final resolvedPhoto =
+                                    _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
                                 return AppointmentCardWidget(
                                   doctorName: item.doctorName,
                                   specialization: item.specialization,
                                   appointmentDate: item.appointmentDate,
                                   appointmentTime: item.appointmentTime,
                                   imagePath: item.imagePath,
+                                  imageUrl: resolvedPhoto,
                                   showArrow: false,
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.bookingConfirmation,
-                                    arguments: _buildConfirmationArgs(item),
+                                    arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
                                   ),
                                 );
                               },
@@ -725,9 +749,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<_AppointmentCardData> _resolveUpcomingAppointments(
     AppointmentsState state,
   ) {
-    if (state is! GetMyAppointmentsSuccess) return const [];
+    final List<AppointmentModel> appointments;
+    if (state is GetMyAppointmentsSuccess) {
+      appointments = state.response.appointments;
+    } else if (state is GetDoctorRequestsSuccess) {
+      appointments = state.response.appointments;
+    } else {
+      return const [];
+    }
 
-    return state.response.appointments
+    return appointments
         .where(_isUpcomingAppointment)
         .toList()
         .asMap()
@@ -753,17 +784,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<_AppointmentCardData> _resolveCancelledAppointments(
     AppointmentsState state,
   ) {
-    if (state is! GetMyAppointmentsSuccess) {
+    final List<AppointmentModel> appointments;
+    if (state is GetMyAppointmentsSuccess) {
+      appointments = state.response.appointments;
+    } else if (state is GetDoctorRequestsSuccess) {
+      appointments = state.response.appointments;
+    } else {
       return const [];
     }
 
-    final filtered = state.response.appointments
-        .where(_isCancelledAppointment)
-        .toList();
-
-    if (filtered.isEmpty) {
-      return const [];
-    }
+    final filtered = appointments.where(_isCancelledAppointment).toList();
+    if (filtered.isEmpty) return const [];
 
     return filtered
         .asMap()
@@ -786,17 +817,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   List<_AppointmentCardData> _resolveCompletedAppointments(
     AppointmentsState state,
   ) {
-    if (state is! GetMyAppointmentsSuccess) {
+    final List<AppointmentModel> appointments;
+    if (state is GetMyAppointmentsSuccess) {
+      appointments = state.response.appointments;
+    } else if (state is GetDoctorRequestsSuccess) {
+      appointments = state.response.appointments;
+    } else {
       return const [];
     }
 
-    final filtered = state.response.appointments
-        .where(_isCompletedAppointment)
-        .toList();
-
-    if (filtered.isEmpty) {
-      return const [];
-    }
+    final filtered = appointments.where(_isCompletedAppointment).toList();
+    if (filtered.isEmpty) return const [];
 
     return filtered
         .asMap()
@@ -835,6 +866,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       if (item.paymentMethod != null) 'paymentMethod': item.paymentMethod,
       if (item.consultationFee != null) 'consultationFee': item.consultationFee,
       if (item.meetingLink != null) 'meetingLink': item.meetingLink,
+    };
+  }
+
+  Map<String, dynamic> _buildChatArgs(_AppointmentCardData item, {String? resolvedPhoto}) {
+    return {
+      'doctorName': item.doctorName,
+      'specialization': item.specialization,
+      'clinicName': item.clinicName,
+      'doctorImage': resolvedPhoto ?? item.imageUrl ?? item.imagePath,
+      'consultationType': item.consultationType,
+      'selectedDate': item.appointmentDate,
+      'selectedTime': item.appointmentTime,
+      'doctorId': item.doctorId,
+      'patientId': _userSession.patientId,
+      'appointmentDate': item.rawDate ?? item.appointmentDate,
+      'patientImageUrl': _userSession.profileImage,
     };
   }
 
@@ -933,6 +980,7 @@ class _AppointmentCardData {
   final String? paymentMethod;
   final String? meetingLink;
   final double? consultationFee;
+  final String? rawDate; // raw ISO date from API (for chat window calc)
 
   const _AppointmentCardData({
     this.appointmentId,
@@ -949,16 +997,25 @@ class _AppointmentCardData {
     this.paymentMethod,
     this.meetingLink,
     this.consultationFee,
+    this.rawDate,
   });
 
   factory _AppointmentCardData.fromModel(
     AppointmentModel model, {
     required int fallbackIndex,
   }) {
+    // For doctor-schedule appointments the API returns patientName but no
+    // doctorName, so fall back to patientName as the card's primary label.
+    final cardName = _resolveText(
+      model.doctorName?.isNotEmpty == true
+          ? model.doctorName
+          : model.patientName,
+      'Appointment',
+    );
     return _AppointmentCardData(
       appointmentId: model.id,
       doctorId: model.doctorId,
-      doctorName: _resolveText(model.doctorName, 'Upcoming appointment'),
+      doctorName: cardName,
       specialization: _resolveText(
         model.type ?? model.clinicName,
         'General appointment',
@@ -973,6 +1030,7 @@ class _AppointmentCardData {
       paymentMethod: model.payFromWallet == true ? 'wallet' : 'cash',
       meetingLink: model.meetingLink,
       consultationFee: model.consultationFee,
+      rawDate: model.date,
     );
   }
 

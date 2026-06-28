@@ -74,6 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 await userSession.saveUserId(userId.trim());
               }
               await userSession.saveRole(role);
+              // Record login time so the 3-hour session timer starts now
+              await userSession.saveLoginTimestamp();
 
               if (fullName != null && fullName.trim().isNotEmpty) {
                 await userSession.saveFullName(fullName.trim());

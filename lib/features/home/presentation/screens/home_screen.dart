@@ -10,11 +10,13 @@ import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
 import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
 import 'package:smartclinic/core/widgets/home_header.dart';
-import 'package:smartclinic/core/widgets/search_engine.dart';
 import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/features/appointments/data/model/appointment_response_model.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_cubit.dart';
 import 'package:smartclinic/features/appointments/presentation/manager/appointment_state.dart';
+import 'package:smartclinic/features/health_issues/data/models/health_issues_model.dart';
+import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
+import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_state.dart';
 import 'package:smartclinic/features/user_management/data/repo/user_management_repo.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
@@ -39,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen>
   int _appointmentPageCount = 1;
   final Map<String, String?> _doctorPhotoCache = {};
 
+  // ── Medical history personalisation ─────────────────────────────────────────
+  List<HealthIssueModel> _activeIssues = [];
+  String? _recommendedSpecialization;
+  bool _isPersonalised = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,8 +54,14 @@ class _HomeScreenState extends State<HomeScreen>
     _fetchCurrentUserPhoto();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<DoctorsCubit>().searchDoctors(pageSize: 12, pageNumber: 1);
       context.read<AppointmentsCubit>().getMyAppointments();
+      // For patients: fetch history first → personalise popular doctors.
+      // For doctors: just load generic popular doctors directly.
+      if (!_userSession.userRole.isDoctor) {
+        context.read<HealthIssuesCubit>().emitGetPatientHistory();
+      } else {
+        context.read<DoctorsCubit>().searchDoctors(pageSize: 5, pageNumber: 1);
+      }
     });
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
@@ -81,6 +94,76 @@ class _HomeScreenState extends State<HomeScreen>
     _shineController.dispose();
     super.dispose();
   }
+
+  // ── Disease → Specialization mapping ──────────────────────────────────────
+
+  /// Picks the most relevant specialization from the patient's active issues.
+  String? _resolveSpecializationFromHistory(List<HealthIssueModel> issues) {
+    final activeIssues = issues.where((issue) {
+      final status = (issue.status).toLowerCase().trim();
+      final cured = issue.curedDate;
+      return status == 'active' ||
+          status == 'ongoing' ||
+          status == 'chronic' ||
+          status == 'current' ||
+          (cured == null || cured.isEmpty);
+    }).toList();
+
+    if (activeIssues.isEmpty) return null;
+
+    final Map<String, int> specScores = {};
+    for (final issue in activeIssues) {
+      final spec = _diseaseToSpecialization(issue.name);
+      if (spec != null) {
+        specScores[spec] = (specScores[spec] ?? 0) + 1;
+      }
+    }
+    if (specScores.isEmpty) return null;
+    return specScores.entries
+        .reduce((a, b) => a.value >= b.value ? a : b)
+        .key;
+  }
+
+  static String? _diseaseToSpecialization(String diseaseName) {
+    final name = diseaseName.toLowerCase();
+    if (name.contains('diabet') || name.contains('endocrin') || name.contains('thyroid') || name.contains('insulin')) return 'Endocrinology';
+    if (name.contains('heart') || name.contains('cardio') || name.contains('cardiac') || name.contains('hypertens') || name.contains('blood pressure') || name.contains('coronary')) return 'Cardiology';
+    if (name.contains('neuro') || name.contains('brain') || name.contains('epilepsy') || name.contains('stroke') || name.contains('migraine') || name.contains('parkinson') || name.contains('alzheimer')) return 'Neurology';
+    if (name.contains('lung') || name.contains('asthma') || name.contains('pulmo') || name.contains('respiratory') || name.contains('bronch') || name.contains('copd')) return 'Pulmonology';
+    if (name.contains('kidney') || name.contains('renal') || name.contains('nephro')) return 'Nephrology';
+    if (name.contains('joint') || name.contains('arthr') || name.contains('bone') || name.contains('ortho') || name.contains('spine') || name.contains('fracture')) return 'Orthopedics';
+    if (name.contains('skin') || name.contains('dermat') || name.contains('acne') || name.contains('eczema')) return 'Dermatology';
+    if (name.contains('mental') || name.contains('depress') || name.contains('anxiety') || name.contains('psych') || name.contains('bipolar')) return 'Psychiatry';
+    if (name.contains('stomach') || name.contains('gastro') || name.contains('intestin') || name.contains('colon') || name.contains('liver') || name.contains('hepat') || name.contains('ibs')) return 'Gastroenterology';
+    if (name.contains('eye') || name.contains('ophthalm') || name.contains('vision') || name.contains('glaucom') || name.contains('cataract')) return 'Ophthalmology';
+    if (name.contains('ear') || name.contains('ent') || name.contains('throat') || name.contains('nose') || name.contains('sinus') || name.contains('tonsil')) return 'ENT';
+    if (name.contains('urology') || name.contains('bladder') || name.contains('prostate') || name.contains('kidney stone')) return 'Urology';
+    if (name.contains('cancer') || name.contains('tumor') || name.contains('oncol') || name.contains('lymphoma') || name.contains('leukemia')) return 'Oncology';
+    if (name.contains('allerg') || name.contains('immuno') || name.contains('autoimmune')) return 'Allergy & Immunology';
+    if (name.contains('blood') || name.contains('anemia') || name.contains('hematol') || name.contains('thalassemia')) return 'Hematology';
+    return null;
+  }
+
+  /// Called from the BlocListener when patient history is loaded.
+  void _onHealthHistoryLoaded(List<HealthIssueModel> issues) {
+    _activeIssues = issues;
+    final spec = _resolveSpecializationFromHistory(issues);
+    _recommendedSpecialization = spec;
+
+    if (spec != null) {
+      context.read<DoctorsCubit>().searchDoctors(
+        specialization: spec,
+        pageSize: 5,
+        pageNumber: 1,
+      );
+      setState(() => _isPersonalised = true);
+    } else {
+      context.read<DoctorsCubit>().searchDoctors(pageSize: 5, pageNumber: 1);
+      setState(() => _isPersonalised = false);
+    }
+  }
+
+  // ── Data fetching ────────────────────────────────────────────────────────────
 
   Future<void> _fetchCurrentUserPhoto() async {
     final userId = _userSession.userId?.trim();
@@ -119,9 +202,13 @@ class _HomeScreenState extends State<HomeScreen>
     final result = await getIt<UserManagementRepo>().getProfile(doctorId);
     result.when(
       success: (profile) {
-        if (mounted) setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+        if (mounted) {
+          setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+        }
       },
-      failure: (_) { if (mounted) setState(() {}); },
+      failure: (_) {
+        if (mounted) setState(() {});
+      },
     );
   }
 
@@ -203,7 +290,9 @@ class _HomeScreenState extends State<HomeScreen>
                           return _buildBookingAdCard(context);
                         }
                         final appt = upcoming[index];
-                        final resolvedPhoto = _doctorPhotoCache[appt.doctorId] ?? appt.doctorImage;
+                        final resolvedPhoto =
+                            _doctorPhotoCache[appt.doctorId] ??
+                            appt.doctorImage;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: AppointmentCardWidget(
@@ -287,6 +376,7 @@ class _HomeScreenState extends State<HomeScreen>
                               onPressed: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.emergencySearch,
+                                arguments: {'activeIssues': _activeIssues},
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.error,
@@ -315,11 +405,41 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               SizedBox(height: 20),
+              // Health issues listener – fires personalised doctor search
+              BlocListener<HealthIssuesCubit, HealthIssuesState>(
+                listener: (context, healthState) {
+                  healthState.whenOrNull(
+                    success: (data) {
+                      if (data is List<HealthIssueModel>) {
+                        _onHealthHistoryLoaded(data);
+                      }
+                    },
+                  );
+                },
+                child: const SizedBox.shrink(),
+              ),
               _buildSectionTitle(
-                'Popular Doctors',
+                _isPersonalised ? 'Recommended for You' : 'Popular Doctors',
                 onSeeAllTap: () =>
                     Navigator.pushNamed(context, AppRoutes.search),
               ),
+              if (_isPersonalised && _recommendedSpecialization != null) ...[  
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.favorite_rounded, size: 13, color: AppColors.error),
+                    SizedBox(width: 5),
+                    Text(
+                      'Based on your $_recommendedSpecialization history',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               SizedBox(height: 12),
               BlocBuilder<DoctorsCubit, DoctorsState>(
                 builder: (context, state) {
@@ -422,7 +542,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<DoctorModel> _resolvePopularDoctors(DoctorsState state) {
     if (state is SearchDoctorsSuccess && state.response.doctors.isNotEmpty) {
-      return state.response.doctors;
+      final doctors = state.response.doctors;
+      // Always show at most 5
+      return doctors.length > 5 ? doctors.sublist(0, 5) : doctors;
     }
 
     return _fallbackDoctors;

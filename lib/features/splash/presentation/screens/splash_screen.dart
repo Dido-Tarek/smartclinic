@@ -25,6 +25,17 @@ class _SplashScreenState extends State<SplashScreen> {
     final userSession = getIt<UserSession>();
     final userRole = getRoleEnum(userSession.roleString);
     if (!mounted) return;
+
+    // If the user has a saved session but it has expired, clear it and send to login
+    if (userSession.token != null &&
+        userSession.userId != null &&
+        userSession.isSessionExpired) {
+      await userSession.clearSession();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      return;
+    }
+
     if (userSession.isLoggedIn && userRole.isPatient) {
       Navigator.pushReplacementNamed(
         context,

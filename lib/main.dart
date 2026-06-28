@@ -13,12 +13,16 @@ import 'core/theme/app_theme.dart';
 import 'core/localization/app_localization.dart';
 import 'injection_dependency.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/bg_remover_service.dart';
 
 final GlobalKey<MyAppState> appKey = GlobalKey<MyAppState>();
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  if (const bool.fromEnvironment('dart.vm.product')) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await SharedPrefsHelper.init();
   await setupGetIt();
@@ -31,6 +35,9 @@ Future<void> _initializeServices() async {
   try {
     await Firebase.initializeApp();
     await PushNotificationService.initialize(appNavigatorKey);
+    // Initialize the background-removal ONNX model in the background
+    // so it is ready by the time the user reaches a doctor card.
+    await BgRemoverService.instance.initialize();
   } catch (error) {
     debugPrint('Startup service initialization failed: $error');
   }

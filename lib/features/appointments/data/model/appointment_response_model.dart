@@ -88,6 +88,7 @@ class AppointmentModel {
       'consultationFee', 'ConsultationFee',
       'fee', 'Fee',
       'price', 'Price',
+      'pricePaid', 'PricePaid',
       'amount', 'Amount',
       'totalFee', 'TotalFee',
       'totalAmount', 'TotalAmount',

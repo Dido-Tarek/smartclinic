@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
+import 'package:smartclinic/core/services/bg_remover_service.dart';
+import 'package:smartclinic/core/widgets/smart_clinic_loader.dart';
 
-class DoctorViewCard extends StatelessWidget {
+class DoctorViewCard extends StatefulWidget {
   final String doctorName;
   final String specialization;
   final String clinicName;
@@ -26,8 +29,44 @@ class DoctorViewCard extends StatelessWidget {
   });
 
   @override
+  State<DoctorViewCard> createState() => _DoctorViewCardState();
+}
+
+class _DoctorViewCardState extends State<DoctorViewCard> {
+  Uint8List? _processedImage;
+  bool _bgProcessing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _removeBackground();
+  }
+
+  @override
+  void didUpdateWidget(DoctorViewCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.doctorImagePath != widget.doctorImagePath) {
+      setState(() {
+        _processedImage = null;
+        _bgProcessing = true;
+      });
+      _removeBackground();
+    }
+  }
+
+  Future<void> _removeBackground() async {
+    final result =
+        await BgRemoverService.instance.processImage(widget.doctorImagePath);
+    if (!mounted) return;
+    setState(() {
+      _processedImage = result;
+      _bgProcessing = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final imageSource = doctorImagePath.trim();
+    final imageSource = widget.doctorImagePath.trim();
     final isNetworkImage =
         imageSource.startsWith('http://') || imageSource.startsWith('https://');
     final isLocalFile =
@@ -49,7 +88,7 @@ class DoctorViewCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Half-circle doctor image ──
+          // ── Half-circle doctor image ──────────────────────────────────────
           ClipOval(
             child: ColoredBox(
               color: Colors.transparent,
@@ -59,20 +98,11 @@ class DoctorViewCard extends StatelessWidget {
                 child: SizedBox(
                   width: 150,
                   height: 150,
-                  child: isNetworkImage
-                      ? Image.network(
-                          imageSource,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Image.asset(doctorImagePath, fit: BoxFit.cover),
-                        )
-                      : isLocalFile
-                      ? Image.file(File(imageSource), fit: BoxFit.cover)
-                      : Image.asset(
-                          doctorImagePath,
-                          fit: BoxFit.cover,
-                          colorBlendMode: BlendMode.srcOver,
-                        ),
+                  child: _buildDoctorImage(
+                    imageSource: imageSource,
+                    isNetworkImage: isNetworkImage,
+                    isLocalFile: isLocalFile,
+                  ),
                 ),
               ),
             ),
@@ -80,9 +110,9 @@ class DoctorViewCard extends StatelessWidget {
 
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.only(
+                borderRadius: BorderRadius.only(
                   topRight: Radius.circular(20),
                   bottomRight: Radius.circular(20),
                 ),
@@ -96,12 +126,11 @@ class DoctorViewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Name + verified icon
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            doctorName,
+                            widget.doctorName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -128,10 +157,8 @@ class DoctorViewCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-
-                    // Specialization | Clinic
                     Text(
-                      '$specialization  |  $clinicName',
+                      '${widget.specialization}  |  ${widget.clinicName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -141,8 +168,6 @@ class DoctorViewCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Rating + reviews count
                     Row(
                       children: [
                         const Icon(
@@ -152,7 +177,7 @@ class DoctorViewCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          rating.toStringAsFixed(1),
+                          widget.rating.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -161,7 +186,7 @@ class DoctorViewCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '($reviewsCount reviews)',
+                          '(${widget.reviewsCount} reviews)',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -171,21 +196,19 @@ class DoctorViewCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-
-                    // Badges row — single row
                     Row(
                       children: [
                         Expanded(
                           child: _BadgeItem(
                             icon: Icons.emoji_events_outlined,
-                            label: '+$yearsOfExperience Years EXP',
+                            label: '+${widget.yearsOfExperience} Years EXP',
                           ),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: _BadgeItem(
                             icon: Icons.people_alt_outlined,
-                            label: '+$patientsCount Patients',
+                            label: '+${widget.patientsCount} Patients',
                           ),
                         ),
                       ],
@@ -199,9 +222,64 @@ class DoctorViewCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDoctorImage({
+    required String imageSource,
+    required bool isNetworkImage,
+    required bool isLocalFile,
+  }) {
+    // ✅ FIX: When bg-removed image is ready, render ONLY Image.memory
+    // — no original image underneath so transparent areas stay transparent
+    if (_processedImage != null) {
+      return Image.memory(
+        _processedImage!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            _originalImage(imageSource, isNetworkImage, isLocalFile),
+      );
+    }
+
+    // While processing: show the original image with shimmer overlay
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _originalImage(imageSource, isNetworkImage, isLocalFile),
+        if (_bgProcessing)
+          // SmartClinic branded loader while AI processes
+          const Positioned.fill(
+            child: ColoredBox(
+              color: Colors.black26,
+              child: SmartClinicLoader(size: 80),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _originalImage(
+    String imageSource,
+    bool isNetworkImage,
+    bool isLocalFile,
+  ) {
+    if (isNetworkImage) {
+      return Image.network(
+        imageSource,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Image.asset(widget.doctorImagePath, fit: BoxFit.cover),
+      );
+    }
+    if (isLocalFile) {
+      return Image.file(File(imageSource), fit: BoxFit.cover);
+    }
+    return Image.asset(
+      widget.doctorImagePath,
+      fit: BoxFit.cover,
+    );
+  }
 }
 
-// ── Badge widget ──────────────────────────────────────────────────────────────
+// ── Badge widget ───────────────────────────────────────────────────────────────
 class _BadgeItem extends StatelessWidget {
   final IconData icon;
   final String label;

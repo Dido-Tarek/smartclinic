@@ -11,6 +11,9 @@ class AppointmentCardWidget extends StatelessWidget {
   final VoidCallback onTap;
   final bool showArrow;
   final VoidCallback? onCancel;
+  final VoidCallback? onChat;
+  /// The raw ISO appointment date for determining chat window state
+  final String? rawAppointmentDate;
 
   const AppointmentCardWidget({
     super.key,
@@ -23,6 +26,8 @@ class AppointmentCardWidget extends StatelessWidget {
     required this.onTap,
     this.showArrow = true,
     this.onCancel,
+    this.onChat,
+    this.rawAppointmentDate,
   });
 
   Widget _buildDoctorImage() {
@@ -196,7 +201,70 @@ class AppointmentCardWidget extends StatelessWidget {
                   ),
                 ),
               ),
+
+            // ─── Chat button (bottom-left) ─────────────────────────────────
+            if (onChat != null)
+              Positioned(
+                left: -10,
+                bottom: -10,
+                child: _ChatBadge(
+                  onTap: onChat!,
+                  rawDate: rawAppointmentDate,
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat badge — teal when chat window is open, grey when locked
+// ─────────────────────────────────────────────────────────────────────────────
+class _ChatBadge extends StatelessWidget {
+  const _ChatBadge({required this.onTap, this.rawDate});
+  final VoidCallback onTap;
+  final String? rawDate;
+
+  bool get _isActive {
+    if (rawDate == null || rawDate!.isEmpty) return false;
+    final raw = rawDate!.split('T').first.trim();
+    final apptDate = DateTime.tryParse(raw);
+    if (apptDate == null) return false;
+    final now = DateTime.now();
+    return !now.isBefore(apptDate) &&
+        now.isBefore(apptDate.add(const Duration(days: 7)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _isActive;
+    final Color bg =
+        active ? const Color(0xFF1ABC9C) : const Color(0xFF94A3B8);
+    final Color shadow =
+        active ? const Color(0xFF1ABC9C) : const Color(0xFF94A3B8);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: bg,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: shadow.withValues(alpha: active ? 0.45 : 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.chat_bubble_rounded,
+          color: Colors.white,
+          size: 20,
         ),
       ),
     );

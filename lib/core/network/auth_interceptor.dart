@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:smartclinic/injection_dependency.dart';
-
+import 'package:smartclinic/main.dart';
 import '../helper/user_session.dart';
+import '../routes/app_routes.dart';
 
 class AuthInterceptor extends Interceptor {
   @override
@@ -20,10 +21,15 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // لو السيرفر رجع 401 (Unauthorized)، ممكن تعمل Logout تلقائي هنا
+    // لو السيرفر رجع 401 (Unauthorized)، امسح الجلسة وارجع للـ Login
     if (err.response?.statusCode == 401) {
-      getIt<UserSession>().clearSession();
-      // هنا ممكن تضيف كود يرجع المستخدم لصفحة الـ Login
+      getIt<UserSession>().clearSession().then((_) {
+        // Navigate to login and clear the entire navigation stack
+        appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
+        );
+      });
     }
     super.onError(err, handler);
   }
