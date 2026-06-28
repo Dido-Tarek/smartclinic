@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
+import 'package:smartclinic/core/services/bg_remover_service.dart';
+import 'package:smartclinic/core/widgets/smart_clinic_loader.dart';
 
 class DoctorCardWidget extends StatefulWidget {
   final String doctorName;
@@ -36,11 +39,41 @@ class DoctorCardWidget extends StatefulWidget {
 
 class _DoctorCardWidgetState extends State<DoctorCardWidget> {
   late bool isFavorite;
+  Uint8List? _processedImage;
+  bool _bgProcessing = true;
 
   @override
   void initState() {
     super.initState();
     isFavorite = widget.isInitialFavorite;
+    _removeBackground();
+  }
+
+  @override
+  void didUpdateWidget(DoctorCardWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldSrc = _effectiveSource(oldWidget.imageUrl, oldWidget.imagePath);
+    final newSrc = _effectiveSource(widget.imageUrl, widget.imagePath);
+    if (oldSrc != newSrc) {
+      setState(() {
+        _processedImage = null;
+        _bgProcessing = true;
+      });
+      _removeBackground();
+    }
+  }
+
+  String _effectiveSource(String? url, String path) =>
+      (url != null && url.trim().isNotEmpty) ? url.trim() : path.trim();
+
+  Future<void> _removeBackground() async {
+    final src = _effectiveSource(widget.imageUrl, widget.imagePath);
+    final result = await BgRemoverService.instance.processImage(src);
+    if (!mounted) return;
+    setState(() {
+      _processedImage = result;
+      _bgProcessing = false;
+    });
   }
 
   @override
@@ -48,12 +81,8 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
     final displayName = widget.doctorName.trim().startsWith('Dr.')
         ? widget.doctorName.trim()
         : 'Dr. ${widget.doctorName.trim()}';
-    final displayRating = widget.rating;
     final fallbackAsset = AppImages.imagesDoctorDRMaiElKady;
-    final imageSource =
-        (widget.imageUrl != null && widget.imageUrl!.trim().isNotEmpty)
-        ? widget.imageUrl!.trim()
-        : widget.imagePath.trim();
+    final imageSource = _effectiveSource(widget.imageUrl, widget.imagePath);
     final isNetworkImage =
         imageSource.startsWith('http://') || imageSource.startsWith('https://');
     final isLocalFile =
@@ -69,13 +98,14 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ── Doctor image area ──────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                   bottomLeft: Radius.circular(50),
                   bottomRight: Radius.circular(12),
-                  topLeft: Radius.circular(12),
                 ),
                 border: Border.all(
                   color: AppColors.deepNavy.withValues(alpha: 0.5),
@@ -84,33 +114,53 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
               ),
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                   bottomLeft: Radius.circular(50),
                   bottomRight: Radius.circular(12),
-                  topLeft: Radius.circular(12),
                 ),
                 child: SizedBox(
-                  height: 160, // fixed image area height
+                  height: 160,
                   width: double.infinity,
-                  child: isNetworkImage
-                      ? Image.network(
-                          imageSource,
+                  // ✅ FIX: render ONLY the processed image when available.
+                  // Never put the original behind it — that would show through
+                  // the transparent areas and make it look unchanged.
+                  child: _processedImage != null
+                      ? Image.memory(
+                          _processedImage!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Image.asset(fallbackAsset, fit: BoxFit.cover),
+                          errorBuilder: (_, __, ___) => _originalImage(
+                            imageSource: imageSource,
+                            isNetworkImage: isNetworkImage,
+                            isLocalFile: isLocalFile,
+                            fallbackAsset: fallbackAsset,
+                          ),
                         )
-                      : isLocalFile
-                      ? Image.file(File(imageSource), fit: BoxFit.cover)
-                      : Image.asset(
-                          imageSource.isNotEmpty ? imageSource : fallbackAsset,
-                          fit: BoxFit.cover,
-                          colorBlendMode: BlendMode.srcOver,
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _originalImage(
+                              imageSource: imageSource,
+                              isNetworkImage: isNetworkImage,
+                              isLocalFile: isLocalFile,
+                              fallbackAsset: fallbackAsset,
+                            ),
+                            if (_bgProcessing)
+                              // SmartClinic branded loader while AI processes
+                              const Positioned.fill(
+                                child: ColoredBox(
+                                  color: Colors.black26,
+                                  child: SmartClinicLoader(size: 80),
+                                ),
+                              ),
+                          ],
                         ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
+            // ── Rating row ─────────────────────────────────────────────────
             Row(
               children: [
                 Icon(
@@ -120,7 +170,7 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  (displayRating).toStringAsFixed(1),
+                  widget.rating.toStringAsFixed(1),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.darkSlate,
@@ -155,13 +205,12 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
             ),
             const SizedBox(height: 12),
 
+            // ── Favourite + specialization ──────────────────────────────────
             Row(
               children: [
                 InkWell(
                   onTap: () {
-                    setState(() {
-                      isFavorite = !isFavorite;
-                    });
+                    setState(() => isFavorite = !isFavorite);
                     widget.onFavoriteChanged(isFavorite);
                   },
                   child: Icon(
@@ -200,6 +249,29 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _originalImage({
+    required String imageSource,
+    required bool isNetworkImage,
+    required bool isLocalFile,
+    required String fallbackAsset,
+  }) {
+    if (isNetworkImage) {
+      return Image.network(
+        imageSource,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Image.asset(fallbackAsset, fit: BoxFit.cover),
+      );
+    }
+    if (isLocalFile) {
+      return Image.file(File(imageSource), fit: BoxFit.cover);
+    }
+    return Image.asset(
+      imageSource.isNotEmpty ? imageSource : fallbackAsset,
+      fit: BoxFit.cover,
     );
   }
 }

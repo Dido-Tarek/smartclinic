@@ -114,6 +114,24 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                     ),
                     const SizedBox(height: 12),
                     _InlineActionCard(
+                      icon: Icons.person_search_rounded,
+                      title: 'Doctor Profile',
+                      subtitle: 'Preview your profile as patients see it',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.doctorProfileView,
+                          arguments: <String, dynamic>{
+                            'doctorId': _userSession.userId,
+                            'name': _userSession.fullName,
+                            'doctorImage': _userSession.profileImage,
+                            'showBookButton': false,
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _InlineActionCard(
                       icon: Icons.delete_outline_rounded,
                       title: 'Remove Facility',
                       subtitle: 'Irreversible administrative action',

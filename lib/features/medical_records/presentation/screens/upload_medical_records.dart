@@ -346,14 +346,6 @@ class _UploadMedicalRecordsScreenState
     Navigator.of(context).pop(true);
   }
 
-  void _clearForm() {
-    _selectedFileTitle = '';
-    setState(() {
-      _selectedFiles.clear();
-      _hasSavedRecord = false;
-    });
-  }
-
   Future<void> _loadExistingRecordsFlag() async {
     if (_loadedExistingRecords) {
       return;
@@ -418,7 +410,6 @@ class _UploadMedicalRecordsScreenState
       _selectedFiles.removeAt(index);
     });
   }
-
 
   Widget _buildUploadedFileTile({
     required PlatformFile file,

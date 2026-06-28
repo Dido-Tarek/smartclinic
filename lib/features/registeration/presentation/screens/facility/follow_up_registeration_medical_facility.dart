@@ -142,6 +142,7 @@ class _FollowUpRegisterScreenDoctorState
               description: Text(
                 localizations.translate("register_facility_success"),
               ),
+              // ignore: use_build_context_synchronously
             ).show(context);
             if (getRoleEnum(selectedRole).isDoctor ||
                 getRoleEnum(selectedRole).isHospital) {
@@ -307,8 +308,7 @@ class _FollowUpRegisterScreenDoctorState
     setState(() {
       _latitude = pickedLatitude;
       _longitude = pickedLongitude;
-      _addressController.text =
-          pickedAddress == null || pickedAddress.isEmpty
+      _addressController.text = pickedAddress == null || pickedAddress.isEmpty
           ? '${pickedLatitude.toStringAsFixed(6)}, ${pickedLongitude.toStringAsFixed(6)}'
           : pickedAddress;
     });

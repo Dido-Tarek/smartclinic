@@ -10,6 +10,7 @@ class SharedPrefsHelper {
   static const String userEmailKey = 'user_email';
   static const String fcmTokenKey = 'fcm_token';
   static const String clinicIdsKey = 'clinic_ids'; // comma-separated clinic IDs
+  static const String loginTimestampKey = 'login_timestamp'; // epoch ms of last login
 
   // كائن الـ SharedPreferences الحقيقي
   static SharedPreferences? _sharedPreferences;

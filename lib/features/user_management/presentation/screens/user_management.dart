@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cherry_toast/cherry_toast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
@@ -13,6 +14,7 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/user_management/presentation/manager/user_management_state.dart';
 import 'package:smartclinic/features/medical_records/presentation/screens/upload_medical_records.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:smartclinic/main.dart'; // للوصول لـ appKey لتغيير الـ Locale الفوري
 
 const String _remoteImageBaseUrl = 'http://smartclinicccc.runasp.net/';
 
@@ -44,8 +46,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
           : '',
       imagePath: _userSession.profileImage,
       fallbackAsset: isDoctor
-        ? AppImages.imagesDoctorDRMahmoudAboLeila
-        : AppImages.imagesIconsPatient,
+          ? AppImages.imagesDoctorDRMahmoudAboLeila
+          : AppImages.imagesIconsPatient,
     );
 
     final items = isDoctor ? _doctorItems : _patientItems;
@@ -114,37 +116,39 @@ class _UserManagementPageState extends State<UserManagementPage> {
                             icon: item.icon,
                             onTap: () async {
                               if (item.label == 'Clinic Settings') {
-                                final role = _userSession.roleString ?? 'Doctor';
-                                final userId = _userSession.userId?.trim() ?? '';
+                                final role =
+                                    _userSession.roleString ?? 'Doctor';
+                                final userId =
+                                    _userSession.userId?.trim() ?? '';
                                 if (userId.isNotEmpty) {
                                   if (!_userSession.isSetupCompleted(
-                                        role: role,
-                                        userId: userId,
-                                      )) {
-                                    _navigateTo(AppRoutes.medicalFacilityManagement);
+                                    role: role,
+                                    userId: userId,
+                                  )) {
+                                    _navigateTo(
+                                      AppRoutes.medicalFacilityManagement,
+                                    );
                                     return;
                                   }
                                 }
                               }
                               _navigateTo(switch (item.label) {
-                              'Profile Settings' =>
-                                isDoctor
-                                    ? AppRoutes.doctorProfileSettings
-                                    : AppRoutes.patientProfileSettings,
-                              'Notifications' => AppRoutes.notifications,
-                              // 'Reset Password' => AppRoutes.verifyDoctor,
-                              'Payment Settings' => AppRoutes.wallet,
-                              'Clinic Settings' => AppRoutes.clinicManagement,
-                              'Family Members' => AppRoutes.familyMember,
-                              'Medical Records' =>
-                                AppRoutes.uploadMedicalRecords,
-                              'Health Issues' => AppRoutes.healthIssues,
-                              'Prescriptions' => AppRoutes.prescriptions,
-                              // 'Help Center' => AppRoutes.search,
-                              String() => throw UnimplementedError(
-                                'No route defined for ${item.label}',
-                              ),
-                            });
+                                'Profile Settings' =>
+                                  isDoctor
+                                      ? AppRoutes.doctorProfileSettings
+                                      : AppRoutes.patientProfileSettings,
+                                'Notifications' => AppRoutes.notifications,
+                                'Payment Settings' => AppRoutes.wallet,
+                                'Clinic Settings' => AppRoutes.clinicManagement,
+                                'Family Members' => AppRoutes.familyMember,
+                                'Medical Records' =>
+                                  AppRoutes.uploadMedicalRecords,
+                                'Health Issues' => AppRoutes.healthIssues,
+                                'Prescriptions' => AppRoutes.prescriptions,
+                                String() => throw UnimplementedError(
+                                  'No route defined for ${item.label}',
+                                ),
+                              });
                             },
                           ),
                         ),
@@ -216,30 +220,41 @@ class _ProfileHeader extends StatelessWidget {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(
-          profile.fallbackAsset,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) =>
+            Image.asset(profile.fallbackAsset, fit: BoxFit.cover),
       );
     }
 
-    final remoteUrl = imageSource.startsWith('http://') ||
-            imageSource.startsWith('https://')
+    final remoteUrl =
+        imageSource.startsWith('http://') || imageSource.startsWith('https://')
         ? imageSource
         : '${_remoteImageBaseUrl}${imageSource.startsWith('/') ? imageSource.substring(1) : imageSource}';
 
     return Image.network(
       remoteUrl,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Image.asset(
-        profile.fallbackAsset,
-        fit: BoxFit.cover,
-      ),
+      errorBuilder: (_, __, ___) =>
+          Image.asset(profile.fallbackAsset, fit: BoxFit.cover),
     );
+  }
+
+  // ميثود حركية مضافة لتبديل لغة التطبيق وحفظ الـ Code الجديد
+  Future<void> _toggleLanguage(BuildContext context) async {
+    final currentLocale = Localizations.localeOf(context);
+    final nextLocale = currentLocale.languageCode == 'ar'
+        ? const Locale('en')
+        : const Locale('ar');
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language_code', nextLocale.languageCode);
+    appKey.currentState?.setLocale(nextLocale); // تغيير لغة التطبيق في الحال
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentLocale = Localizations.localeOf(context);
+    final isArabic = currentLocale.languageCode == 'ar';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -286,20 +301,65 @@ class _ProfileHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.deepNavy,
-                  fontSize: 22,
+                  fontSize: 22, // الحفاظ على حجم الخط الأصلي كما هو
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                profile.email,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.skyBlue,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      profile.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.skyBlue,
+                        fontSize: 15, // الحفاظ على حجم الخط الأصلي كما هو
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // إضافة زر تبديل اللغة التفاعلي الصغير بجوار الإيميل مباشرة
+                  InkWell(
+                    onTap: () => _toggleLanguage(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.deepNavy.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.skyBlue.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.language_rounded,
+                            size: 14,
+                            color: AppColors.deepNavy,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isArabic ? 'English' : 'العربية',
+                            style: const TextStyle(
+                              color: AppColors.deepNavy,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

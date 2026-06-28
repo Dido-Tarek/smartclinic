@@ -6,6 +6,7 @@ import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/doctor_card_widget.dart';
+import 'package:smartclinic/features/health_issues/data/models/health_issues_model.dart';
 import 'package:smartclinic/features/search/data/model/search_doctors_response_model.dart';
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_cubit.dart';
 import 'package:smartclinic/features/search/presentation/manager/search_doctors_state.dart';
@@ -22,6 +23,12 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
   late final UserSession _userSession;
   String _selectedCity = 'All';
   String _selectedArea = 'All';
+  String? _selectedSpecialization; // null = all specializations
+
+  // Active health issues passed from home screen (for "Matches Your History" badge)
+  List<HealthIssueModel> _activeIssues = [];
+  // Specializations derived from active issues
+  Set<String> _patientSpecializations = {};
 
   // Emergency consultation type value for the search API
   static const int _emergencyType = 3;
@@ -31,7 +38,15 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
     super.initState();
     _userSession = getIt<UserSession>();
     _initLocationFromProfile();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _searchDoctors());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Read active issues passed as route arguments from home screen
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args['activeIssues'] is List<HealthIssueModel>) {
+        _activeIssues = args['activeIssues'] as List<HealthIssueModel>;
+        _patientSpecializations = _buildPatientSpecializations(_activeIssues);
+      }
+      _searchDoctors();
+    });
   }
 
   void _initLocationFromProfile() {
@@ -52,6 +67,41 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
     }
   }
 
+  /// Builds the set of specializations that match the patient's active issues.
+  Set<String> _buildPatientSpecializations(List<HealthIssueModel> issues) {
+    final specs = <String>{};
+    for (final issue in issues) {
+      final cured = issue.curedDate;
+      final status = issue.status.toLowerCase().trim();
+      final isActive = status == 'active' ||
+          status == 'ongoing' ||
+          status == 'chronic' ||
+          status == 'current' ||
+          (cured == null || cured.isEmpty);
+      if (!isActive) continue;
+      final spec = _diseaseToSpecialization(issue.name);
+      if (spec != null) specs.add(spec.toLowerCase());
+    }
+    return specs;
+  }
+
+  static String? _diseaseToSpecialization(String diseaseName) {
+    final name = diseaseName.toLowerCase();
+    if (name.contains('diabet') || name.contains('endocrin') || name.contains('thyroid') || name.contains('insulin')) return 'Endocrinology';
+    if (name.contains('heart') || name.contains('cardio') || name.contains('cardiac') || name.contains('hypertens') || name.contains('blood pressure') || name.contains('coronary')) return 'Cardiology';
+    if (name.contains('neuro') || name.contains('brain') || name.contains('epilepsy') || name.contains('stroke') || name.contains('migraine') || name.contains('parkinson') || name.contains('alzheimer')) return 'Neurology';
+    if (name.contains('lung') || name.contains('asthma') || name.contains('pulmo') || name.contains('respiratory') || name.contains('bronch') || name.contains('copd')) return 'Pulmonology';
+    if (name.contains('kidney') || name.contains('renal') || name.contains('nephro')) return 'Nephrology';
+    if (name.contains('joint') || name.contains('arthr') || name.contains('bone') || name.contains('ortho') || name.contains('spine') || name.contains('fracture')) return 'Orthopedics';
+    if (name.contains('skin') || name.contains('dermat') || name.contains('acne') || name.contains('eczema')) return 'Dermatology';
+    if (name.contains('mental') || name.contains('depress') || name.contains('anxiety') || name.contains('psych') || name.contains('bipolar')) return 'Psychiatry';
+    if (name.contains('stomach') || name.contains('gastro') || name.contains('intestin') || name.contains('colon') || name.contains('liver') || name.contains('hepat') || name.contains('ibs')) return 'Gastroenterology';
+    if (name.contains('eye') || name.contains('ophthalm') || name.contains('vision') || name.contains('glaucom') || name.contains('cataract')) return 'Ophthalmology';
+    if (name.contains('ear') || name.contains('ent') || name.contains('throat') || name.contains('nose') || name.contains('sinus') || name.contains('tonsil')) return 'ENT';
+    if (name.contains('urology') || name.contains('bladder') || name.contains('prostate') || name.contains('kidney stone')) return 'Urology';
+    return null;
+  }
+
   void _searchDoctors() {
     if (!mounted) return;
     // Pass city only — area sorting is handled client-side so we get all
@@ -59,8 +109,18 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
     context.read<DoctorsCubit>().searchDoctors(
       city: _selectedCity == 'All' ? null : _selectedCity,
       consultationType: _emergencyType,
+      specialization: _selectedSpecialization,
       pageNumber: 1,
       pageSize: 50,
+    );
+  }
+
+  /// Returns true if this doctor's specialization matches the patient's history.
+  bool _matchesPatientHistory(DoctorModel doctor) {
+    if (_patientSpecializations.isEmpty) return false;
+    final spec = (doctor.specialization ?? '').toLowerCase();
+    return _patientSpecializations.any(
+      (ps) => spec.contains(ps) || ps.contains(spec),
     );
   }
 
@@ -80,12 +140,24 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
             final isLoading =
                 state is SearchDoctorsLoading && allDoctors.isEmpty;
 
+            // Client-side specialization filter
+            final filteredDoctors = _selectedSpecialization == null
+                ? allDoctors
+                : allDoctors
+                      .where(
+                        (d) =>
+                            (d.specialization ?? '').toLowerCase().contains(
+                              _selectedSpecialization!.toLowerCase(),
+                            ),
+                      )
+                      .toList();
+
             // Split into area-matching and rest, both sorted by rating desc
             final areaDoctors = <DoctorModel>[];
             final cityDoctors = <DoctorModel>[];
 
             if (_selectedArea != 'All') {
-              for (final doc in allDoctors) {
+              for (final doc in filteredDoctors) {
                 if (doc.area == _selectedArea) {
                   areaDoctors.add(doc);
                 } else {
@@ -93,7 +165,7 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
                 }
               }
             } else {
-              cityDoctors.addAll(allDoctors);
+              cityDoctors.addAll(filteredDoctors);
             }
 
             areaDoctors.sort(
@@ -103,15 +175,19 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
               (a, b) => (b.rating ?? 0).compareTo(a.rating ?? 0),
             );
 
+            final totalVisible = areaDoctors.length + cityDoctors.length;
+
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildEmergencyBanner(),
+                  _buildEmergencyBanner(totalVisible),
                   const SizedBox(height: 18),
                   _buildLocationSection(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  _buildSpecializationChips(),
+                  const SizedBox(height: 12),
                   if (isLoading)
                     const Padding(
                       padding: EdgeInsets.only(top: 60),
@@ -130,7 +206,7 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
     );
   }
 
-  Widget _buildEmergencyBanner() {
+  Widget _buildEmergencyBanner(int doctorCount) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -153,11 +229,11 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Immediate Care',
                   style: TextStyle(
                     color: AppColors.error,
@@ -177,6 +253,24 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
               ],
             ),
           ),
+          if (doctorCount > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$doctorCount\navailable',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  height: 1.3,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -221,6 +315,87 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  /// Quick-filter chips for emergency specialization
+  Widget _buildSpecializationChips() {
+    final chips = [
+      (null, 'All'),
+      ('General', 'General'),
+      ('Cardiology', 'Cardio'),
+      ('Neurology', 'Neuro'),
+      ('Orthopedics', 'Ortho'),
+      ('Pulmonology', 'Pulmo'),
+      ('Gastroenterology', 'Gastro'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Specialization',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: chips.map((chip) {
+              final isSelected = _selectedSpecialization == chip.$1;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedSpecialization = chip.$1);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.error
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.error
+                            : AppColors.deepNavy.withValues(alpha: 0.15),
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.error.withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      chip.$2,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
@@ -292,37 +467,83 @@ class _EmergencySearchScreenState extends State<EmergencySearchScreen> {
         crossAxisCount: 2,
         crossAxisSpacing: 14,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.63,
+        childAspectRatio: 0.58,
       ),
       itemBuilder: (context, index) {
         final doctor = doctors[index];
-        return DoctorCardWidget(
-          doctorName: doctor.name ?? 'Doctor',
-          specialization: doctor.specialization ?? 'Doctor',
-          rating: doctor.rating ?? 0,
-          reviewsCount: doctor.reviewsCount,
-          imagePath: doctor.resolvedImageUrl ?? _fallbackImage(doctor),
-          imageUrl: doctor.resolvedImageUrl,
-          onTap: () => Navigator.pushNamed(
-            context,
-            AppRoutes.doctorProfileView,
-            arguments: {
-              'name': doctor.name,
-              'doctorId': doctor.id,
-              'clinicId': doctor.clinicId,
-              'doctorImage': doctor.resolvedImageUrl,
-              'specialization': doctor.specialization,
-              'rating': doctor.rating ?? 0.0,
-              'reviewsCount': doctor.reviewsCount,
-              'emergencyFee': doctor.consultationPrice,
-              'clinicName': doctor.clinicName,
-              'clinicAddress': doctor.clinicAddress,
-              'clinicPhone': doctor.clinicPhone,
-              'clinicWorkingHours': doctor.clinicWorkingHours,
-              'enabledConsultationTypes': ['Emergency'],
-            },
-          ),
-          onFavoriteChanged: (_) {},
+        final matchesHistory = _matchesPatientHistory(doctor);
+        return Stack(
+          children: [
+            DoctorCardWidget(
+              doctorName: doctor.name ?? 'Doctor',
+              specialization: doctor.specialization ?? 'Doctor',
+              rating: doctor.rating ?? 0,
+              reviewsCount: doctor.reviewsCount,
+              imagePath: doctor.resolvedImageUrl ?? _fallbackImage(doctor),
+              imageUrl: doctor.resolvedImageUrl,
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.doctorProfileView,
+                arguments: {
+                  'name': doctor.name,
+                  'doctorId': doctor.id,
+                  'clinicId': doctor.clinicId,
+                  'doctorImage': doctor.resolvedImageUrl,
+                  'specialization': doctor.specialization,
+                  'rating': doctor.rating ?? 0.0,
+                  'reviewsCount': doctor.reviewsCount,
+                  'emergencyFee': doctor.consultationPrice,
+                  'clinicName': doctor.clinicName,
+                  'clinicAddress': doctor.clinicAddress,
+                  'clinicPhone': doctor.clinicPhone,
+                  'clinicWorkingHours': doctor.clinicWorkingHours,
+                  'enabledConsultationTypes': ['Emergency'],
+                },
+              ),
+              onFavoriteChanged: (_) {},
+            ),
+            // "Matches Your History" badge
+            if (matchesHistory)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.error.withValues(alpha: 0.35),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.favorite_rounded,
+                        size: 9,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 3),
+                      Text(
+                        'Matches You',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );

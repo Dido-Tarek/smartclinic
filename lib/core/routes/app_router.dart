@@ -21,6 +21,8 @@ import 'package:smartclinic/features/health_issues/presentation/manager/health_i
 import 'package:smartclinic/features/home/presentation/screens/home_screen.dart';
 import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
 import 'package:smartclinic/features/chat/presentation/screens/doctor_chat_room.dart';
+import 'package:smartclinic/features/chat/presentation/manager/chat_cubit.dart';
+import 'package:smartclinic/features/appointments/data/model/appointment_response_model.dart';
 import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_management.dart';
 import 'package:smartclinic/features/clinic_management/presentation/screens/employment_screen.dart';
 import 'package:smartclinic/features/medical_records/presentation/manager/medical_records_cubit.dart';
@@ -183,13 +185,20 @@ class AppRouter {
       case AppRoutes.nouga:
         return MaterialPageRoute(builder: (_) => const NougaAiChatPage());
       case AppRoutes.inbox:
-        return MaterialPageRoute(builder: (_) => const InboxChatRoomsScreen());
+        final inboxArgs = settings.arguments;
+        final inboxAppts = inboxArgs is List<AppointmentModel>
+            ? inboxArgs
+            : const <AppointmentModel>[];
+        return MaterialPageRoute(
+          builder: (_) => InboxChatRoomsScreen(appointments: inboxAppts),
+        );
       case AppRoutes.home:
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => getIt<DoctorsCubit>()),
               BlocProvider(create: (_) => getIt<AppointmentsCubit>()),
+              BlocProvider(create: (_) => getIt<HealthIssuesCubit>()),
             ],
             child: const HomeScreen(),
           ),
@@ -331,6 +340,9 @@ class AppRouter {
                   ? data['clinicWorkingHours'] as String
                   : null,
               enabledConsultationTypes: enabledTypes,
+              showBookButton: data is Map && data['showBookButton'] == false
+                  ? false
+                  : true,
             ),
           ),
         );
@@ -607,28 +619,43 @@ class AppRouter {
         final data = args is Map ? args : null;
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => DoctorChatRoomScreen(
-            doctorName: data is Map && data['doctorName'] != null
-                ? data['doctorName'] as String
-                : null,
-            specialization: data is Map && data['specialization'] != null
-                ? data['specialization'] as String
-                : null,
-            clinicName: data is Map && data['clinicName'] != null
-                ? data['clinicName'] as String
-                : null,
-            doctorImagePath: data is Map && data['doctorImage'] != null
-                ? data['doctorImage'] as String
-                : null,
-            consultationType: data is Map && data['consultationType'] != null
-                ? data['consultationType'] as String
-                : null,
-            selectedDate: data is Map && data['selectedDate'] != null
-                ? data['selectedDate'] as String
-                : null,
-            selectedTime: data is Map && data['selectedTime'] != null
-                ? data['selectedTime'] as String
-                : null,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<ChatCubit>(),
+            child: DoctorChatRoomScreen(
+              doctorName: data is Map && data['doctorName'] != null
+                  ? data['doctorName'] as String
+                  : null,
+              specialization: data is Map && data['specialization'] != null
+                  ? data['specialization'] as String
+                  : null,
+              clinicName: data is Map && data['clinicName'] != null
+                  ? data['clinicName'] as String
+                  : null,
+              doctorImagePath: data is Map && data['doctorImage'] != null
+                  ? data['doctorImage'] as String
+                  : null,
+              consultationType: data is Map && data['consultationType'] != null
+                  ? data['consultationType'] as String
+                  : null,
+              selectedDate: data is Map && data['selectedDate'] != null
+                  ? data['selectedDate'] as String
+                  : null,
+              selectedTime: data is Map && data['selectedTime'] != null
+                  ? data['selectedTime'] as String
+                  : null,
+              doctorId: data is Map && data['doctorId'] != null
+                  ? data['doctorId'] as String
+                  : null,
+              patientId: data is Map && data['patientId'] != null
+                  ? data['patientId'] as String
+                  : null,
+              appointmentDate: data is Map && data['appointmentDate'] != null
+                  ? data['appointmentDate'] as String
+                  : null,
+              patientImageUrl: data is Map && data['patientImageUrl'] != null
+                  ? data['patientImageUrl'] as String
+                  : null,
+            ),
           ),
         );
       case AppRoutes.clinicManagement:
