@@ -41,6 +41,9 @@ class AppRoutes {
   static const String search = '/search';
   static const String searchFilter = '/searchFilter';
   static const String wallet = '/wallet';
+  static const String chat = '/chat';
+  static const String forgotPassword = '/forgotPassword';
+  static const String createNewPassword = '/createNewPassword';
   static const String nouga = '/chatbot';
   static const String inbox = '/inbox';
   static const String userManagement = '/userManagement';
@@ -49,4 +52,6 @@ class AppRoutes {
   static const String prescriptions = '/prescriptions';
   static const String prescriptionDetail = '/prescriptionDetail';
   static const String addPrescription = '/addPrescription';
+  static const String clinicProfileSettings = '/clinicProfileSettings';
+  static const String updateFinancialTerms = '/clinic/update-financial-terms';
 }

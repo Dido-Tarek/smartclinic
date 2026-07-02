@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for FCM to reach Google's push servers -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Runtime permission for showing notifications on Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="smartclinic"

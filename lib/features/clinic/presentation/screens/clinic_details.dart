@@ -1,13 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
 import 'package:smartclinic/core/widgets/map_location_picker.dart';
-import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
-import 'package:smartclinic/features/clinic_management/data/model/clinic_request_model.dart';
-import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_state.dart';
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/localization/app_localization.dart';
@@ -106,13 +102,6 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
   bool _isCityPickerOpen = false;
   bool _isApplyingCitySelection = false;
   Timer? _cityTypingDebounce;
-  bool _clinicProfileUpdateTriggered = false;
-  double? _clinicFee;
-  double? _onlineFee;
-  double? _homeVisitFee;
-  double? _followUpFee;
-  double? _emergencyFee;
-  int? _sessionDuration;
 
   @override
   void didChangeDependencies() {
@@ -137,12 +126,6 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
       _areaController.text = normalized['area'] as String? ?? '';
       _specializationController.text =
           normalized['specialization'] as String? ?? '';
-      _clinicFee = (normalized['clinicFee'] as num?)?.toDouble();
-      _onlineFee = (normalized['onlineFee'] as num?)?.toDouble();
-      _homeVisitFee = (normalized['homeVisitFee'] as num?)?.toDouble();
-      _followUpFee = (normalized['followUpFee'] as num?)?.toDouble();
-      _emergencyFee = (normalized['emergencyFee'] as num?)?.toDouble();
-      _sessionDuration = normalized['sessionDuration'] as int?;
       final clinicImageText = normalized['clinicImageUrl'] as String?;
       if (clinicImageText != null && clinicImageText.trim().isNotEmpty) {
         _facilityImageController.text = clinicImageText.trim();
@@ -159,9 +142,6 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     }
 
     _argsLoaded = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _triggerClinicProfileUpdateIfNeeded();
-    });
   }
 
   @override
@@ -182,24 +162,7 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    return BlocListener<ClinicManagementCubit, ClinicManagementState>(
-      listener: (context, state) {
-        if (state is UpdateClinicProfileLoading) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Saving clinic...')));
-        } else if (state is UpdateClinicProfileSuccess) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Clinic updated')));
-          Navigator.pop(context, true);
-        } else if (state is UpdateClinicProfileFailure) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.errorMessage)));
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: AppColors.scaffoldBg,
         body: SafeArea(
           child: Column(
@@ -376,8 +339,7 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildLabel(String text) {
@@ -449,45 +411,6 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
     });
   }
 
-  void _triggerClinicProfileUpdateIfNeeded() {
-    if (_clinicProfileUpdateTriggered || _clinicId == null) {
-      return;
-    }
-
-    final request = UpdateClinicProfileRequestModel(
-      clinicId: _clinicId!,
-      name: _facilityNameController.text.trim().isEmpty
-          ? null
-          : _facilityNameController.text.trim(),
-      address: _addressController.text.trim().isEmpty
-          ? null
-          : _addressController.text.trim(),
-      phoneNumber: _contactController.text.trim().isEmpty
-          ? null
-          : _contactController.text.trim(),
-      city: _cityController.text.trim().isEmpty
-          ? null
-          : _cityController.text.trim(),
-      area: _areaController.text.trim().isEmpty
-          ? null
-          : _areaController.text.trim(),
-      specialization: _specializationController.text.trim().isEmpty
-          ? null
-          : _specializationController.text.trim(),
-      latitude: _latitude,
-      longitude: _longitude,
-      sessionDuration: _sessionDuration,
-      clinicFee: _clinicFee,
-      onlineFee: _onlineFee,
-      homeVisitFee: _homeVisitFee,
-      followUpFee: _followUpFee,
-      emergencyFee: _emergencyFee,
-      clinicImagePath: _clinicImage?.path,
-    );
-
-    _clinicProfileUpdateTriggered = true;
-    context.read<ClinicManagementCubit>().updateClinicProfile(request);
-  }
 
   void _onSavePressed() {
     final clinicId = _clinicId;
@@ -521,38 +444,28 @@ class _ClinicDetailsPageState extends State<ClinicDetailsPage> {
       return;
     }
 
-    final request = UpdateClinicProfileRequestModel(
-      clinicId: clinicId,
-      name: _facilityNameController.text.trim().isEmpty
-          ? null
-          : _facilityNameController.text.trim(),
-      address: _addressController.text.trim().isEmpty
-          ? null
-          : _addressController.text.trim(),
-      phoneNumber: _contactController.text.trim().isEmpty
-          ? null
-          : _contactController.text.trim(),
-      city: _cityController.text.trim().isEmpty
-          ? null
-          : _cityController.text.trim(),
-      area: _areaController.text.trim().isEmpty
-          ? null
-          : _areaController.text.trim(),
-      specialization: _specializationController.text.trim().isEmpty
-          ? null
-          : _specializationController.text.trim(),
-      latitude: _latitude,
-      longitude: _longitude,
-      sessionDuration: _sessionDuration,
-      clinicFee: _clinicFee,
-      onlineFee: _onlineFee,
-      homeVisitFee: _homeVisitFee,
-      followUpFee: _followUpFee,
-      emergencyFee: _emergencyFee,
-      clinicImagePath: _clinicImage?.path,
+    // When clinicId is already set (registration follow-up), navigate forward
+    final argsToPassWithId = <String, dynamic>{};
+    if (_initialArgs != null) {
+      argsToPassWithId.addAll(_initialArgs!);
+    }
+    argsToPassWithId['clinicId'] = clinicId;
+    argsToPassWithId['name'] = _facilityNameController.text.trim();
+    argsToPassWithId['address'] = _addressController.text.trim();
+    argsToPassWithId['phoneNumber'] = _contactController.text.trim();
+    argsToPassWithId['city'] = _cityController.text.trim();
+    argsToPassWithId['area'] = _areaController.text.trim();
+    argsToPassWithId['specialization'] = _specializationController.text.trim();
+    argsToPassWithId['latitude'] = _latitude;
+    argsToPassWithId['longitude'] = _longitude;
+    if (_clinicImage != null) {
+      argsToPassWithId['clinicImage'] = _clinicImage;
+    }
+    Navigator.pushNamed(
+      context,
+      AppRoutes.appointmentDetails,
+      arguments: argsToPassWithId,
     );
-
-    context.read<ClinicManagementCubit>().updateClinicProfile(request);
   }
 
   List<String> get _filteredSpecializations {

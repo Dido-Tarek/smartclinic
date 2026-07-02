@@ -7,7 +7,7 @@ class UserManagementApiService {
   UserManagementApiService(this._dio);
 
   Future<Response> forgotPassword(String email) async {
-    return await _dio.post('/api/Auth/forgot-password', data: email);
+    return await _dio.post('/api/Auth/forgot-password', data: '"$email"');
   }
 
   Future<Response> resetPassword(ResetPasswordRequest request) async {

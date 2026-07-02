@@ -14,6 +14,7 @@ import 'package:smartclinic/features/auth/presentation/manager/login_cubit.dart'
 import 'package:smartclinic/features/auth/presentation/manager/login_state.dart';
 import 'package:smartclinic/features/registeration/presentation/screens/facility/license_verification.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:smartclinic/core/services/push_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -74,8 +75,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 await userSession.saveUserId(userId.trim());
               }
               await userSession.saveRole(role);
-              // Record login time so the 3-hour session timer starts now
+              // Record login time so the 3-hour session timer starts now.
               await userSession.saveLoginTimestamp();
+
+              // Re-sync the FCM token to the backend now that the user is
+              // authenticated — the token obtained at app startup was not
+              // sent because the user was not logged in yet.
+              await PushNotificationService.syncTokenAfterLogin();
 
               if (fullName != null && fullName.trim().isNotEmpty) {
                 await userSession.saveFullName(fullName.trim());
@@ -213,7 +219,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () => _showComingSoon(context),
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.forgotPassword,
+                                  arguments: {'sourceRoute': AppRoutes.login},
+                                );
+                              },
                               style: TextButton.styleFrom(
                                 foregroundColor: const Color(0xFF1A2D42),
                                 padding: EdgeInsets.zero,
@@ -243,13 +255,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 12),
                             _buildReviewStatusBadge(localizations),
                           ],
-                          const SizedBox(height: 10),
-                          _GoogleButton(
-                            text: localizations.translate(
-                              'login_google_sign_in',
-                            ),
-                            onPressed: () => _showComingSoon(context),
-                          ),
+                          // const SizedBox(height: 10),
+                          // _GoogleButton(
+                          //   text: localizations.translate(
+                          //     'login_google_sign_in',
+                          //   ),
+                          //   onPressed: () => _showComingSoon(context),
+                          // ),
                           const SizedBox(height: 12),
                           Center(
                             child: Row(
@@ -304,14 +316,6 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       ),
     );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    CherryToast.info(
-      title: const Text('Coming Soon'),
-      description: Text(localizations.translate('login_coming_soon')),
-    ).show(context);
   }
 
   bool get _shouldShowReviewStatus {
@@ -623,53 +627,6 @@ class _ActionButton extends StatelessWidget {
         child: Text(
           text,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({required this.onPressed, required this.text});
-
-  final VoidCallback onPressed;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1A2D42),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircleAvatar(
-              radius: 10,
-              backgroundColor: Colors.white,
-              child: Text(
-                'G',
-                style: TextStyle(
-                  color: Color(0xFFDB4437),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              text,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-            ),
-          ],
         ),
       ),
     );

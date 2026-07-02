@@ -32,7 +32,7 @@ class ScheduleSlotModel {
 class SendEmploymentRequestModel {
   final String doctorId;
   final int clinicId;
-  final num examinationFee;
+  final num inClinicFee;
   final num homeVisitFee;
   final num onlineFee;
   final num followUpFee;
@@ -43,7 +43,7 @@ class SendEmploymentRequestModel {
   const SendEmploymentRequestModel({
     required this.doctorId,
     required this.clinicId,
-    required this.examinationFee,
+    required this.inClinicFee,
     required this.homeVisitFee,
     required this.onlineFee,
     required this.followUpFee,
@@ -55,7 +55,7 @@ class SendEmploymentRequestModel {
   Map<String, dynamic> toJson() => {
     'doctorId': doctorId,
     'clinicId': clinicId,
-    'examinationFee': examinationFee,
+    'inClinicFee': inClinicFee,
     'homeVisitFee': homeVisitFee,
     'onlineFee': onlineFee,
     'followUpFee': followUpFee,
@@ -128,7 +128,7 @@ class UpdateClinicProfileRequestModel {
 class UpdateFinancialTermsRequestModel {
   final String doctorId;
   final int clinicId;
-  final num examinationFee;
+  final num inClinicFee;
   final num followUpFee;
   final num onlineFee;
   final num homeVisitFee;
@@ -138,7 +138,7 @@ class UpdateFinancialTermsRequestModel {
   const UpdateFinancialTermsRequestModel({
     required this.doctorId,
     required this.clinicId,
-    required this.examinationFee,
+    required this.inClinicFee,
     required this.followUpFee,
     required this.onlineFee,
     required this.homeVisitFee,
@@ -149,7 +149,7 @@ class UpdateFinancialTermsRequestModel {
   Map<String, dynamic> toJson() => {
     'doctorId': doctorId,
     'clinicId': clinicId,
-    'examinationFee': examinationFee,
+    'inClinicFee': inClinicFee,
     'followUpFee': followUpFee,
     'onlineFee': onlineFee,
     'homeVisitFee': homeVisitFee,
@@ -200,4 +200,11 @@ class AddScheduleRequestModel {
     'endTime': endTime,
     'maxPatientsPerShift': maxPatientsPerShift,
   };
+
+  /// Serialises a list of schedules as a raw JSON array,
+  /// which is what the API expects: `[ {...}, ... ]`
+  static List<Map<String, dynamic>> toJsonList(
+    List<AddScheduleRequestModel> models,
+  ) =>
+      models.map((m) => m.toJson()).toList();
 }

@@ -78,7 +78,10 @@ class _EmploymentScreenState extends State<EmploymentScreen>
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
-                tabs: const [Tab(text: 'Received'), Tab(text: 'Sent')],
+                tabs: const [
+                  Tab(text: 'Received'),
+                  Tab(text: 'Sent'),
+                ],
               ),
             ),
           ),
@@ -92,12 +95,10 @@ class _EmploymentScreenState extends State<EmploymentScreen>
             setState(() {
               _isLoading = false;
               _received = state.response.requests
-                  .where((r) =>
-                      r.roleInRequest?.toLowerCase() == 'receiver')
+                  .where((r) => r.roleInRequest?.toLowerCase() == 'receiver')
                   .toList();
               _sent = state.response.requests
-                  .where((r) =>
-                      r.roleInRequest?.toLowerCase() == 'sender')
+                  .where((r) => r.roleInRequest?.toLowerCase() == 'sender')
                   .toList();
             });
           } else if (state is GetMyEmploymentRequestsFailure) {
@@ -255,8 +256,7 @@ class _EmploymentScreenState extends State<EmploymentScreen>
 
   // ── Details bottom sheet ────────────────────────────────────────────────────
 
-  void _showDetailsSheet(
-      BuildContext context, EmploymentRequestModel req) {
+  void _showDetailsSheet(BuildContext context, EmploymentRequestModel req) {
     final cubit = context.read<ClinicManagementCubit>();
     showModalBottomSheet(
       context: context,
@@ -274,10 +274,8 @@ class _EmploymentScreenState extends State<EmploymentScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _SendRequestSheet(
-        cubit: cubit,
-        defaultClinicId: widget.clinicId,
-      ),
+      builder: (_) =>
+          _SendRequestSheet(cubit: cubit, defaultClinicId: widget.clinicId),
     );
   }
 }
@@ -462,11 +460,7 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         status ?? 'Pending',
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -494,7 +488,7 @@ class _DetailsSheetState extends State<_DetailsSheet> {
   }
 
   bool get _hasFees =>
-      widget.req.examinationFee != null ||
+      widget.req.inClinicFee != null ||
       widget.req.onlineFee != null ||
       widget.req.followUpFee != null ||
       widget.req.homeVisitFee != null ||
@@ -609,8 +603,9 @@ class _DetailsSheetState extends State<_DetailsSheet> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        errorText:
-                            _feedbackError ? 'Feedback is required' : null,
+                        errorText: _feedbackError
+                            ? 'Feedback is required'
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -625,8 +620,7 @@ class _DetailsSheetState extends State<_DetailsSheet> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: const Text(
                               'Decline',
@@ -644,8 +638,7 @@ class _DetailsSheetState extends State<_DetailsSheet> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: const Text(
                               'Accept',
@@ -681,7 +674,7 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
   final _formKey = GlobalKey<FormState>();
   final _doctorIdCtrl = TextEditingController();
   final _clinicIdCtrl = TextEditingController();
-  final _examinationFeeCtrl = TextEditingController();
+  final _clinicFeeCtrl = TextEditingController();
   final _homeVisitFeeCtrl = TextEditingController();
   final _onlineFeeCtrl = TextEditingController();
   final _followUpFeeCtrl = TextEditingController();
@@ -702,7 +695,7 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
   void dispose() {
     _doctorIdCtrl.dispose();
     _clinicIdCtrl.dispose();
-    _examinationFeeCtrl.dispose();
+    _clinicFeeCtrl.dispose();
     _homeVisitFeeCtrl.dispose();
     _onlineFeeCtrl.dispose();
     _followUpFeeCtrl.dispose();
@@ -714,13 +707,9 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     for (final slot in _slots) {
-      if (slot.day == null ||
-          slot.startTime == null ||
-          slot.endTime == null) {
+      if (slot.day == null || slot.startTime == null || slot.endTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please complete all schedule slots'),
-          ),
+          const SnackBar(content: Text('Please complete all schedule slots')),
         );
         return;
       }
@@ -728,19 +717,21 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
     final request = SendEmploymentRequestModel(
       doctorId: _doctorIdCtrl.text.trim(),
       clinicId: int.parse(_clinicIdCtrl.text.trim()),
-      examinationFee: double.parse(_examinationFeeCtrl.text.trim()),
+      inClinicFee: double.parse(_clinicFeeCtrl.text.trim()),
       homeVisitFee: double.parse(_homeVisitFeeCtrl.text.trim()),
       onlineFee: double.parse(_onlineFeeCtrl.text.trim()),
       followUpFee: double.parse(_followUpFeeCtrl.text.trim()),
       emergencyFee: double.parse(_emergencyFeeCtrl.text.trim()),
       sessionDuration: int.parse(_sessionDurationCtrl.text.trim()),
       schedules: _slots
-          .map((s) => ScheduleSlotModel(
-                dayOfWeek: s.day!,
-                startTime: s.startTime!,
-                endTime: s.endTime!,
-                maxPatients: s.maxPatients,
-              ))
+          .map(
+            (s) => ScheduleSlotModel(
+              dayOfWeek: s.day!,
+              startTime: s.startTime!,
+              endTime: s.endTime!,
+              maxPatients: s.maxPatients,
+            ),
+          )
           .toList(),
     );
     widget.cubit.sendEmploymentRequest(request);
@@ -786,7 +777,10 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -818,7 +812,8 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
                         keyboardType: TextInputType.number,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Required';
-                          if (int.tryParse(v.trim()) == null) return 'Must be a number';
+                          if (int.tryParse(v.trim()) == null)
+                            return 'Must be a number';
                           return null;
                         },
                       ),
@@ -829,7 +824,7 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
                         children: [
                           Expanded(
                             child: _FormField(
-                              controller: _examinationFeeCtrl,
+                              controller: _clinicFeeCtrl,
                               label: 'Examination',
                               keyboardType: TextInputType.number,
                               validator: _numValidator,
@@ -886,8 +881,10 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
                               label: 'Session (mins)',
                               keyboardType: TextInputType.number,
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Required';
-                                if (int.tryParse(v.trim()) == null) return 'Must be a number';
+                                if (v == null || v.trim().isEmpty)
+                                  return 'Required';
+                                if (int.tryParse(v.trim()) == null)
+                                  return 'Must be a number';
                                 return null;
                               },
                             ),
@@ -911,17 +908,19 @@ class _SendRequestSheetState extends State<_SendRequestSheet> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      ..._slots.asMap().entries.map((e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _ScheduleSlotWidget(
-                              slot: e.value,
-                              index: e.key,
-                              canRemove: _slots.length > 1,
-                              onRemove: () =>
-                                  setState(() => _slots.removeAt(e.key)),
-                              onChanged: () => setState(() {}),
-                            ),
-                          )),
+                      ..._slots.asMap().entries.map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ScheduleSlotWidget(
+                            slot: e.value,
+                            index: e.key,
+                            canRemove: _slots.length > 1,
+                            onRemove: () =>
+                                setState(() => _slots.removeAt(e.key)),
+                            onChanged: () => setState(() {}),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
@@ -993,8 +992,13 @@ class _ScheduleSlotWidget extends StatefulWidget {
 
 class _ScheduleSlotWidgetState extends State<_ScheduleSlotWidget> {
   static const _days = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-    'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   final _maxPatientsCtrl = TextEditingController(text: '10');
@@ -1141,7 +1145,11 @@ class _TimeTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.access_time, size: 16, color: AppColors.textSecondary),
+            const Icon(
+              Icons.access_time,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -1221,7 +1229,7 @@ class _FeesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <MapEntry<String, num?>>[
-      MapEntry('Examination', req.examinationFee),
+      MapEntry('Examination', req.inClinicFee),
       MapEntry('Online', req.onlineFee),
       MapEntry('Follow Up', req.followUpFee),
       MapEntry('Home Visit', req.homeVisitFee),
@@ -1470,9 +1478,7 @@ class _FormField extends StatelessWidget {
           horizontal: 12,
           vertical: 12,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

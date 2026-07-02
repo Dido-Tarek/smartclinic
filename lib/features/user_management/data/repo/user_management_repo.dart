@@ -20,6 +20,17 @@ class UserManagementRepo {
     }
   }
 
+  Future<ApiResult<String>> forgotPassword(String email) async {
+    try {
+      final response = await _apiService.forgotPassword(email);
+      // Response returns { "message": "...", "debugToken": "..." }
+      final token = response.data['debugToken'] as String?;
+      return ApiResult.success(token ?? '');
+    } catch (error) {
+      return ApiResult.failure(ApiErrorHandler.handle(error));
+    }
+  }
+
   Future<ApiResult<DoctorProfileModel>> getProfile(String id) async {
     try {
       final response = await _apiService.getDoctorProfile(id);

@@ -16,6 +16,11 @@ class UserManagementSuccess extends UserManagementState {}
 
 class LogoutSuccess extends UserManagementState {}
 
+class ForgotPasswordSuccess extends UserManagementState {
+  final String token;
+  ForgotPasswordSuccess(this.token);
+}
+
 class ProfileLoaded extends UserManagementState {
   final DoctorProfileModel profile;
   ProfileLoaded(this.profile);

@@ -19,6 +19,15 @@ class UserManagementCubit extends Cubit<UserManagementState> {
     );
   }
 
+  Future<void> forgotPassword(String email) async {
+    emit(UserManagementLoading());
+    final result = await _repo.forgotPassword(email);
+    result.when(
+      success: (token) => emit(ForgotPasswordSuccess(token)),
+      failure: (message) => emit(UserManagementError(message)),
+    );
+  }
+
   Future<void> getDoctorProfile(String id) async {
     emit(UserManagementLoading());
     final result = await _repo.getProfile(id);

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/network/api_result.dart';
@@ -28,24 +31,46 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class _CustomAppBarState extends State<CustomAppBar> {
+class _CustomAppBarState extends State<CustomAppBar>
+    with WidgetsBindingObserver {
   bool _showNotificationDot = false;
+  StreamSubscription<RemoteMessage>? _fcmSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUnreadCount();
+
+    // Refresh dot immediately whenever a new foreground FCM message arrives.
+    if (widget.showNotification) {
+      _fcmSubscription = FirebaseMessaging.onMessage.listen((_) {
+        _loadUnreadCount();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _fcmSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Re-check unread count when the app returns to the foreground
+  /// (e.g. user swiped away notification tray and came back).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.showNotification) {
+      _loadUnreadCount();
+    }
   }
 
   Future<void> _loadUnreadCount() async {
-    if (!widget.showNotification) {
-      return;
-    }
+    if (!widget.showNotification) return;
 
     final result = await getIt<NotificationsRepo>().getUnreadCount();
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (result is Success<UnreadCountResponse>) {
       setState(() {
@@ -60,6 +85,10 @@ class _CustomAppBarState extends State<CustomAppBar> {
       });
     }
   }
+
+  /// Call this from the parent screen after returning from the notifications
+  /// screen so the dot is cleared when all notifications are read.
+  void refresh() => _loadUnreadCount();
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +135,11 @@ class _CustomAppBarState extends State<CustomAppBar> {
                     color: AppColors.textPrimary,
                     size: buttonSize,
                   ),
-                  onPressed: widget.onNotificationTap,
+                  onPressed: () {
+                    widget.onNotificationTap?.call();
+                    // Re-check after returning from notifications screen.
+                    _loadUnreadCount();
+                  },
                 ),
                 if (_showNotificationDot)
                   Positioned(

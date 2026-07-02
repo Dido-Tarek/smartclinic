@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,6 +10,9 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/user_management/data/model/doctor_profile_response_model.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/injection_dependency.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class DoctorProfileView extends StatefulWidget {
   final String? doctorId;
@@ -30,9 +33,14 @@ class DoctorProfileView extends StatefulWidget {
   final String? clinicWorkingHours;
   final int? yearsOfExperience;
   final Set<String> enabledConsultationTypes;
+
   /// When false the "Book Appointment" button is hidden.
   /// Set to false when the doctor is previewing their own profile.
   final bool showBookButton;
+
+  /// Clinic coordinates — used to show a map thumbnail and open Google Maps.
+  final double? clinicLatitude;
+  final double? clinicLongitude;
 
   const DoctorProfileView({
     super.key,
@@ -61,6 +69,8 @@ class DoctorProfileView extends StatefulWidget {
       'Emergency',
     },
     this.showBookButton = true,
+    this.clinicLatitude,
+    this.clinicLongitude,
   });
 
   @override
@@ -130,6 +140,8 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
             'Working times are not available yet.';
         final yearsOfExperience =
             _profile?.yearsOfExperience ?? widget.yearsOfExperience ?? 0;
+        final clinicLat = _profile?.clinicLatitude ?? widget.clinicLatitude;
+        final clinicLng = _profile?.clinicLongitude ?? widget.clinicLongitude;
 
         return Scaffold(
           backgroundColor: AppColors.scaffoldBg,
@@ -182,6 +194,8 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
                     clinicPhone: clinicPhone,
                     clinicAddress: clinicAddress,
                     clinicWorkingHours: clinicWorkingHours,
+                    latitude: clinicLat,
+                    longitude: clinicLng,
                   ),
 
                   const SizedBox(height: 16),
@@ -257,8 +271,9 @@ class _DoctorProfileViewState extends State<DoctorProfileView> {
                             'clinicAddress': clinicAddress,
                             'clinicPhone': clinicPhone,
                             'clinicWorkingHours': clinicWorkingHours,
-                            'enabledAppointmentTypes':
-                                widget.enabledConsultationTypes.toList(),
+                            'enabledAppointmentTypes': widget
+                                .enabledConsultationTypes
+                                .toList(),
                           },
                         );
                       },
@@ -366,11 +381,6 @@ class _ReviewData {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Reusable bold section title
 class _SectionTitle extends StatelessWidget {
   final String text;
   const _SectionTitle(this.text);
@@ -388,19 +398,44 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-/// Clinic info white card with map thumbnail + detail rows
+// ─────────────────────────────────────────────────────────────────────────�/// Clinic info white card with live OpenStreetMap thumbnail + detail rows
 class _ClinicInfoCard extends StatelessWidget {
   final String clinicName;
   final String clinicPhone;
   final String clinicAddress;
   final String clinicWorkingHours;
+  final double? latitude;
+  final double? longitude;
 
   const _ClinicInfoCard({
     required this.clinicName,
     required this.clinicPhone,
     required this.clinicAddress,
     required this.clinicWorkingHours,
+    this.latitude,
+    this.longitude,
   });
+
+  bool get _hasCoords =>
+      latitude != null &&
+      longitude != null &&
+      latitude != 0.0 &&
+      longitude != 0.0;
+
+  /// Opens Google Maps at the clinic's coordinates.
+  Future<void> _openGoogleMaps() async {
+    final lat = latitude!;
+    final lng = longitude!;
+    final nativeUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+    final webUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+    if (await canLaunchUrl(nativeUri)) {
+      await launchUrl(nativeUri);
+    } else {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -420,19 +455,95 @@ class _ClinicInfoCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Map thumbnail
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              AppImages.imagesIconsBestCustomerExperience,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
+          // ── Map thumbnail ─────────────────────────────────────────
+          GestureDetector(
+            onTap: _hasCoords ? _openGoogleMaps : null,
+            child: SizedBox(
+              width: 90,
+              height: 90,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    // Live OpenStreetMap tile — no API key needed
+                    if (_hasCoords)
+                      IgnorePointer(
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(latitude!, longitude!),
+                            initialZoom: 15,
+                            interactionOptions: const InteractionOptions(
+                              flags: InteractiveFlag.none, // thumbnail only
+                            ),
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.example.smartclinic',
+                            ),
+                            // Red pin marker at clinic location
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(latitude!, longitude!),
+                                  width: 30,
+                                  height: 30,
+                                  child: const Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 30,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _mapPlaceholder(),
+
+                    // Tap-to-open hint bar at the bottom
+                    if (_hasCoords)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: ColoredBox(
+                          color: Colors.black54,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 9,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Open Maps',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 14),
 
-          // Info rows
+          // ── Info rows ──────────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,6 +572,34 @@ class _ClinicInfoCard extends StatelessWidget {
                   value: clinicWorkingHours,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Styled placeholder shown when coordinates are unavailable.
+  Widget _mapPlaceholder() {
+    return Container(
+      width: 90,
+      height: 90,
+      color: AppColors.deepNavy.withValues(alpha: 0.06),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.map_outlined,
+            size: 28,
+            color: AppColors.skyBlue.withValues(alpha: 0.7),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'No location',
+            style: TextStyle(
+              fontSize: 9,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

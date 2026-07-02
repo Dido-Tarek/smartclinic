@@ -10,6 +10,12 @@ class ClinicManagementApiService {
   static const String _clinics = '/api/Clinics';
   static const String _schedules = '/api/Schedules';
 
+  // ── GET /api/Clinics/get-clinic-profile/{clinicId} ────────────────────────
+  Future<ClinicModel> getClinicProfile(int clinicId) async {
+    final response = await _dio.get('$_clinics/get-clinic-profile/$clinicId');
+    return ClinicModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
   // ── POST /api/Clinics/send-employment-request ────────────────────────────
   Future<SendEmploymentResponseModel> sendEmploymentRequest(
     SendEmploymentRequestModel request,
@@ -141,7 +147,7 @@ class ClinicManagementApiService {
   ) async {
     final response = await _dio.post(
       '$_schedules/add-schedule',
-      data: request.toJson(),
+      data: AddScheduleRequestModel.toJsonList([request]),
     );
     return ScheduleModel.fromJson(response.data as Map<String, dynamic>);
   }

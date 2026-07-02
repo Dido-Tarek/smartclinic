@@ -167,6 +167,14 @@ class _MainRegisterScreenState extends State<MainRegisterScreen> {
       return;
     }
 
+    if (!emailController.text.trim().toLowerCase().endsWith('@gmail.com')) {
+      CherryToast.error(
+        title: const Text('Invalid email'),
+        description: const Text('Email must end with @gmail.com'),
+      ).show(context);
+      return;
+    }
+
     if (passwordError != null) {
       CherryToast.error(
         title: const Text('Invalid password'),

@@ -19,6 +19,7 @@ import 'package:smartclinic/features/health_issues/presentation/screens/add_heal
 import 'package:smartclinic/features/auth/presentation/manager/register_cubit.dart';
 import 'package:smartclinic/features/health_issues/presentation/manager/health_issues_cubit.dart';
 import 'package:smartclinic/features/home/presentation/screens/home_screen.dart';
+import 'package:smartclinic/features/home/presentation/screens/hospital_home_screen.dart';
 import 'package:smartclinic/features/chat/presentation/screens/chat.dart';
 import 'package:smartclinic/features/chat/presentation/screens/doctor_chat_room.dart';
 import 'package:smartclinic/features/chat/presentation/manager/chat_cubit.dart';
@@ -41,6 +42,8 @@ import 'package:smartclinic/features/user_management/presentation/manager/user_m
 import 'package:smartclinic/features/user_management/presentation/screens/user_management.dart';
 import 'package:smartclinic/features/user_management/presentation/screens/doctor_profile_settings.dart';
 import 'package:smartclinic/features/user_management/presentation/screens/patient_profile_settings.dart';
+import 'package:smartclinic/features/user_management/presentation/screens/forgot_password_screen.dart';
+import 'package:smartclinic/features/user_management/presentation/screens/create_new_password_screen.dart';
 import 'package:smartclinic/features/doctor_profile/presentation/screens/doctor_profile_view.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_details.dart';
 import 'package:smartclinic/features/appointments/presentation/screens/booking_information.dart';
@@ -52,6 +55,8 @@ import 'package:smartclinic/features/wallet/presentation/screens/wallet_screen.d
 import 'package:smartclinic/features/invoices/presentation/manager/invoices_cubit.dart';
 import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_payment_settings.dart';
 import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_schedule_management.dart';
+import 'package:smartclinic/features/clinic_management/presentation/screens/clinic_profile_settings.dart';
+import 'package:smartclinic/features/clinic_management/presentation/screens/update_financial_terms.dart';
 import 'package:smartclinic/injection_dependency.dart';
 import 'app_routes.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
@@ -204,9 +209,16 @@ class AppRouter {
           ),
         );
       case AppRoutes.hospitalhome:
+        final clinicId = (settings.arguments is Map)
+            ? ((settings.arguments as Map)['clinicId'] as int?)
+            : null;
+        final resolvedClinicId = clinicId ?? 5;
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('Home Screen Placeholder for Hospital')),
+          settings: settings,
+          builder: (_) => HospitalHomePage(
+            clinicId: resolvedClinicId,
+            adminName: 'Admin',
+            adminRole: 'Clinic Manager',
           ),
         );
       case AppRoutes.verification:
@@ -216,10 +228,43 @@ class AppRouter {
                   ?.toString()
                   .trim()
             : arguments?.toString().trim();
+        final isResetPassword = arguments is Map ? (arguments['isResetPassword'] as bool? ?? false) : false;
+        final debugToken = arguments is Map ? (arguments['debugToken'] as String?) : null;
+        final sourceRoute = arguments is Map ? (arguments['sourceRoute'] as String?) : null;
+
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => VerificationPage(
             email: (email == null || email.isEmpty) ? '' : email,
+            isResetPassword: isResetPassword,
+            debugToken: debugToken,
+            sourceRoute: sourceRoute,
+          ),
+        );
+      case AppRoutes.forgotPassword:
+        final args = settings.arguments as Map?;
+        final sourceRoute = args?['sourceRoute'] as String?;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<UserManagementCubit>(),
+            child: ForgotPasswordScreen(sourceRoute: sourceRoute),
+          ),
+        );
+      case AppRoutes.createNewPassword:
+        final args = settings.arguments as Map?;
+        final email = args?['email'] as String? ?? '';
+        final token = args?['debugToken'] as String? ?? '';
+        final sourceRoute = args?['sourceRoute'] as String?;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<UserManagementCubit>(),
+            child: CreateNewPasswordScreen(
+              email: email,
+              token: token,
+              sourceRoute: sourceRoute,
+            ),
           ),
         );
       case AppRoutes.verifyDoctor:
@@ -662,6 +707,32 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => ClinicManagementPage(),
           settings: settings,
+        );
+      case AppRoutes.clinicProfileSettings:
+        final profileArgs = settings.arguments;
+        final profileClinicId = profileArgs is Map && profileArgs['clinicId'] != null
+            ? (profileArgs['clinicId'] as num).toInt()
+            : 0;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<ClinicManagementCubit>(),
+            child: ClinicProfileSettingsPage(clinicId: profileClinicId),
+          ),
+        );
+      case AppRoutes.updateFinancialTerms:
+        final args = settings.arguments;
+        final data = args is Map ? args : null;
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => BlocProvider(
+            create: (_) => getIt<ClinicManagementCubit>(),
+            child: UpdateFinancialTermsPage(
+              doctorId: data is Map && data['doctorId'] != null ? data['doctorId'] as String : null,
+              clinicId: data is Map && data['clinicId'] != null ? (data['clinicId'] as num).toInt() : null,
+              enabledAppointmentTypes: data is Map && data['enabledAppointmentTypes'] is Iterable ? (data['enabledAppointmentTypes'] as Iterable) : null,
+            ),
+          ),
         );
       case AppRoutes.clinicSchedule:
         final scheduleArgs = settings.arguments;

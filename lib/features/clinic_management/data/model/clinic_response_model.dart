@@ -46,7 +46,7 @@ class ClinicModel {
     city: json['city'] as String?,
     area: json['area'] as String?,
     specialization: json['specialization'] as String?,
-    clinicImageUrl: json['clinicImageUrl'] as String?,
+    clinicImageUrl: (json['clinicImageUrl'] ?? json['clinicPictureUrl']) as String?,
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
     sessionDuration: json['sessionDuration'] as int?,
@@ -68,7 +68,7 @@ class EmploymentRequestModel {
   final String? status;
   final String? roleInRequest; // "Sender" | "Receiver"
   final String? feedback;
-  final num? examinationFee;
+  final num? inClinicFee;
   final num? homeVisitFee;
   final num? onlineFee;
   final num? followUpFee;
@@ -86,7 +86,7 @@ class EmploymentRequestModel {
     this.status,
     this.roleInRequest,
     this.feedback,
-    this.examinationFee,
+    this.inClinicFee,
     this.homeVisitFee,
     this.onlineFee,
     this.followUpFee,
@@ -107,7 +107,7 @@ class EmploymentRequestModel {
       status: json['status'] as String?,
       roleInRequest: json['roleInRequest'] as String?,
       feedback: (json['lastFeedback'] ?? json['feedback']) as String?,
-      examinationFee: (fees?['examinationFee'] ?? json['examinationFee']) as num?,
+      inClinicFee: (fees?['inClinicFee'] ?? json['inClinicFee'] ?? fees?['clinicFee'] ?? json['clinicFee'] ?? fees?['examinationFee'] ?? json['examinationFee']) as num?,
       homeVisitFee: (fees?['homeVisitFee'] ?? json['homeVisitFee']) as num?,
       onlineFee: (fees?['onlineFee'] ?? json['onlineFee']) as num?,
       followUpFee: (fees?['followUpFee'] ?? json['followUpFee']) as num?,
@@ -268,6 +268,9 @@ class RemoveClinicResponseModel {
       RemoveClinicResponseModel(message: json['message'] as String?);
 }
 
+// GET /api/Clinics/get-clinic-profile/{clinicId}
+typedef GetClinicProfileResponseModel = ClinicModel;
+
 // PUT /api/Clinics/update-clinic-profile
 typedef UpdateClinicProfileResponseModel = ClinicModel;
 
@@ -293,21 +296,46 @@ class DoctorAvailabilityResponseModel {
   final List<ScheduleModel> schedules;
   const DoctorAvailabilityResponseModel({required this.schedules});
 
+  static List<ScheduleModel> _parseSchedules(List<dynamic> list) {
+    final List<ScheduleModel> allSchedules = [];
+    for (final item in list) {
+      if (item is Map<String, dynamic>) {
+        if (item.containsKey('schedules')) {
+          final clinicId = (item['clinicId'] ?? item['ClinicId']) as int?;
+          final clinicPrice = (item['price'] ?? item['Price']) != null
+              ? (item['price'] ?? item['Price'] as num).toDouble()
+              : null;
+          final clinicSchedules = item['schedules'] as List<dynamic>? ?? [];
+          for (final s in clinicSchedules) {
+            if (s is Map<String, dynamic>) {
+              var sm = ScheduleModel.fromJson(s);
+              sm = sm.copyWith(
+                clinicId: sm.clinicId ?? clinicId,
+                price: sm.price ?? clinicPrice,
+              );
+              allSchedules.add(sm);
+            }
+          }
+        } else {
+          allSchedules.add(ScheduleModel.fromJson(item));
+        }
+      }
+    }
+    return allSchedules;
+  }
+
   factory DoctorAvailabilityResponseModel.fromJson(Map<String, dynamic> json) =>
       DoctorAvailabilityResponseModel(
-        schedules:
-            (json['schedules'] as List<dynamic>? ??
-                    json['data'] as List<dynamic>? ??
-                    [])
-                .map((e) => ScheduleModel.fromJson(e as Map<String, dynamic>))
-                .toList(),
+        schedules: _parseSchedules(
+          json['schedules'] as List<dynamic>? ??
+              json['data'] as List<dynamic>? ??
+              [],
+        ),
       );
 
   factory DoctorAvailabilityResponseModel.fromList(List<dynamic> list) =>
       DoctorAvailabilityResponseModel(
-        schedules: list
-            .map((e) => ScheduleModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        schedules: _parseSchedules(list),
       );
 }
 

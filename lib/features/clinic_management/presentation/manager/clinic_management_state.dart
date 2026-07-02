@@ -87,6 +87,25 @@ class GetMyClinicsFailure extends ClinicManagementState {
   List<Object?> get props => [errorMessage];
 }
 
+// ── Get clinic profile ────────────────────────────────────────────────────────────────
+class GetClinicProfileLoading extends ClinicManagementState {
+  const GetClinicProfileLoading();
+}
+
+class GetClinicProfileSuccess extends ClinicManagementState {
+  final GetClinicProfileResponseModel response;
+  const GetClinicProfileSuccess(this.response);
+  @override
+  List<Object?> get props => [response];
+}
+
+class GetClinicProfileFailure extends ClinicManagementState {
+  final String errorMessage;
+  const GetClinicProfileFailure(this.errorMessage);
+  @override
+  List<Object?> get props => [errorMessage];
+}
+
 // ── Remove clinic ─────────────────────────────────────────────────────────────
 class RemoveClinicLoading extends ClinicManagementState {
   final int removingId;

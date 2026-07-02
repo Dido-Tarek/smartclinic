@@ -59,6 +59,16 @@ class ClinicManagementCubit extends Cubit<ClinicManagementState> {
     );
   }
 
+  // ── GET /api/Clinics/get-clinic-profile/{clinicId} ──────────────────────
+  Future<void> getClinicProfile(int clinicId) async {
+    emit(const GetClinicProfileLoading());
+    final result = await _repo.getClinicProfile(clinicId);
+    result.fold(
+      (e) => emit(GetClinicProfileFailure(e)),
+      (r) => emit(GetClinicProfileSuccess(r)),
+    );
+  }
+
   // ── DELETE /api/Clinics/remove-clinic/{clinicId} ─────────────────────────
   Future<void> removeClinic(int clinicId) async {
     emit(RemoveClinicLoading(clinicId));

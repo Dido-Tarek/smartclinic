@@ -132,6 +132,17 @@ class _UserManagementPageState extends State<UserManagementPage> {
                                   }
                                 }
                               }
+                              if (item.label == 'Reset Password') {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.forgotPassword,
+                                  arguments: {'sourceRoute': AppRoutes.userManagement},
+                                ).whenComplete(() {
+                                  if (mounted) setState(() {});
+                                });
+                                return;
+                              }
+                              
                               _navigateTo(switch (item.label) {
                                 'Profile Settings' =>
                                   isDoctor

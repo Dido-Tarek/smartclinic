@@ -6,12 +6,15 @@ import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
+import 'package:smartclinic/core/network/api_result.dart';
 import 'package:smartclinic/core/services/bg_remover_service.dart';
+import 'package:smartclinic/core/utils/doctor_image_resolver.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/smart_clinic_loader.dart';
 import 'package:smartclinic/features/chat/data/model/chat_model.dart';
 import 'package:smartclinic/features/chat/presentation/manager/chat_cubit.dart';
 import 'package:smartclinic/features/chat/presentation/manager/chat_state.dart';
+import 'package:smartclinic/features/user_management/data/repo/user_management_repo.dart';
 import 'package:smartclinic/injection_dependency.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,12 +146,10 @@ class _DoctorChatRoomScreenState extends State<DoctorChatRoomScreen> {
   bool get _isPatient => _userSession.userRole.isPatient;
 
   /// The other party's userId (doctor ID when I'm a patient, patient ID when I'm a doctor)
-  String? get _otherUserId =>
-      _isPatient ? widget.doctorId : widget.patientId;
+  String? get _otherUserId => _isPatient ? widget.doctorId : widget.patientId;
 
   /// The effective date to use for the chat window check
-  String? get _chatWindowDate =>
-      widget.appointmentDate ?? widget.selectedDate;
+  String? get _chatWindowDate => widget.appointmentDate ?? widget.selectedDate;
 
   bool get _chatActive => _ChatWindow.isActive(_chatWindowDate);
   bool get _chatExpired => _ChatWindow.isExpired(_chatWindowDate);
@@ -163,13 +164,36 @@ class _DoctorChatRoomScreenState extends State<DoctorChatRoomScreen> {
     await _chatCubit.emitGetChatHistory(otherId);
   }
 
+  Future<String?> _resolveDoctorImageSource() async {
+    final resolvedFromAppointment = resolveDoctorImageSource(
+      appointmentImage: widget.doctorImagePath,
+      profileImage: null,
+    );
+    if (resolvedFromAppointment != null && resolvedFromAppointment.isNotEmpty) {
+      return resolvedFromAppointment;
+    }
+
+    final doctorId = widget.doctorId;
+    if (doctorId == null || doctorId.isEmpty) {
+      return null;
+    }
+
+    final result = await getIt<UserManagementRepo>().getProfile(doctorId);
+    return result.whenOrNull<String?>(
+      success: (profile) => profile.profileImage,
+      failure: (_) => null,
+    );
+  }
+
   Future<void> _prepareAvatars() async {
-    // Doctor avatar
-    final docImg = widget.doctorImagePath;
-    if (docImg != null && docImg.trim().isNotEmpty) {
-      final bytes = await BgRemoverService.instance.processImage(docImg.trim());
+    final resolvedDoctorImage = await _resolveDoctorImageSource();
+    if (resolvedDoctorImage != null && resolvedDoctorImage.trim().isNotEmpty) {
+      final bytes = await BgRemoverService.instance.processImage(
+        resolvedDoctorImage.trim(),
+      );
       if (mounted) setState(() => _doctorAvatarBytes = bytes);
     }
+
     // Patient avatar (current user)
     final patImg = widget.patientImageUrl ?? _userSession.profileImage;
     if (patImg != null && patImg.trim().isNotEmpty) {
@@ -307,8 +331,7 @@ class _DoctorChatRoomScreenState extends State<DoctorChatRoomScreen> {
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         itemCount: _uiMessages.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 10),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, i) {
                           final msg = _uiMessages[i];
                           return _MessageBubble(
@@ -471,7 +494,8 @@ class _ChatWindowBanner extends StatelessWidget {
       bgColor = const Color(0xFFFFF3CD);
       textColor = const Color(0xFF856404);
       icon = Icons.lock_clock_rounded;
-      final dateStr = appointmentDate?.split('T').first ?? 'your appointment date';
+      final dateStr =
+          appointmentDate?.split('T').first ?? 'your appointment date';
       text = 'Chat unlocks on $dateStr (appointment day).';
     } else {
       // expired
@@ -558,8 +582,9 @@ class _MessageInput extends StatelessWidget {
                       ? 'Write a message...'
                       : 'Chat is currently locked',
                   hintStyle: TextStyle(
-                    color: AppColors.textSecondary
-                        .withValues(alpha: enabled ? 1.0 : 0.5),
+                    color: AppColors.textSecondary.withValues(
+                      alpha: enabled ? 1.0 : 0.5,
+                    ),
                   ),
                   border: InputBorder.none,
                   isDense: true,
@@ -658,15 +683,11 @@ class _MessageBubble extends StatelessWidget {
     final isMe = message.isMe;
 
     return Row(
-      mainAxisAlignment:
-          isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!isMe) ...[
-          _MiniAvatar(
-            bytes: doctorAvatarBytes,
-            assetPath: doctorImageAsset,
-          ),
+          _MiniAvatar(bytes: doctorAvatarBytes, assetPath: doctorImageAsset),
           const SizedBox(width: 8),
         ],
         Flexible(
@@ -692,8 +713,9 @@ class _MessageBubble extends StatelessWidget {
               ],
             ),
             child: Column(
-              crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Text(
                   message.text,
@@ -799,9 +821,9 @@ class _UiMessage {
   final bool isSending;
 
   _UiMessage copyWith({bool? isSending}) => _UiMessage(
-        text: text,
-        isMe: isMe,
-        time: time,
-        isSending: isSending ?? this.isSending,
-      );
+    text: text,
+    isMe: isMe,
+    time: time,
+    isSending: isSending ?? this.isSending,
+  );
 }

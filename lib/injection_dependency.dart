@@ -53,6 +53,9 @@ import 'package:smartclinic/features/appointments/presentation/manager/appointme
 import 'package:smartclinic/features/prescriptions/data/api/prescription_api_service.dart';
 import 'package:smartclinic/features/prescriptions/data/repo/prescription_repo.dart';
 import 'package:smartclinic/features/prescriptions/presentation/manager/prescriptions_cubit.dart';
+import 'package:smartclinic/features/clinic_admin/data/api/clinic_admin_api_service.dart';
+import 'package:smartclinic/features/clinic_admin/data/repo/clinic_admin_repo.dart';
+import 'package:smartclinic/features/clinic_admin/presentation/manager/clinic_admin_cubit.dart';
 import 'package:smartclinic/features/clinic_management/data/api/clinic_management_api_service.dart';
 import 'package:smartclinic/features/clinic_management/data/repo/clinic_management_repo.dart';
 import 'package:smartclinic/features/clinic_management/presentation/manager/clinic_management_cubit.dart';
@@ -181,6 +184,18 @@ Future<void> setupGetIt() async {
   );
   getIt.registerFactory<WalletCubit>(() => WalletCubit(getIt<WalletRepo>()));
   getIt.registerFactory<InvoicesCubit>(() => InvoicesCubit(getIt<InvoicesRepo>()));
+
+  // Clinic admin
+  getIt.registerLazySingleton<ClinicAdminApiService>(
+    () => ClinicAdminApiService(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<ClinicAdminRepo>(
+    () => ClinicAdminRepoImpl(getIt<ClinicAdminApiService>()),
+  );
+  getIt.registerFactory<ClinicAdminCubit>(
+    () => ClinicAdminCubit(getIt<ClinicAdminRepo>()),
+  );
+
   // Clinic management
   getIt.registerLazySingleton<ClinicManagementApiService>(
     () => ClinicManagementApiService(getIt<Dio>()),
