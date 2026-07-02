@@ -39,13 +39,30 @@ class _DoctorViewCardState extends State<DoctorViewCard> {
   @override
   void initState() {
     super.initState();
-    _removeBackground();
+    // L1 synchronous hit — no shimmer if already cached
+    final cached =
+        BgRemoverService.instance.getCached(widget.doctorImagePath);
+    if (cached != null) {
+      _processedImage = cached;
+      _bgProcessing = false;
+    } else {
+      _removeBackground();
+    }
   }
 
   @override
   void didUpdateWidget(DoctorViewCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.doctorImagePath != widget.doctorImagePath) {
+    if (oldWidget.doctorImagePath == widget.doctorImagePath) return;
+
+    final cached =
+        BgRemoverService.instance.getCached(widget.doctorImagePath);
+    if (cached != null) {
+      setState(() {
+        _processedImage = cached;
+        _bgProcessing = false;
+      });
+    } else {
       setState(() {
         _processedImage = null;
         _bgProcessing = true;

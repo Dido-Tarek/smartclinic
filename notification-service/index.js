@@ -9,7 +9,38 @@ admin.initializeApp({
 const app = express();
 app.use(express.json());
 
-// POST /send-notification
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Builds the platform-specific config blocks that guarantee the notification
+ * reaches the Android system tray (via the correct channel) and iOS lock screen.
+ */
+function platformConfig(data) {
+  return {
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'smartclinic_notifications', // must match Flutter channel ID
+        priority: 'high',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+      },
+    },
+    apns: {
+      headers: { 'apns-priority': '10' },
+      payload: {
+        aps: {
+          sound: 'default',
+          badge: 1,
+          contentAvailable: true,
+        },
+      },
+    },
+    ...(data && { data }),
+  };
+}
+
+// ─── POST /send-notification ──────────────────────────────────────────────────
 // Body: { token: string, title: string, body: string, data?: object }
 app.post('/send-notification', async (req, res) => {
   const { token, title, body, data } = req.body;
@@ -22,7 +53,7 @@ app.post('/send-notification', async (req, res) => {
     const message = {
       token,
       notification: { title, body },
-      ...(data && { data }),
+      ...platformConfig(data),
     };
 
     const response = await admin.messaging().send(message);
@@ -33,7 +64,7 @@ app.post('/send-notification', async (req, res) => {
   }
 });
 
-// POST /send-multicast
+// ─── POST /send-multicast ─────────────────────────────────────────────────────
 // Body: { tokens: string[], title: string, body: string, data?: object }
 app.post('/send-multicast', async (req, res) => {
   const { tokens, title, body, data } = req.body;
@@ -46,7 +77,7 @@ app.post('/send-multicast', async (req, res) => {
     const message = {
       tokens,
       notification: { title, body },
-      ...(data && { data }),
+      ...platformConfig(data),
     };
 
     const response = await admin.messaging().sendEachForMulticast(message);

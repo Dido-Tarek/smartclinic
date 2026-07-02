@@ -332,25 +332,9 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                       if (_selectedClinic == null) return;
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.clinicDetails,
+                        AppRoutes.clinicProfileSettings,
                         arguments: <String, dynamic>{
-                          'isOwner': true,
                           'clinicId': _selectedClinic!.id,
-                          'name': _selectedClinic!.name,
-                          'phoneNumber': _selectedClinic!.phoneNumber,
-                          'address': _selectedClinic!.address,
-                          'city': _selectedClinic!.city,
-                          'area': _selectedClinic!.area,
-                          'specialization': _selectedClinic!.specialization,
-                          'clinicImageUrl': _selectedClinic!.clinicImageUrl,
-                          'latitude': _selectedClinic!.latitude,
-                          'longitude': _selectedClinic!.longitude,
-                          'sessionDuration': _selectedClinic!.sessionDuration,
-                          'clinicFee': _selectedClinic!.clinicFee,
-                          'onlineFee': _selectedClinic!.onlineFee,
-                          'homeVisitFee': _selectedClinic!.homeVisitFee,
-                          'followUpFee': _selectedClinic!.followUpFee,
-                          'emergencyFee': _selectedClinic!.emergencyFee,
                         },
                       );
                     },
@@ -363,30 +347,28 @@ class _ClinicManagementPageState extends State<ClinicManagementPage> {
                 ),
                 Expanded(
                   child: _ClinicCardActionButton(
-                    icon: Icons.settings_outlined,
-                    label: 'Clinic Appointments',
+                    icon: Icons.monetization_on_outlined,
+                    label: 'Update Fees',
                     onTap: () {
                       if (_selectedClinic == null) return;
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.appointmentDetails,
+                        AppRoutes.updateFinancialTerms,
                         arguments: <String, dynamic>{
                           'clinicId': _selectedClinic!.id,
-                          'name': _selectedClinic!.name,
-                          'phoneNumber': _selectedClinic!.phoneNumber,
-                          'address': _selectedClinic!.address,
-                          'city': _selectedClinic!.city,
-                          'area': _selectedClinic!.area,
-                          'specialization': _selectedClinic!.specialization,
-                          'clinicImageUrl': _selectedClinic!.clinicImageUrl,
-                          'latitude': _selectedClinic!.latitude,
-                          'longitude': _selectedClinic!.longitude,
-                          'sessionDuration': _selectedClinic!.sessionDuration,
-                          'clinicFee': _selectedClinic!.clinicFee,
-                          'onlineFee': _selectedClinic!.onlineFee,
-                          'homeVisitFee': _selectedClinic!.homeVisitFee,
-                          'followUpFee': _selectedClinic!.followUpFee,
-                          'emergencyFee': _selectedClinic!.emergencyFee,
+                          'doctorId': _userSession.doctorId,
+                          'enabledAppointmentTypes': <String>[
+                            if ((_selectedClinic?.clinicFee ?? 0) >= 0)
+                              'InClinic',
+                            if ((_selectedClinic?.onlineFee ?? 0) >= 0)
+                              'VideoCall',
+                            if ((_selectedClinic?.homeVisitFee ?? 0) >= 0)
+                              'HomeVisit',
+                            if ((_selectedClinic?.followUpFee ?? 0) >= 0)
+                              'FollowUp',
+                            if ((_selectedClinic?.emergencyFee ?? 0) >= 0)
+                              'Emergency',
+                          ],
                         },
                       );
                     },

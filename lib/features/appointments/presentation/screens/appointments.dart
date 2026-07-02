@@ -6,6 +6,7 @@ import 'package:smartclinic/core/constants/assets.dart';
 import 'package:smartclinic/core/helper/user_roles.dart';
 import 'package:smartclinic/core/helper/user_session.dart';
 import 'package:smartclinic/core/routes/app_routes.dart';
+import 'package:smartclinic/core/utils/doctor_image_resolver.dart';
 import 'package:smartclinic/core/widgets/appointment_card_widget.dart';
 import 'package:smartclinic/core/widgets/custom_appbar.dart';
 import 'package:smartclinic/core/widgets/custom_nav_bar.dart';
@@ -70,9 +71,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     final result = await getIt<UserManagementRepo>().getProfile(doctorId);
     result.when(
       success: (profile) {
-        if (mounted) setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+        if (mounted) {
+          setState(() => _doctorPhotoCache[doctorId] = profile.profileImage);
+        }
       },
-      failure: (_) { if (mounted) setState(() {}); },
+      failure: (_) {
+        if (mounted) setState(() {});
+      },
     );
   }
 
@@ -105,7 +110,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         if (state is CancelAppointmentSuccess) {
           CherryToast.success(
             title: const Text('Appointment cancelled'),
-            description: Text(state.response.message ?? 'Your appointment has been cancelled.'),
+            description: Text(
+              state.response.message ?? 'Your appointment has been cancelled.',
+            ),
           ).show(context);
           _myAppointmentsCubit.getMyAppointments();
         }
@@ -188,7 +195,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     const SizedBox(height: 12),
                                 itemBuilder: (context, index) {
                                   final item = upcomingAppointments[index];
-                                  final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                                  final resolvedPhoto =
+                                      resolveDoctorImageSource(
+                                        appointmentImage:
+                                            _doctorPhotoCache[item.doctorId] ??
+                                            item.imageUrl,
+                                        profileImage: null,
+                                      );
                                   return AppointmentCardWidget(
                                     doctorName: item.doctorName,
                                     specialization: item.specialization,
@@ -197,11 +210,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                     imagePath: item.imagePath,
                                     imageUrl: resolvedPhoto,
                                     showArrow: false,
-                                    onCancel: () => _showCancelDialog(context, item.appointmentId),
+                                    onCancel: () => _showCancelDialog(
+                                      context,
+                                      item.appointmentId,
+                                    ),
                                     onTap: () => Navigator.pushNamed(
                                       context,
                                       AppRoutes.bookingConfirmation,
-                                      arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                      arguments: _buildConfirmationArgs(
+                                        item,
+                                        resolvedPhoto: resolvedPhoto,
+                                      ),
                                     ),
                                   );
                                 },
@@ -243,7 +262,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         const SizedBox(height: 12),
                                     itemBuilder: (context, index) {
                                       final item = cancelledAppointments[index];
-                                      final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                                      final resolvedPhoto =
+                                          resolveDoctorImageSource(
+                                            appointmentImage:
+                                                _doctorPhotoCache[item
+                                                    .doctorId] ??
+                                                item.imageUrl,
+                                            profileImage: null,
+                                          );
                                       return AppointmentCardWidget(
                                         doctorName: item.doctorName,
                                         specialization: item.specialization,
@@ -255,7 +281,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         onTap: () => Navigator.pushNamed(
                                           context,
                                           AppRoutes.bookingConfirmation,
-                                          arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                          arguments: _buildConfirmationArgs(
+                                            item,
+                                            resolvedPhoto: resolvedPhoto,
+                                          ),
                                         ),
                                       );
                                     },
@@ -300,7 +329,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         const SizedBox(height: 12),
                                     itemBuilder: (context, index) {
                                       final item = completedAppointments[index];
-                                      final resolvedPhoto = _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                                      final resolvedPhoto =
+                                          resolveDoctorImageSource(
+                                            appointmentImage:
+                                                _doctorPhotoCache[item
+                                                    .doctorId] ??
+                                                item.imageUrl,
+                                            profileImage: null,
+                                          );
                                       return AppointmentCardWidget(
                                         doctorName: item.doctorName,
                                         specialization: item.specialization,
@@ -312,7 +348,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                         onTap: () => Navigator.pushNamed(
                                           context,
                                           AppRoutes.bookingConfirmation,
-                                          arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                          arguments: _buildConfirmationArgs(
+                                            item,
+                                            resolvedPhoto: resolvedPhoto,
+                                          ),
                                         ),
                                       );
                                     },
@@ -521,8 +560,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final item = upcomingAppointments[index];
-                            final resolvedPhoto =
-                                _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                            final resolvedPhoto = resolveDoctorImageSource(
+                              appointmentImage:
+                                  _doctorPhotoCache[item.doctorId] ??
+                                  item.imageUrl,
+                              profileImage: null,
+                            );
                             return AppointmentCardWidget(
                               doctorName: item.doctorName,
                               specialization: item.specialization,
@@ -532,16 +575,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                               imageUrl: resolvedPhoto,
                               showArrow: false,
                               rawAppointmentDate: item.rawDate,
-                              onCancel: () => _showCancelDialog(context, item.appointmentId),
+                              onCancel: () => _showCancelDialog(
+                                context,
+                                item.appointmentId,
+                              ),
                               onChat: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.doctorChatRoom,
-                                arguments: _buildChatArgs(item, resolvedPhoto: resolvedPhoto),
+                                arguments: _buildChatArgs(
+                                  item,
+                                  resolvedPhoto: resolvedPhoto,
+                                ),
                               ),
                               onTap: () => Navigator.pushNamed(
                                 context,
                                 AppRoutes.bookingConfirmation,
-                                arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                arguments: _buildConfirmationArgs(
+                                  item,
+                                  resolvedPhoto: resolvedPhoto,
+                                ),
                               ),
                             );
                           },
@@ -570,8 +622,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final item = cancelledAppointments[index];
-                                final resolvedPhoto =
-                                    _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                                final resolvedPhoto = resolveDoctorImageSource(
+                                  appointmentImage:
+                                      _doctorPhotoCache[item.doctorId] ??
+                                      item.imageUrl,
+                                  profileImage: null,
+                                );
                                 return AppointmentCardWidget(
                                   doctorName: item.doctorName,
                                   specialization: item.specialization,
@@ -583,7 +639,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.bookingConfirmation,
-                                    arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                    arguments: _buildConfirmationArgs(
+                                      item,
+                                      resolvedPhoto: resolvedPhoto,
+                                    ),
                                   ),
                                 );
                               },
@@ -614,8 +673,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   const SizedBox(height: 12),
                               itemBuilder: (context, index) {
                                 final item = completedAppointments[index];
-                                final resolvedPhoto =
-                                    _doctorPhotoCache[item.doctorId] ?? item.imageUrl;
+                                final resolvedPhoto = resolveDoctorImageSource(
+                                  appointmentImage:
+                                      _doctorPhotoCache[item.doctorId] ??
+                                      item.imageUrl,
+                                  profileImage: null,
+                                );
                                 return AppointmentCardWidget(
                                   doctorName: item.doctorName,
                                   specialization: item.specialization,
@@ -627,7 +690,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.bookingConfirmation,
-                                    arguments: _buildConfirmationArgs(item, resolvedPhoto: resolvedPhoto),
+                                    arguments: _buildConfirmationArgs(
+                                      item,
+                                      resolvedPhoto: resolvedPhoto,
+                                    ),
                                   ),
                                 );
                               },
@@ -709,7 +775,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     );
   }
 
-  Future<void> _showCancelDialog(BuildContext context, int? appointmentId) async {
+  Future<void> _showCancelDialog(
+    BuildContext context,
+    int? appointmentId,
+  ) async {
     if (appointmentId == null) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -727,16 +796,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               'Keep it',
-              style: TextStyle(color: AppColors.deepNavy, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.deepNavy,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade400,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Cancel Appointment', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Cancel Appointment',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -763,7 +840,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         .toList()
         .asMap()
         .entries
-        .map((e) => _AppointmentCardData.fromModel(e.value, fallbackIndex: e.key))
+        .map(
+          (e) => _AppointmentCardData.fromModel(e.value, fallbackIndex: e.key),
+        )
         .toList();
   }
 
@@ -849,7 +928,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         status.contains('attended');
   }
 
-  Map<String, dynamic> _buildConfirmationArgs(_AppointmentCardData item, {String? resolvedPhoto}) {
+  Map<String, dynamic> _buildConfirmationArgs(
+    _AppointmentCardData item, {
+    String? resolvedPhoto,
+  }) {
     final patientName = item.patientName?.trim().isNotEmpty == true
         ? item.patientName
         : _userSession.fullName;
@@ -869,7 +951,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     };
   }
 
-  Map<String, dynamic> _buildChatArgs(_AppointmentCardData item, {String? resolvedPhoto}) {
+  Map<String, dynamic> _buildChatArgs(
+    _AppointmentCardData item, {
+    String? resolvedPhoto,
+  }) {
     return {
       'doctorName': item.doctorName,
       'specialization': item.specialization,
@@ -884,7 +969,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       'patientImageUrl': _userSession.profileImage,
     };
   }
-
 }
 
 class _EmptyAppointmentsView extends StatelessWidget {

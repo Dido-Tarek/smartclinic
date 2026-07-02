@@ -50,7 +50,6 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
   late bool _homeVisitSelected;
   late bool _emergencySelected;
   bool _argsLoaded = false;
-  bool _clinicFinancialTermsTriggered = false;
   bool _isOwner = true;
   String _name = '';
   String _doctorId = '';
@@ -157,9 +156,6 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     }
 
     _argsLoaded = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeTriggerInitialFinancialUpdate();
-    });
   }
 
   void _prefillFee(TextEditingController controller, Object? value) {
@@ -175,61 +171,42 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
     controller.text = text;
   }
 
-  void _maybeTriggerInitialFinancialUpdate() {
-    if (_clinicFinancialTermsTriggered) {
-      return;
-    }
 
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is! Map) {
-      return;
-    }
-
-    final clinicId = args['clinicId'] as int?;
-    if (clinicId == null) {
-      return;
-    }
-
-    final doctorId = _doctorId.isNotEmpty
-        ? _doctorId
-        : _userSession.userId?.trim() ?? '';
-    if (doctorId.isEmpty) {
-      return;
-    }
-
-    final request = UpdateFinancialTermsRequestModel(
-      doctorId: doctorId,
-      clinicId: clinicId,
-      examinationFee: _clinicSelected
-          ? (_parseFee(_clinicFeeController) ?? 0)
-          : 0,
-      followUpFee: _parseFee(_followUpFeeController) ?? 0,
-      onlineFee: _onlineSelected ? (_parseFee(_onlineFeeController) ?? 0) : 0,
-      homeVisitFee: _homeVisitSelected
-          ? (_parseFee(_homeVisitFeeController) ?? 0)
-          : 0,
-      emergencyFee: _emergencySelected
-          ? (_parseFee(_emergencyFeeController) ?? 0)
-          : 0,
-      sessionDuration: _sessionDuration ?? 0,
-    );
-
-    _clinicFinancialTermsTriggered = true;
-    context.read<ClinicManagementCubit>().updateFinancialTerms(request);
-  }
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     return BlocListener<ClinicManagementCubit, ClinicManagementState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is UpdateFinancialTermsLoading) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Updating financial terms...')),
           );
         } else if (state is UpdateFinancialTermsSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Financial terms updated')),
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          CherryToast.success(
+            title: Text(localizations.translate('clinic_added_success')),
+          ).show(context);
+
+          final userId = _userSession.userId?.trim() ?? '';
+          final roleString = _userSession.roleString ?? 'Doctor';
+          if (userId.isNotEmpty) {
+            await _userSession.markSetupCompleted(
+              role: roleString,
+              userId: userId,
+            );
+          }
+
+          final role = getRoleEnum(roleString);
+          if (!context.mounted) return;
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            role.isDoctor
+                ? AppRoutes.home
+                : role.isHospital
+                    ? AppRoutes.hospitalhome
+                    : AppRoutes.home,
+            (route) => false,
           );
         } else if (state is UpdateFinancialTermsFailure) {
           ScaffoldMessenger.of(
@@ -590,7 +567,7 @@ class _AppointmentDetailsPageState extends State<AppointmentDetailsPage> {
       final request = UpdateFinancialTermsRequestModel(
         doctorId: doctorId,
         clinicId: clinicId,
-        examinationFee: _clinicSelected
+        inClinicFee: _clinicSelected
             ? (_parseFee(_clinicFeeController) ?? 0)
             : 0,
         followUpFee: _parseFee(_followUpFeeController) ?? 0,

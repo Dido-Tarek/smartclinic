@@ -11,13 +11,28 @@ import 'package:smartclinic/features/security/presentation/manager/otp_state.dar
 // ─────────────────────────────────────────────────────────────────────────────
 class VerificationPage extends StatelessWidget {
   final String email;
-  const VerificationPage({super.key, required this.email});
+  final bool isResetPassword;
+  final String? debugToken;
+  final String? sourceRoute;
+
+  const VerificationPage({
+    super.key,
+    required this.email,
+    this.isResetPassword = false,
+    this.debugToken,
+    this.sourceRoute,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => OtpCubit(email: email),
-      child: const _VerificationScreen(),
+      child: _VerificationScreen(
+        email: email,
+        isResetPassword: isResetPassword,
+        debugToken: debugToken,
+        sourceRoute: sourceRoute,
+      ),
     );
   }
 }
@@ -26,7 +41,17 @@ class VerificationPage extends StatelessWidget {
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
 class _VerificationScreen extends StatefulWidget {
-  const _VerificationScreen();
+  final String email;
+  final bool isResetPassword;
+  final String? debugToken;
+  final String? sourceRoute;
+
+  const _VerificationScreen({
+    required this.email,
+    required this.isResetPassword,
+    this.debugToken,
+    this.sourceRoute,
+  });
 
   @override
   State<_VerificationScreen> createState() => _VerificationScreenState();
@@ -149,11 +174,23 @@ class _VerificationScreenState extends State<_VerificationScreen> {
         if (state is OtpVerified) {
           Future.delayed(const Duration(milliseconds: 700), () {
             if (context.mounted) {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (r) => false,
-              );
+              if (widget.isResetPassword) {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.createNewPassword,
+                  arguments: {
+                    'email': widget.email,
+                    'debugToken': widget.debugToken,
+                    'sourceRoute': widget.sourceRoute,
+                  },
+                );
+              } else {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (r) => false,
+                );
+              }
             }
           });
         }

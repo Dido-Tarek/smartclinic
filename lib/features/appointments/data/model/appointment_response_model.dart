@@ -49,6 +49,8 @@ class AppointmentModel {
   static String? _resolveUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     final t = raw.trim();
+    final lower = t.toLowerCase();
+    if (lower == 'null' || lower == 'string') return null;
     return t.startsWith('http') ? t : '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
   }
 
@@ -124,7 +126,13 @@ class AppointmentModel {
       doctorId: json['doctorId'] as String?,
       doctorName: json['doctorName'] as String?,
       doctorImage: _resolveUrl(
-        (json['doctorImage'] ?? json['doctorPhoto'] ?? json['photoUrl']) as String?,
+        (json['doctorImage'] ?? 
+         json['doctorPhoto'] ?? 
+         json['photoUrl'] ?? 
+         json['profileImage'] ?? 
+         json['profilePicture'] ?? 
+         json['image'] ?? 
+         json['imageUrl']) as String?,
       ),
       clinicId: json['clinicId'] as int?,
       clinicName: json['clinicName'] as String?,

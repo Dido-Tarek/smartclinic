@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:smartclinic/core/constants/app_color.dart';
 import 'package:smartclinic/core/constants/assets.dart';
@@ -29,22 +31,42 @@ class HomeHeader extends StatefulWidget {
   State<HomeHeader> createState() => _HomeHeaderState();
 }
 
-class _HomeHeaderState extends State<HomeHeader> {
+class _HomeHeaderState extends State<HomeHeader> with WidgetsBindingObserver {
   bool _showNotificationDot = false;
   late final UserSession _userSession;
+  StreamSubscription<RemoteMessage>? _fcmSubscription;
 
   @override
   void initState() {
     super.initState();
     _userSession = getIt<UserSession>();
+    WidgetsBinding.instance.addObserver(this);
     _loadUnreadCount();
+
+    // Refresh dot immediately whenever a new foreground FCM message arrives.
+    _fcmSubscription = FirebaseMessaging.onMessage.listen((_) {
+      _loadUnreadCount();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _fcmSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Re-check unread count when the app returns to the foreground.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadUnreadCount();
+    }
   }
 
   Future<void> _loadUnreadCount() async {
     final result = await getIt<NotificationsRepo>().getUnreadCount();
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (result is Success<UnreadCountResponse>) {
       setState(() {
@@ -69,23 +91,23 @@ class _HomeHeaderState extends State<HomeHeader> {
           backgroundImage: _resolveAvatarImage(),
           backgroundColor: AppColors.scaffoldBg,
         ),
-        SizedBox(width: 16),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 widget.title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 widget.subtitle,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w400,
@@ -96,7 +118,12 @@ class _HomeHeaderState extends State<HomeHeader> {
         ),
         InkWell(
           borderRadius: BorderRadius.circular(24),
-          onTap: widget.onNotificationTap,
+          onTap: () {
+            widget.onNotificationTap?.call();
+            // Re-check after returning from the notifications screen
+            // so the dot disappears once the user has read notifications.
+            _loadUnreadCount();
+          },
           child: Container(
             width: 48,
             height: 48,
@@ -113,16 +140,19 @@ class _HomeHeaderState extends State<HomeHeader> {
                   color: Color(0xFF1E293B),
                 ),
                 if (_showNotificationDot)
-                  const Positioned(
+                  Positioned(
                     top: 10,
-                    right: 12,
-                    child: SizedBox(
+                    right: 10,
+                    child: Container(
                       width: 10,
                       height: 10,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.softLavender,
-                          shape: BoxShape.circle,
+                      decoration: BoxDecoration(
+                        // User preference: soft lavender dot
+                        color: AppColors.softLavender,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFF1F5F9),
+                          width: 1.5,
                         ),
                       ),
                     ),

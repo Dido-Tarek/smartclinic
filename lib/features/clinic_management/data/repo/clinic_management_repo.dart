@@ -18,6 +18,10 @@ abstract class ClinicManagementRepo {
 
   Future<Either<String, MyClinicsResponseModel>> getMyClinics();
 
+  Future<Either<String, GetClinicProfileResponseModel>> getClinicProfile(
+    int clinicId,
+  );
+
   Future<Either<String, RemoveClinicResponseModel>> removeClinic(int clinicId);
 
   Future<Either<String, UpdateClinicProfileResponseModel>> updateClinicProfile(
@@ -87,6 +91,17 @@ class ClinicManagementRepoImpl implements ClinicManagementRepo {
   Future<Either<String, MyClinicsResponseModel>> getMyClinics() async {
     try {
       return Right(await _api.getMyClinics());
+    } catch (e) {
+      return Left(ApiErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Either<String, GetClinicProfileResponseModel>> getClinicProfile(
+    int clinicId,
+  ) async {
+    try {
+      return Right(await _api.getClinicProfile(clinicId));
     } catch (e) {
       return Left(ApiErrorHandler.handle(e));
     }

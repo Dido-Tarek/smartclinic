@@ -46,7 +46,15 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
   void initState() {
     super.initState();
     isFavorite = widget.isInitialFavorite;
-    _removeBackground();
+    // L1 synchronous hit — if already cached, show instantly (no shimmer)
+    final src = _effectiveSource(widget.imageUrl, widget.imagePath);
+    final cached = BgRemoverService.instance.getCached(src);
+    if (cached != null) {
+      _processedImage = cached;
+      _bgProcessing = false;
+    } else {
+      _removeBackground();
+    }
   }
 
   @override
@@ -54,7 +62,16 @@ class _DoctorCardWidgetState extends State<DoctorCardWidget> {
     super.didUpdateWidget(oldWidget);
     final oldSrc = _effectiveSource(oldWidget.imageUrl, oldWidget.imagePath);
     final newSrc = _effectiveSource(widget.imageUrl, widget.imagePath);
-    if (oldSrc != newSrc) {
+    if (oldSrc == newSrc) return; // same image — nothing to do
+
+    // Check L1 first before triggering async work
+    final cached = BgRemoverService.instance.getCached(newSrc);
+    if (cached != null) {
+      setState(() {
+        _processedImage = cached;
+        _bgProcessing = false;
+      });
+    } else {
       setState(() {
         _processedImage = null;
         _bgProcessing = true;

@@ -41,8 +41,9 @@ class DoctorModel {
   static String? _resolveUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     final t = raw.trim();
-    if (t.startsWith('http')) return t;
-    return '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
+    final lower = t.toLowerCase();
+    if (lower == 'null' || lower == 'string') return null;
+    return t.startsWith('http') ? t : '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
   }
 
   static String? _formatSchedules(Map<String, dynamic>? clinic) {

@@ -26,6 +26,15 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   await SharedPrefsHelper.init();
   await setupGetIt();
+
+  // Firebase must be initialised BEFORE runApp so that:
+  //  1. The Android notification channel is created before any FCM message
+  //     can arrive (eliminates the race condition).
+  //  2. The background message handler isolate can safely call
+  //     Firebase.initializeApp() on its own.
+  await Firebase.initializeApp();
+  await PushNotificationService.createChannelEarly();
+
   runApp(MyApp(key: appKey));
 
   unawaited(_initializeServices());
@@ -33,7 +42,6 @@ void main() async {
 
 Future<void> _initializeServices() async {
   try {
-    await Firebase.initializeApp();
     await PushNotificationService.initialize(appNavigatorKey);
     // Initialize the background-removal ONNX model in the background
     // so it is ready by the time the user reaches a doctor card.

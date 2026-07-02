@@ -15,6 +15,8 @@ class DoctorProfileModel {
   final String? clinicAddress;
   final String? clinicPhone;
   final String? clinicWorkingHours;
+  final double? clinicLatitude;
+  final double? clinicLongitude;
 
   DoctorProfileModel({
     required this.fullName,
@@ -33,6 +35,8 @@ class DoctorProfileModel {
     this.clinicAddress,
     this.clinicPhone,
     this.clinicWorkingHours,
+    this.clinicLatitude,
+    this.clinicLongitude,
   });
 
   static const _baseUrl = 'http://smartclinicccc.runasp.net';
@@ -40,6 +44,8 @@ class DoctorProfileModel {
   static String? _resolveUrl(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
     final t = raw.trim();
+    final lower = t.toLowerCase();
+    if (lower == 'null' || lower == 'string') return null;
     if (t.startsWith('http')) return t;
     return '$_baseUrl${t.startsWith('/') ? '' : '/'}$t';
   }
@@ -91,6 +97,9 @@ class DoctorProfileModel {
           'photoUrl', 'PhotoUrl',
           'profileImage', 'ProfileImage',
           'profilePicture', 'ProfilePicture',
+          'image', 'Image',
+          'imageUrl', 'ImageUrl',
+          'doctorImage', 'DoctorImage',
         ]),
       ),
       clinicId: _readInt(clinic ?? {}, ['id', 'clinicId', 'ClinicId']) ??
@@ -110,6 +119,8 @@ class DoctorProfileModel {
           _readString(payload, ['workingHours', 'WorkingHours', 'workingTimes', 'WorkingTimes']) ??
           _readString(clinic, ['workingHours', 'WorkingHours', 'workingTimes', 'WorkingTimes']) ??
           _formatSchedules(clinic),
+      clinicLatitude: _readDouble(clinic, ['latitude', 'Latitude', 'lat', 'Lat']),
+      clinicLongitude: _readDouble(clinic, ['longitude', 'Longitude', 'lng', 'Lng', 'lon', 'Lon']),
     );
   }
 

@@ -54,8 +54,13 @@ class _ClinicScheduleManagementViewState
   double _maxPatients = 20;
 
   static const _days = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-    'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   @override
@@ -105,9 +110,9 @@ class _ClinicScheduleManagementViewState
 
   void _loadSchedules() {
     if (_selectedDoctorId != null && mounted) {
-      context
-          .read<ClinicManagementCubit>()
-          .getDoctorAvailability(_selectedDoctorId!);
+      context.read<ClinicManagementCubit>().getDoctorAvailability(
+        _selectedDoctorId!,
+      );
     }
   }
 
@@ -118,8 +123,10 @@ class _ClinicScheduleManagementViewState
   }
 
   Future<void> _pickTime(TextEditingController ctrl) async {
-    final picked =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
     if (picked != null && mounted) {
       final hh = picked.hour.toString().padLeft(2, '0');
       final mm = picked.minute.toString().padLeft(2, '0');
@@ -149,11 +156,13 @@ class _ClinicScheduleManagementViewState
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: error ? AppColors.error : Colors.green,
-      behavior: SnackBarBehavior.floating,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? AppColors.error : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -164,16 +173,19 @@ class _ClinicScheduleManagementViewState
           final all = state.response.requests.toList();
           debugPrint('[Schedule] total requests from API: ${all.length}');
           for (final r in all) {
-            debugPrint('[Schedule]  → doctorId=${r.doctorId}  clinicId=${r.clinicId}  name=${r.doctorName}');
+            debugPrint(
+              '[Schedule]  → doctorId=${r.doctorId}  clinicId=${r.clinicId}  name=${r.doctorName}',
+            );
           }
-          debugPrint('[Schedule] _clinicId=$_clinicId  _isOwner=$_isOwner  _currentDoctorId=$_currentDoctorId');
+          debugPrint(
+            '[Schedule] _clinicId=$_clinicId  _isOwner=$_isOwner  _currentDoctorId=$_currentDoctorId',
+          );
 
           // Step 1: clinic filter — fall back to full list when clinicId is
           // absent from the API response (all nulls).
           var list = all;
           if (_clinicId != null) {
-            final byClinic =
-                all.where((r) => r.clinicId == _clinicId).toList();
+            final byClinic = all.where((r) => r.clinicId == _clinicId).toList();
             debugPrint('[Schedule] after clinicId filter: ${byClinic.length}');
             if (byClinic.isNotEmpty) list = byClinic;
           }
@@ -181,8 +193,9 @@ class _ClinicScheduleManagementViewState
           // Step 2: staff see only themselves — fall back if the doctorId
           // in the request doesn't match (avoids an empty list on ID mismatch).
           if (!_isOwner && _currentDoctorId != null) {
-            final selfOnly =
-                list.where((r) => r.doctorId == _currentDoctorId).toList();
+            final selfOnly = list
+                .where((r) => r.doctorId == _currentDoctorId)
+                .toList();
             debugPrint('[Schedule] after staff filter: ${selfOnly.length}');
             if (selfOnly.isNotEmpty) list = selfOnly;
           }
@@ -209,7 +222,7 @@ class _ClinicScheduleManagementViewState
               clinicName: r.clinicName,
               status: r.status,
               feedback: r.feedback,
-              examinationFee: r.examinationFee,
+              inClinicFee: r.inClinicFee,
               homeVisitFee: r.homeVisitFee,
               onlineFee: r.onlineFee,
               followUpFee: r.followUpFee,
@@ -220,7 +233,9 @@ class _ClinicScheduleManagementViewState
             );
           }).toList();
 
-          debugPrint('[Schedule] final doctors: ${doctors.map((d) => '${d.doctorName}(${d.doctorId})').toList()}');
+          debugPrint(
+            '[Schedule] final doctors: ${doctors.map((d) => '${d.doctorName}(${d.doctorId})').toList()}',
+          );
 
           setState(() {
             _doctors = doctors;
@@ -232,7 +247,9 @@ class _ClinicScheduleManagementViewState
         }
 
         if (state is GetMyEmploymentRequestsFailure) {
-          debugPrint('[Schedule] getMyEmploymentRequests FAILED: ${state.errorMessage}');
+          debugPrint(
+            '[Schedule] getMyEmploymentRequests FAILED: ${state.errorMessage}',
+          );
           _snack('Failed to load doctors: ${state.errorMessage}', error: true);
         }
 
@@ -249,7 +266,8 @@ class _ClinicScheduleManagementViewState
             final day = (s.dayOfWeek != null && s.dayOfWeek!.isNotEmpty)
                 ? s.dayOfWeek
                 : cached?['dayOfWeek'] as String?;
-            final max = (s.maxPatientsPerShift != null && s.maxPatientsPerShift! > 0)
+            final max =
+                (s.maxPatientsPerShift != null && s.maxPatientsPerShift! > 0)
                 ? s.maxPatientsPerShift
                 : (cached?['maxPatientsPerShift'] as int?);
             final name = docName ?? cached?['doctorName'] as String?;
@@ -288,7 +306,8 @@ class _ClinicScheduleManagementViewState
           final day = (r.dayOfWeek != null && r.dayOfWeek!.isNotEmpty)
               ? r.dayOfWeek!
               : _selectedDay;
-          final max = (r.maxPatientsPerShift != null && r.maxPatientsPerShift! > 0)
+          final max =
+              (r.maxPatientsPerShift != null && r.maxPatientsPerShift! > 0)
               ? r.maxPatientsPerShift!
               : _maxPatients.round();
           final docName = _selectedDoctorName;
@@ -317,21 +336,28 @@ class _ClinicScheduleManagementViewState
             _endCtrl.clear();
           });
         }
-        if (state is AddScheduleFailure) _snack(state.errorMessage, error: true);
+        if (state is AddScheduleFailure)
+          _snack(state.errorMessage, error: true);
 
         if (state is DeleteScheduleSuccess) {
           _snack('Schedule deleted');
           _scheduleCache.remove(_cacheKey(_clinicId, state.deletedId));
           setState(() {
-            _schedules = _schedules.where((s) => s.id != state.deletedId).toList();
+            _schedules = _schedules
+                .where((s) => s.id != state.deletedId)
+                .toList();
           });
         }
-        if (state is DeleteScheduleFailure) _snack(state.errorMessage, error: true);
+        if (state is DeleteScheduleFailure)
+          _snack(state.errorMessage, error: true);
       },
       builder: (context, state) {
         return Scaffold(
           backgroundColor: AppColors.scaffoldBg,
-          appBar: CustomAppBar(title: 'Shift Control', onNotificationTap: () {}),
+          appBar: CustomAppBar(
+            title: 'Shift Control',
+            onNotificationTap: () {},
+          ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
@@ -414,8 +440,9 @@ class _AddScheduleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppColors.textSecondary.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,26 +450,33 @@ class _AddScheduleCard extends StatelessWidget {
           // Header
           const Row(
             children: [
-              Icon(Icons.add_circle_outline,
-                  color: AppColors.blueAction, size: 20),
+              Icon(
+                Icons.add_circle_outline,
+                color: AppColors.blueAction,
+                size: 20,
+              ),
               SizedBox(width: 8),
-              Text('Add New Schedule',
-                  style: TextStyle(
-                    color: AppColors.deepNavy,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  )),
+              Text(
+                'Add New Schedule',
+                style: TextStyle(
+                  color: AppColors.deepNavy,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
 
           // Doctor selector
-          const Text('Select Doctor',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              )),
+          const Text(
+            'Select Doctor',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
           _DoctorDropdown(
             doctors: doctors,
@@ -453,12 +487,14 @@ class _AddScheduleCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Day selector
-          const Text('Day of Week',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              )),
+          const Text(
+            'Day of Week',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -469,8 +505,10 @@ class _AddScheduleCard extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onDaySelected(day),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: sel ? AppColors.blueAction : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
@@ -480,12 +518,14 @@ class _AddScheduleCard extends StatelessWidget {
                           : AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Text(short,
-                      style: TextStyle(
-                        color: sel ? Colors.white : AppColors.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      )),
+                  child: Text(
+                    short,
+                    style: TextStyle(
+                      color: sel ? Colors.white : AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               );
             }).toList(),
@@ -496,16 +536,20 @@ class _AddScheduleCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: _TimeField(
-                      label: 'Start Time',
-                      controller: startCtrl,
-                      onTap: onPickStart)),
+                child: _TimeField(
+                  label: 'Start Time',
+                  controller: startCtrl,
+                  onTap: onPickStart,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                  child: _TimeField(
-                      label: 'End Time',
-                      controller: endCtrl,
-                      onTap: onPickEnd)),
+                child: _TimeField(
+                  label: 'End Time',
+                  controller: endCtrl,
+                  onTap: onPickEnd,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -514,18 +558,22 @@ class _AddScheduleCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Max Patients Per Shift',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  )),
-              Text('${maxPatients.round()}',
-                  style: const TextStyle(
-                    color: AppColors.blueAction,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  )),
+              const Text(
+                'Max Patients Per Shift',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '${maxPatients.round()}',
+                style: const TextStyle(
+                  color: AppColors.blueAction,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
           Slider(
@@ -550,17 +598,24 @@ class _AddScheduleCard extends StatelessWidget {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Create Schedule',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Create Schedule',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.deepNavy,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    AppColors.deepNavy.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.deepNavy.withValues(
+                  alpha: 0.5,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 elevation: 0,
               ),
             ),
@@ -628,9 +683,10 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
       _filtered = query.isEmpty
           ? widget.doctors
           : widget.doctors
-              .where((d) =>
-                  (d.doctorName ?? '').toLowerCase().contains(query))
-              .toList();
+                .where(
+                  (d) => (d.doctorName ?? '').toLowerCase().contains(query),
+                )
+                .toList();
     });
     _overlay?.markNeedsBuild();
   }
@@ -640,92 +696,102 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
     _open = true;
     _filtered = widget.doctors;
 
-    _overlay = OverlayEntry(builder: (_) {
-      return GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _closeOverlay,
-        child: Stack(
-          children: [
-            CompositedTransformFollower(
-              link: _layerLink,
-              showWhenUnlinked: false,
-              offset: const Offset(0, 54),
-              child: Material(
-                elevation: 8,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  constraints: const BoxConstraints(maxHeight: 220),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color:
-                            AppColors.textSecondary.withValues(alpha: 0.2)),
-                  ),
-                  child: _filtered.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No doctors found',
-                              style:
-                                  TextStyle(color: AppColors.textSecondary)),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          padding: EdgeInsets.zero,
-                          itemCount: _filtered.length,
-                          itemBuilder: (_, i) {
-                            final doc = _filtered[i];
-                            final selected =
-                                doc.doctorId == widget.selectedDoctorId;
-                            return InkWell(
-                              onTap: () {
-                                widget.onChanged(doc.doctorId);
-                                _closeOverlay();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                                color: selected
-                                    ? AppColors.blueAction
-                                          .withValues(alpha: 0.08)
-                                    : Colors.transparent,
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.person_outline,
+    _overlay = OverlayEntry(
+      builder: (_) {
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: _closeOverlay,
+          child: Stack(
+            children: [
+              CompositedTransformFollower(
+                link: _layerLink,
+                showWhenUnlinked: false,
+                offset: const Offset(0, 54),
+                child: Material(
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.textSecondary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: _filtered.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'No doctors found',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            itemCount: _filtered.length,
+                            itemBuilder: (_, i) {
+                              final doc = _filtered[i];
+                              final selected =
+                                  doc.doctorId == widget.selectedDoctorId;
+                              return InkWell(
+                                onTap: () {
+                                  widget.onChanged(doc.doctorId);
+                                  _closeOverlay();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  color: selected
+                                      ? AppColors.blueAction.withValues(
+                                          alpha: 0.08,
+                                        )
+                                      : Colors.transparent,
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.person_outline,
                                         size: 18,
-                                        color: AppColors.textSecondary),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        doc.doctorName ?? 'Unknown Doctor',
-                                        style: TextStyle(
-                                          color: selected
-                                              ? AppColors.blueAction
-                                              : AppColors.textPrimary,
-                                          fontWeight: selected
-                                              ? FontWeight.w700
-                                              : FontWeight.normal,
-                                          fontSize: 14,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          doc.doctorName ?? 'Unknown Doctor',
+                                          style: TextStyle(
+                                            color: selected
+                                                ? AppColors.blueAction
+                                                : AppColors.textPrimary,
+                                            fontWeight: selected
+                                                ? FontWeight.w700
+                                                : FontWeight.normal,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (selected)
-                                      const Icon(Icons.check,
+                                      if (selected)
+                                        const Icon(
+                                          Icons.check,
                                           size: 16,
-                                          color: AppColors.blueAction),
-                                  ],
+                                          color: AppColors.blueAction,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                            },
+                          ),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      },
+    );
 
     Overlay.of(context).insert(_overlay!);
   }
@@ -753,14 +819,17 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
         height: 50,
         decoration: BoxDecoration(
           border: Border.all(
-              color: AppColors.textSecondary.withValues(alpha: 0.3)),
+            color: AppColors.textSecondary.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Center(
-            child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2))),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
       );
     }
 
@@ -783,8 +852,11 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
           child: _open
               ? Row(
                   children: [
-                    const Icon(Icons.search,
-                        size: 18, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.search,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
@@ -796,7 +868,9 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
                           border: InputBorder.none,
                           hintText: 'Search doctors...',
                           hintStyle: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13),
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
                         ),
@@ -804,15 +878,21 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
                     ),
                     GestureDetector(
                       onTap: _closeOverlay,
-                      child: const Icon(Icons.close,
-                          size: 18, color: AppColors.textSecondary),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 )
               : Row(
                   children: [
-                    const Icon(Icons.person_outline,
-                        size: 18, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.person_outline,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -828,8 +908,10 @@ class _DoctorDropdownState extends State<_DoctorDropdown> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down,
-                        color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary,
+                    ),
                   ],
                 ),
         ),
@@ -847,22 +929,25 @@ class _TimeField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onTap;
 
-  const _TimeField(
-      {required this.label,
-      required this.controller,
-      required this.onTap});
+  const _TimeField({
+    required this.label,
+    required this.controller,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            )),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -872,10 +957,11 @@ class _TimeField extends StatelessWidget {
             hintText: '--:--',
             hintStyle: const TextStyle(color: AppColors.textSecondary),
             suffixIcon: const Icon(Icons.access_time, size: 18),
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -908,52 +994,67 @@ class _ScheduleListSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Existing Schedules',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                )),
+            const Text(
+              'Existing Schedules',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             if (!loadingSchedules)
-              Text('${schedules.length} shift${schedules.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                '${schedules.length} shift${schedules.length == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 12),
         if (loadingSchedules)
           const Center(
-              child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator()))
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          )
         else if (schedules.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(
                 children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 48,
-                      color: AppColors.textSecondary.withValues(alpha: 0.4)),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 48,
+                    color: AppColors.textSecondary.withValues(alpha: 0.4),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'No schedules yet.\nSelect a doctor and add shifts above.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
           )
         else
-          ...schedules.map((s) => _ScheduleCard(
-                schedule: s,
-                doctorName: s.doctorName,
-                deleting: state is DeleteScheduleLoading &&
-                    (state as DeleteScheduleLoading).deletingId == s.id,
-                onDelete: () => onDelete(s.id ?? 0),
-              )),
+          ...schedules.map(
+            (s) => _ScheduleCard(
+              schedule: s,
+              doctorName: s.doctorName,
+              deleting:
+                  state is DeleteScheduleLoading &&
+                  (state as DeleteScheduleLoading).deletingId == s.id,
+              onDelete: () => onDelete(s.id ?? 0),
+            ),
+          ),
       ],
     );
   }
@@ -985,7 +1086,8 @@ class _ScheduleCard extends StatelessWidget {
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: AppColors.textSecondary.withValues(alpha: 0.15)),
+          color: AppColors.textSecondary.withValues(alpha: 0.15),
+        ),
       ),
       child: Row(
         children: [
@@ -1003,9 +1105,10 @@ class _ScheduleCard extends StatelessWidget {
                   ? schedule.dayOfWeek!.substring(0, 3)
                   : (schedule.dayOfWeek ?? ''),
               style: const TextStyle(
-                  color: AppColors.blueAction,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13),
+                color: AppColors.blueAction,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -1016,15 +1119,19 @@ class _ScheduleCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.access_time_rounded,
-                        size: 14, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.access_time_rounded,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${schedule.startTime ?? '--:--'}  →  ${schedule.endTime ?? '--:--'}',
                       style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13),
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -1032,14 +1139,21 @@ class _ScheduleCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline,
-                          size: 14, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(doctorName!,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: AppColors.textSecondary, fontSize: 12)),
+                        child: Text(
+                          doctorName!,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1047,12 +1161,19 @@ class _ScheduleCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.people_outline,
-                        size: 14, color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.people_outline,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
-                    Text('Max ${schedule.maxPatientsPerShift ?? 0} patients',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      'Max ${schedule.maxPatientsPerShift ?? 0} patients',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1061,14 +1182,18 @@ class _ScheduleCard extends StatelessWidget {
           // Delete
           if (deleting)
             const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2))
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           else
             IconButton(
               onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.error, size: 22),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.error,
+                size: 22,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),

@@ -48,6 +48,9 @@ class _UploadMedicalRecordsScreenState
   bool _hasExistingRecords = false;
   bool _loadedExistingRecords = false;
 
+  /// True when the user can skip uploading and go straight to the next step.
+  bool get _canContinueDirectly => _hasSavedRecord || _hasExistingRecords;
+
   final List<PlatformFile> _selectedFiles = <PlatformFile>[];
 
   @override
@@ -235,6 +238,49 @@ class _UploadMedicalRecordsScreenState
                               );
                             }),
                           ],
+                          // Banner: existing records found
+                          if (_hasExistingRecords &&
+                              _selectedFiles.isEmpty) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.skyBlue.withValues(
+                                  alpha: 0.08,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.skyBlue.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    color: AppColors.skyBlue,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'You already have medical records on file. You can continue or add more.',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.skyBlue,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -242,17 +288,29 @@ class _UploadMedicalRecordsScreenState
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: CustomButton(
-                    text: isLoading
-                        ? 'Uploading...'
-                        : _hasSavedRecord
-                        ? 'Continue'
-                        : 'Save and Continue',
-                    onPressed: isLoading
-                        ? () {}
-                        : _hasSavedRecord
-                        ? _continueAfterSave
-                        : _submit,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // "Continue" shortcut — shown when records already exist
+                      if (_canContinueDirectly && _selectedFiles.isEmpty) ...[
+                        CustomButton(
+                          text: isLoading ? 'Loading...' : 'Continue',
+                          onPressed: isLoading ? () {} : _continueAfterSave,
+                        ),
+                      ] else
+                        CustomButton(
+                          text: isLoading
+                              ? 'Uploading...'
+                              : _hasSavedRecord
+                              ? 'Continue'
+                              : 'Save and Continue',
+                          onPressed: isLoading
+                              ? () {}
+                              : _hasSavedRecord
+                              ? _continueAfterSave
+                              : _submit,
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -264,6 +322,14 @@ class _UploadMedicalRecordsScreenState
   }
 
   Future<void> _pickFile() async {
+    if (_selectedFiles.isNotEmpty) {
+      CherryToast.warning(
+        title: const Text('Limit reached'),
+        description: const Text('You can only upload one file at a time. Please save or remove the current file.'),
+      ).show(context);
+      return;
+    }
+
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
